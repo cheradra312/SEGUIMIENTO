@@ -44,10 +44,19 @@
             align-items: center;
             gap: 1rem;
             margin-bottom: 1rem;
+        }
+        .header-container.is-collapsible {
             cursor: pointer;
+        }
+        .header-title-wrapper {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+            min-width: 0;
         }
         .header-counters {
             display: flex;
+            flex-wrap: wrap;
             gap: 0.5rem;
             align-items: center;
             font-size: 0.8rem;
@@ -92,15 +101,20 @@
             overflow: hidden;
             transition: max-height 0.5s ease-in-out;
         }
-        .collapsed > .collapsible-content {
+        .collapsible.collapsed > .collapsible-content {
             max-height: 0;
+            margin-top: 0;
+            margin-bottom: 0;
+            padding-top: 0;
+            padding-bottom: 0;
         }
         .toggle-icon {
             transition: transform 0.3s ease;
             flex-shrink: 0;
-            margin-right: 0.5rem;
+            margin-right: 0.75rem;
+            color: #6b7280;
         }
-        .collapsed .toggle-icon {
+        .collapsible.collapsed .toggle-icon {
             transform: rotate(-90deg);
         }
     </style>
@@ -123,6 +137,7 @@
             <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Seguimiento de Estudio</h1>
             <p class="text-md text-gray-600 mt-2">Cuerpo de Ingenieros de Caminos, Canales y Puertos del Estado</p>
             <div id="user-info" class="mt-4 text-sm text-gray-500"></div>
+            <div id="connection-status" class="mt-2 text-sm font-semibold h-5"></div>
             <div class="mt-4 flex flex-wrap justify-center items-center gap-4">
                 <button id="toggle-names-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">Mostrar Nombres</button>
                 <button id="save-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">Guardar Progreso</button>
@@ -133,7 +148,6 @@
         </header>
 
         <div id="top-summary-bar" class="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-8 p-4 bg-white rounded-lg shadow">
-            <!-- Summary items will be injected here by JS -->
         </div>
 
         <main id="syllabus-container">
@@ -147,7 +161,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCKXzSmQ9F1M4W59Vyalu3CWdKFsh7dOmE",
@@ -162,6 +176,16 @@
         let db, sessionId;
         let progressData = {};
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        
+        const summaryAbbrMap = {
+            "Organización y Funcionamiento de la Administración Pública": "ADM",
+            "A.1) Aguas y Obras Hidráulicas": "AGUAS",
+            "A.2) Puertos y Costas": "COSTAS",
+            "B.1) Carreteras": "CARR",
+            "B.2) Ferrocarriles": "FERR",
+            "C.1) Transportes y Movilidad": "TRANS",
+            "C.2) Medio Ambiente": "MA"
+        };
         
         const syllabus = {
             "Materias comunes": {
@@ -292,7 +316,7 @@
                         { id: 22, text: "La gestión de la seguridad operacional en los cambios en el sistema ferroviario: El Reglamento UE 402/2013 relativo a la adopción de un método común de seguridad para la evaluación y valoración del riesgo. Concepto de cambio significativo. Fases del proceso de gestión del riesgo: definición del sistema, identificación de amenazas, análisis del riesgo, registro de amenazas, funciones del evaluador independiente, informe del evaluador independiente. Declaración del proponente. Integración Segura." }
                     ]
                 },
-                "C) Transportes, Movilidad y Medio Ambiente": {
+                "C) Transportes, Movilidad y Medio Ambiente": { 
                     "C.1) Transportes y Movilidad": [
                         { id: 1, text: "Transporte y movilidad en España (I). Movilidad interior y movilidad exterior de viajeros y mercancías. Repartos modales, principales magnitudes y evolución. Comparación con otros países de la Unión Europea. Relación entre movilidad y actividad económica. El transporte y la industria del turismo." },
                         { id: 2, text: "Transporte y movilidad en España (II). El transporte y la logística como sector empresarial. Participación en la economía nacional, empresas y participación en el empleo. Comparativa con otros países de la Unión Europea. Gasto de los ciudadanos en transporte. Gasto de los diferentes sectores empresariales en transporte de mercancías y logística. El Observatorio del Transporte y la Logística en España." },
@@ -342,7 +366,7 @@
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 
-                document.getElementById('login-form').addEventListener('submit', (e) => {
+                document.getElementById('login-form').addEventListener('submit', async (e) => {
                     e.preventDefault();
                     const usernameInput = document.getElementById('username-input');
                     const username = usernameInput.value.trim();
@@ -350,9 +374,10 @@
                         sessionId = username;
                         document.getElementById('login-modal').style.display = 'none';
                         document.getElementById('main-content').classList.remove('hidden');
-                        document.getElementById('user-info').innerHTML = `<p>Usuario: <span class="font-semibold">${sessionId}</span></p>`;
+                        document.getElementById('user-info').innerHTML = `<p>Usuario: <span class="font-semibold">${sessionId}</span> | App ID: <span class="font-mono text-xs">${appId}</span></p>`;
+                        await checkConnection();
                         renderSyllabus();
-                        loadProgress();
+                        await loadProgress();
                     }
                 });
 
@@ -363,6 +388,8 @@
                 });
 
                 document.getElementById('save-btn').addEventListener('click', saveAllProgress);
+                document.getElementById('collapse-all-btn').addEventListener('click', () => toggleAll(true));
+                document.getElementById('expand-all-btn').addEventListener('click', () => toggleAll(false));
 
             } catch (error) {
                 console.error("Error initializing Firebase:", error);
@@ -370,71 +397,123 @@
             }
         };
         
-        function createHeader(level, title, id) {
-            const container = document.createElement('div');
-            container.className = 'header-container';
+        async function checkConnection() {
+            const statusEl = document.getElementById('connection-status');
+            statusEl.textContent = 'Verificando conexión...';
+            statusEl.className = 'mt-2 text-sm font-semibold text-yellow-600';
+            const testDocRef = doc(db, `artifacts/${appId}/public/data/${sessionId}`, "_connection_test");
+            try {
+                await setDoc(testDocRef, { timestamp: new Date() });
+                await deleteDoc(testDocRef);
+                statusEl.textContent = 'Conexión con Firebase exitosa.';
+                statusEl.className = 'mt-2 text-sm font-semibold text-green-600';
+            } catch (error) {
+                console.error("Firebase connection test failed:", error);
+                statusEl.textContent = 'Error de conexión con Firebase. El progreso no se guardará.';
+                statusEl.className = 'mt-2 text-sm font-semibold text-red-600';
+                alert(`Fallo en la conexión con Firebase. \nCausa probable: Las reglas de seguridad de tu base de datos no permiten escribir en la ruta: \n/artifacts/${appId}/public/data/${sessionId}/\n\nError: ${error.message}`);
+            }
+        }
+
+        function createHeader(level, title, id, isCollapsible = false) {
+            const headerWrapper = document.createElement('div');
+            headerWrapper.className = 'header-container';
+             if (isCollapsible) {
+                headerWrapper.classList.add('is-collapsible');
+                headerWrapper.addEventListener('click', (e) => {
+                    if (e.target.closest('.header-counters')) return;
+                    headerWrapper.parentElement.classList.toggle('collapsed');
+                });
+            }
+
+            const titleWrapper = document.createElement('div');
+            titleWrapper.className = 'header-title-wrapper';
+
+            if (isCollapsible) {
+                const icon = document.createElement('div');
+                icon.className = 'toggle-icon';
+                icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-down" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>`;
+                titleWrapper.appendChild(icon);
+            }
 
             const titleEl = document.createElement(`h${level}`);
-            titleEl.className = {2: 'text-2xl md:text-3xl font-bold text-gray-800 border-b-2 border-blue-500 pb-2 flex-grow', 3: 'text-xl md:text-2xl font-semibold text-gray-700', 4: 'text-lg md:text-xl font-medium text-gray-600'}[level];
+            titleEl.className = {2: 'text-2xl md:text-3xl font-bold text-gray-800 border-b-2 border-blue-500 pb-2', 3: 'text-xl md:text-2xl font-semibold text-gray-700', 4: 'text-lg md:text-xl font-medium text-gray-600'}[level];
             titleEl.textContent = title;
+            titleWrapper.appendChild(titleEl);
 
             const countersEl = document.createElement('div');
             countersEl.className = 'header-counters';
             countersEl.id = `counters-${id}`;
 
-            container.appendChild(titleEl);
-            container.appendChild(countersEl);
-            return container;
+            headerWrapper.appendChild(titleWrapper);
+            headerWrapper.appendChild(countersEl);
+            return headerWrapper;
         }
 
         function renderSyllabus() {
             const container = document.getElementById('syllabus-container');
             container.innerHTML = '';
 
-            for (const topLevelTitle in syllabus) { // "Materias comunes", "Materias específicas"
+            for (const topLevelTitle in syllabus) {
                 const topLevelBlock = document.createElement('div');
                 topLevelBlock.className = 'mt-8';
                 topLevelBlock.appendChild(createHeader(2, topLevelTitle, topLevelTitle.replace(/[^a-zA-Z0-9]/g, '')));
                 
                 const mainBlocks = syllabus[topLevelTitle];
-                for (const mainBlockTitle in mainBlocks) { // "Organización...", "A) ...", "B) ...", "C) ..."
+                for (const mainBlockTitle in mainBlocks) {
                     const mainBlockId = mainBlockTitle.replace(/[^a-zA-Z0-9]/g, '');
                     const mainBlockEl = document.createElement('div');
-                    mainBlockEl.className = 'main-block mt-6';
+                    mainBlockEl.className = 'main-block mt-6 ml-4 collapsible collapsed';
                     mainBlockEl.dataset.mainBlockId = mainBlockId;
-                    mainBlockEl.appendChild(createHeader(3, mainBlockTitle, mainBlockId));
+                    mainBlockEl.appendChild(createHeader(3, mainBlockTitle, mainBlockId, true));
 
-                    const subBlocks = mainBlocks[mainBlockTitle];
-                    if (Array.isArray(subBlocks)) { // Case for "Organización..."
-                        subBlocks.forEach(topic => {
-                            mainBlockEl.appendChild(createTopicElement(topic, mainBlockId, mainBlockId));
+                    const mainBlockContent = document.createElement('div');
+                    mainBlockContent.className = 'collapsible-content';
+                    
+                    const subBlocksOrTopics = mainBlocks[mainBlockTitle];
+
+                    if (Array.isArray(subBlocksOrTopics)) { // Case for "Materias comunes" which has direct topics
+                        const subBlockId = mainBlockId; 
+                        const subBlockName = mainBlockTitle; 
+                        mainBlockEl.dataset.subBlockId = subBlockId;
+                        mainBlockEl.dataset.subBlockName = subBlockName;
+                        subBlocksOrTopics.forEach(topic => {
+                            mainBlockContent.appendChild(createTopicElement(topic, mainBlockId, subBlockId, subBlockName));
                         });
-                    } else { // Case for A, B, C
-                        for (const subBlockTitle in subBlocks) {
-                            const subBlockId = subBlockTitle.replace(/[^a-zA-Z0-9]/g, '');
+                    } else { // Case for "Materias específicas" which has sub-blocks
+                        for (const subBlockKey in subBlocksOrTopics) {
+                            const subBlockId = subBlockKey.replace(/[^a-zA-Z0-9]/g, '');
                             const subBlockEl = document.createElement('div');
-                            subBlockEl.className = 'sub-block mt-4 ml-4';
+                            subBlockEl.className = 'sub-block mt-4 ml-4 collapsible collapsed';
                             subBlockEl.dataset.subBlockId = subBlockId;
-                            subBlockEl.appendChild(createHeader(4, subBlockTitle, subBlockId));
+                            subBlockEl.dataset.subBlockName = subBlockKey;
                             
-                            subBlocks[subBlockTitle].forEach(topic => {
-                                subBlockEl.appendChild(createTopicElement(topic, mainBlockId, subBlockId));
+                            subBlockEl.appendChild(createHeader(4, subBlockKey, subBlockId, true));
+                            
+                            const subBlockContent = document.createElement('div');
+                            subBlockContent.className = 'collapsible-content pl-4';
+                            
+                            subBlocksOrTopics[subBlockKey].forEach(topic => {
+                                subBlockContent.appendChild(createTopicElement(topic, mainBlockId, subBlockId, subBlockKey));
                             });
-                            mainBlockEl.appendChild(subBlockEl);
+                            subBlockEl.appendChild(subBlockContent);
+                            mainBlockContent.appendChild(subBlockEl);
                         }
                     }
+                    mainBlockEl.appendChild(mainBlockContent);
                     topLevelBlock.appendChild(mainBlockEl);
                 }
                 container.appendChild(topLevelBlock); 
             }
         }
 
-        function createTopicElement(topic, mainBlockId, subBlockId) {
+        function createTopicElement(topic, mainBlockId, subBlockId, subBlockName) {
             const topicId = `${subBlockId}-${topic.id}`;
             const topicDiv = document.createElement('div');
             topicDiv.className = 'topic-card bg-white p-3 rounded-lg shadow-sm mb-3 flex items-center justify-between gap-4';
             topicDiv.dataset.mainBlockId = mainBlockId;
             topicDiv.dataset.subBlockId = subBlockId;
+            topicDiv.dataset.subBlockName = subBlockName;
             topicDiv.dataset.topicId = topicId;
 
             const topicP = document.createElement('p');
@@ -471,14 +550,6 @@
 
             tickBox.classList.remove('orange', 'green');
             if (newState !== 'none') tickBox.classList.add(newState);
-
-            // Update local data object instead of saving to Firebase directly
-            const key = `${topicId}_${tickIndex}`;
-            if (newState === 'none') {
-                delete progressData[key];
-            } else {
-                progressData[key] = newState;
-            }
             
             updateAllCounters();
         }
@@ -486,42 +557,53 @@
         function updateAllCounters() {
             const subBlockStats = {};
             const mainBlockStats = {};
+            const topSummaryStats = {};
 
             document.querySelectorAll('.topic-card').forEach(card => {
+                const subBlockName = card.dataset.subBlockName;
                 const subBlockId = card.dataset.subBlockId;
                 const mainBlockId = card.dataset.mainBlockId;
 
-                if (!subBlockStats[subBlockId]) subBlockStats[subBlockId] = Array(5).fill(0);
-                if (!mainBlockStats[mainBlockId]) mainBlockStats[mainBlockId] = Array(5).fill(0);
+                if (!subBlockStats[subBlockId]) subBlockStats[subBlockId] = { counts: Array(5).fill(0), total: 0 };
+                if (!mainBlockStats[mainBlockId]) mainBlockStats[mainBlockId] = { counts: Array(5).fill(0), total: 0 };
+                
+                const abbr = summaryAbbrMap[subBlockName];
+                if (abbr && !topSummaryStats[abbr]) topSummaryStats[abbr] = 0;
                 
                 const ticks = card.querySelectorAll('.tick-box.orange, .tick-box.green').length;
                 if (ticks > 0) {
-                    subBlockStats[subBlockId][ticks - 1]++;
+                    subBlockStats[subBlockId].counts[ticks - 1]++;
+                    subBlockStats[subBlockId].total++;
+                    if (abbr) topSummaryStats[abbr]++;
                 }
             });
             
             document.querySelectorAll('.main-block').forEach(mainBlockEl => {
                 const mainBlockId = mainBlockEl.dataset.mainBlockId;
                 const totalCounts = Array(5).fill(0);
+                let totalStudied = 0;
+                
+                if(subBlockStats[mainBlockId]) { // Handle direct children like ADM
+                    subBlockStats[mainBlockId].counts.forEach((count, i) => totalCounts[i] += count);
+                    totalStudied += subBlockStats[mainBlockId].total;
+                }
+
                 mainBlockEl.querySelectorAll('.sub-block').forEach(subBlockEl => {
                     const subBlockId = subBlockEl.dataset.subBlockId;
                     if(subBlockStats[subBlockId]) {
-                        subBlockStats[subBlockId].forEach((count, i) => totalCounts[i] += count);
+                        subBlockStats[subBlockId].counts.forEach((count, i) => totalCounts[i] += count);
+                        totalStudied += subBlockStats[subBlockId].total;
                     }
                 });
-                // Add topics that are direct children of main block (like in "Materias Comunes")
-                 if (mainBlockStats[mainBlockId]) { 
-                     subBlockStats[mainBlockId]?.forEach((count, i) => totalCounts[i] += count);
-                 }
-                 mainBlockStats[mainBlockId] = totalCounts;
+                 mainBlockStats[mainBlockId] = { counts: totalCounts, total: totalStudied };
             });
 
             const updateCountersUI = (stats, prefix) => {
                 for(const id in stats) {
                     const container = document.getElementById(`${prefix}-${id}`); 
                     if (container) {
-                        const total = stats[id].reduce((sum, current) => sum + current, 0);
-                        let badgesHTML = stats[id].map((count, i) => `<div class="count-badge">V${i+1}: <span>${count}</span></div>`).join('');
+                        const { counts, total } = stats[id];
+                        let badgesHTML = counts.map((count, i) => `<div class="count-badge">V${i+1}: <span>${count}</span></div>`).join('');
                         badgesHTML += `<div class="count-badge total-badge">TOTAL: <span>${total}</span></div>`;
                         container.innerHTML = badgesHTML;
                     }
@@ -530,9 +612,23 @@
             
             updateCountersUI(subBlockStats, 'counters');
             updateCountersUI(mainBlockStats, 'counters');
+            updateTopSummary(topSummaryStats);
         }
 
-        async function loadProgress() {
+        function updateTopSummary(stats) {
+            const summaryBar = document.getElementById('top-summary-bar');
+            summaryBar.innerHTML = '';
+            const orderedKeys = Object.values(summaryAbbrMap);
+            orderedKeys.forEach(key => { 
+                const count = stats[key] || 0;
+                const badge = document.createElement('div');
+                badge.className = 'count-badge';
+                badge.innerHTML = `${key}: <span>${count}</span>`;
+                summaryBar.appendChild(badge);
+            });
+        }
+
+        async function loadProgress() { 
             if (!sessionId) return;
             const docRef = doc(db, `artifacts/${appId}/public/data/${sessionId}`, "progress");
 
@@ -552,7 +648,7 @@
                 updateAllCounters();
             } catch (error) {
                 console.error("Error al leer los datos de Firestore:", error);
-                alert("No se pudo cargar el progreso. Revisa la consola para ver los errores.");
+                alert(`No se pudo cargar el progreso. Revisa la consola para ver los errores. Error: ${error.message}`);
             }
         }
 
@@ -562,11 +658,28 @@
             saveStatus.textContent = 'Guardando...';
             saveStatus.classList.add('text-blue-600');
             saveStatus.classList.remove('text-green-600', 'text-red-600');
+            
+            const currentProgress = {};
+            document.querySelectorAll('.topic-card').forEach(card => {
+                const topicId = card.dataset.topicId;
+                card.querySelectorAll('.tick-box').forEach(tickBox => {
+                    const tickIndex = tickBox.dataset.tickIndex;
+                    const key = `${topicId}_${tickIndex}`;
+                    let state = 'none';
+                    if (tickBox.classList.contains('green')) state = 'green';
+                    else if (tickBox.classList.contains('orange')) state = 'orange';
+
+                    if (state !== 'none') {
+                        currentProgress[key] = state;
+                    }
+                });
+            });
+            progressData = currentProgress;
 
             const docRef = doc(db, `artifacts/${appId}/public/data/${sessionId}`, "progress");
 
             try {
-                await setDoc(docRef, progressData); // Overwrite the document with the local data
+                await setDoc(docRef, progressData);
                 saveStatus.textContent = '¡Progreso guardado!';
                 saveStatus.classList.add('text-green-600');
                 saveStatus.classList.remove('text-blue-600');
@@ -576,7 +689,18 @@
                 saveStatus.textContent = 'Error al guardar.';
                 saveStatus.classList.add('text-red-600');
                 saveStatus.classList.remove('text-blue-600');
+                alert(`No se pudo guardar el progreso. Revisa la consola para ver los errores. Error: ${error.message}`);
             }
+        }
+
+        function toggleAll(collapse) {
+            document.querySelectorAll('.collapsible').forEach(el => {
+                if(collapse) {
+                    el.classList.add('collapsed');
+                } else {
+                    el.classList.remove('collapsed');
+                }
+            });
         }
     </script>
 </body>
