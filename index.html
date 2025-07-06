@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es"> 
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -163,6 +163,7 @@
             <div class="mt-6 flex flex-wrap justify-center items-center gap-4">
                 <button id="toggle-names-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium">Mostrar Nombres</button>
                 <button id="save-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm font-medium">Guardar Progreso</button>
+                <button id="calc-prob-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"><i class="fas fa-calculator mr-2"></i>Calcular Probabilidad</button>
                 <button id="collapse-all-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm font-medium">Plegar Todo</button>
                 <button id="expand-all-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm font-medium">Desplegar Todo</button>
             </div>
@@ -201,13 +202,13 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         
         const BLOCKS_CONFIG = {
-            "Organización y Funcionamiento de la Administración Pública": { abbr: "ADM", icon: "fa-gavel", color: "color-adm" },
-            "A.1) Aguas y Obras Hidráulicas": { abbr: "AGUAS", icon: "fa-tint", color: "color-aguas" },
-            "A.2) Puertos y Costas": { abbr: "COSTAS", icon: "fa-water", color: "color-costas" },
-            "B.1) Carreteras": { abbr: "CARR", icon: "fa-road", color: "color-infra" },
-            "B.2) Ferrocarriles": { abbr: "FERR", icon: "fa-train", color: "color-infra" },
-            "C.1) Transportes y Movilidad": { abbr: "TRANS", icon: "fa-bus", color: "color-trans" },
-            "C.2) Medio Ambiente": { abbr: "MA", icon: "fa-leaf", color: "color-ma" }
+            "Organización y Funcionamiento de la Administración Pública": { abbr: "ADM", icon: "fa-gavel", color: "color-adm", calcId: 'admin' },
+            "A.1) Aguas y Obras Hidráulicas": { abbr: "AGUAS", icon: "fa-tint", color: "color-aguas", calcId: 'aguas' },
+            "A.2) Puertos y Costas": { abbr: "COSTAS", icon: "fa-water", color: "color-costas", calcId: 'aguas' },
+            "B.1) Carreteras": { abbr: "CARR", icon: "fa-road", color: "color-infra", calcId: 'carreteras' },
+            "B.2) Ferrocarriles": { abbr: "FERR", icon: "fa-train", color: "color-infra", calcId: 'carreteras' },
+            "C.1) Transportes y Movilidad": { abbr: "TRANS", icon: "fa-bus", color: "color-trans", calcId: 'transportes' },
+            "C.2) Medio Ambiente": { abbr: "MA", icon: "fa-leaf", color: "color-ma", calcId: 'transportes' }
         };
         
         const syllabus = {
@@ -413,6 +414,7 @@
                 document.getElementById('save-btn').addEventListener('click', saveAllProgress);
                 document.getElementById('collapse-all-btn').addEventListener('click', () => toggleAll(true));
                 document.getElementById('expand-all-btn').addEventListener('click', () => toggleAll(false));
+                document.getElementById('calc-prob-btn').addEventListener('click', openCalculator);
 
             } catch (error) {
                 console.error("Error initializing Firebase:", error);
@@ -621,7 +623,7 @@
                      grandTotalTopics += totalCount;
 
                      tableBody += `
-                        <tr class="bg-slate-100 border-b-4 border-slate-300">
+                        <tr class="bg-slate-50 border-b-4 border-slate-300">
                             <td class="px-6 py-4 font-semibold ${config.color}" colspan="2">
                                 <i class="fas ${config.icon} fa-fw text-lg w-5 text-center"></i>
                                 ${mainBlockTitle}
@@ -753,6 +755,63 @@
                 saveStatus.classList.remove('text-blue-600');
                 alert(`No se pudo guardar el progreso. Revisa la consola para ver los errores. Error: ${error.message}`);
             }
+        }
+        
+        function openCalculator() {
+            const calculatorUrl = 'https://cheradra312.github.io/CAL_PROB/';
+            const params = new URLSearchParams();
+
+            const studiedTotals = {
+                admin: 0,
+                aguas: 0,
+                carreteras: 0,
+                transportes: 0
+            };
+
+            document.querySelectorAll('.topic-card').forEach(card => {
+                const subBlockName = card.dataset.subBlockName;
+                const config = BLOCKS_CONFIG[subBlockName];
+                if (!config) return;
+
+                const calcId = config.calcId;
+                if (card.querySelectorAll('.tick-box.orange, .tick-box.green').length > 0) {
+                    if (studiedTotals.hasOwnProperty(calcId)) {
+                        // This logic is flawed if we just increment. We need to count unique topics.
+                        // Let's recalculate from scratch.
+                    }
+                }
+            });
+
+            const calcData = {
+                admin: 0,
+                aguas: 0,
+                carreteras: 0,
+                transportes: 0
+            };
+            
+            const uniqueStudiedTopics = new Set();
+            document.querySelectorAll('.topic-card').forEach(card => {
+                if (card.querySelectorAll('.tick-box.orange, .tick-box.green').length > 0) {
+                    uniqueStudiedTopics.add(card.dataset.topicId);
+                }
+            });
+
+            uniqueStudiedTopics.forEach(topicId => {
+                const card = document.querySelector(`.topic-card[data-topic-id="${topicId}"]`);
+                if (card) {
+                    const subBlockName = card.dataset.subBlockName;
+                    const config = BLOCKS_CONFIG[subBlockName];
+                    if (config && calcData.hasOwnProperty(config.calcId)) {
+                        calcData[config.calcId]++;
+                    }
+                }
+            });
+
+            for (const key in calcData) {
+                params.append(key, calcData[key]);
+            }
+
+            window.open(`${calculatorUrl}?${params.toString()}`, '_blank');
         }
 
         function toggleAll(collapse) {
