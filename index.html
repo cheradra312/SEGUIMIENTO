@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="es"> 
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seguimiento de Estudio para Oposición</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
+            background-color: #f8fafc; /* slate-50 */
         }
         .tick-box {
             width: 24px;
@@ -35,7 +36,7 @@
         }
         .tick-box.orange .tick-mark, .tick-box.green .tick-mark { display: block; }
         .topic-card:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
-        .topic-full-name { display: none; margin-left: 8px; font-size: 0.875rem; color: #4b5563; }
+        .topic-full-name { display: none; margin-left: 8px; font-size: 0.875rem; }
         body.show-full-names .topic-full-name { display: inline; }
         
         .header-container {
@@ -97,7 +98,7 @@
             z-index: 1000;
         }
         .collapsible-content {
-            max-height: 5000px; /* Large enough for content */
+            max-height: 5000px;
             overflow: hidden;
             transition: max-height 0.5s ease-in-out;
         }
@@ -117,9 +118,30 @@
         .collapsible.collapsed .toggle-icon {
             transform: rotate(-90deg);
         }
+
+        /* Color Theming */
+        .color-adm { color: #b45309; }
+        .color-aguas { color: #0369a1; }
+        .color-costas { color: #0e7490; }
+        .color-infra { color: #4b5563; }
+        .color-trans { color: #059669; }
+        .color-ma { color: #15803d; }
+
+        /* Compact Layout for Hidden Names */
+        body:not(.show-full-names) .compact-layout-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        body:not(.show-full-names) .sub-block-header {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            grid-column: 1 / -1; /* Header spans both columns */
+        }
+
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-slate-50 text-gray-800">
 
     <div id="login-modal">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-sm">
@@ -127,31 +149,32 @@
             <p class="text-gray-600 mb-6 text-center">Introduce un nombre de usuario o ID para guardar y cargar tu progreso.</p>
             <form id="login-form">
                 <input type="text" id="username-input" placeholder="Tu nombre de usuario" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4" required>
-                <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors">Empezar</button>
+                <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold">Empezar</button>
             </form>
         </div>
     </div>
 
     <div id="main-content" class="container mx-auto p-4 md:p-8 hidden">
         <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Seguimiento de Estudio</h1>
-            <p class="text-md text-gray-600 mt-2">Cuerpo de Ingenieros de Caminos, Canales y Puertos del Estado</p>
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-800">Seguimiento de Estudio</h1>
+            <p class="text-lg text-slate-500 mt-2">Cuerpo de Ingenieros de Caminos, Canales y Puertos del Estado</p>
             <div id="user-info" class="mt-4 text-sm text-gray-500"></div>
             <div id="connection-status" class="mt-2 text-sm font-semibold h-5"></div>
-            <div class="mt-4 flex flex-wrap justify-center items-center gap-4">
-                <button id="toggle-names-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">Mostrar Nombres</button>
-                <button id="save-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">Guardar Progreso</button>
-                <button id="collapse-all-btn" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">Plegar Todo</button>
-                <button id="expand-all-btn" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">Desplegar Todo</button>
+            <div class="mt-6 flex flex-wrap justify-center items-center gap-4">
+                <button id="toggle-names-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium">Mostrar Nombres</button>
+                <button id="save-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm font-medium">Guardar Progreso</button>
+                <button id="collapse-all-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm font-medium">Plegar Todo</button>
+                <button id="expand-all-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm font-medium">Desplegar Todo</button>
             </div>
             <div id="save-status" class="mt-2 text-sm font-medium h-5"></div>
         </header>
 
-        <div id="top-summary-bar" class="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-8 p-4 bg-white rounded-lg shadow">
+        <div class="bg-white rounded-lg shadow-md mb-8 overflow-x-auto">
+            <table id="top-summary-table" class="w-full text-sm text-left text-slate-600">
+            </table>
         </div>
 
         <main id="syllabus-container">
-            <div class="text-center p-8"><p class="text-gray-600">Cargando temario...</p></div>
         </main>
 
         <footer class="text-center mt-12 py-4">
@@ -177,14 +200,14 @@
         let progressData = {};
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         
-        const summaryAbbrMap = {
-            "Organización y Funcionamiento de la Administración Pública": "ADM",
-            "A.1) Aguas y Obras Hidráulicas": "AGUAS",
-            "A.2) Puertos y Costas": "COSTAS",
-            "B.1) Carreteras": "CARR",
-            "B.2) Ferrocarriles": "FERR",
-            "C.1) Transportes y Movilidad": "TRANS",
-            "C.2) Medio Ambiente": "MA"
+        const BLOCKS_CONFIG = {
+            "Organización y Funcionamiento de la Administración Pública": { abbr: "ADM", icon: "fa-gavel", color: "color-adm" },
+            "A.1) Aguas y Obras Hidráulicas": { abbr: "AGUAS", icon: "fa-tint", color: "color-aguas" },
+            "A.2) Puertos y Costas": { abbr: "COSTAS", icon: "fa-water", color: "color-costas" },
+            "B.1) Carreteras": { abbr: "CARR", icon: "fa-road", color: "color-infra" },
+            "B.2) Ferrocarriles": { abbr: "FERR", icon: "fa-train", color: "color-infra" },
+            "C.1) Transportes y Movilidad": { abbr: "TRANS", icon: "fa-bus", color: "color-trans" },
+            "C.2) Medio Ambiente": { abbr: "MA", icon: "fa-leaf", color: "color-ma" }
         };
         
         const syllabus = {
@@ -363,8 +386,8 @@
 
         window.onload = async () => {
             try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
+                initializeApp(firebaseConfig);
+                db = getFirestore();
                 
                 document.getElementById('login-form').addEventListener('submit', async (e) => {
                     e.preventDefault();
@@ -374,7 +397,7 @@
                         sessionId = username;
                         document.getElementById('login-modal').style.display = 'none';
                         document.getElementById('main-content').classList.remove('hidden');
-                        document.getElementById('user-info').innerHTML = `<p>Usuario: <span class="font-semibold">${sessionId}</span> | App ID: <span class="font-mono text-xs">${appId}</span></p>`;
+                        document.getElementById('user-info').innerHTML = `<p>Usuario: <span class="font-semibold">${sessionId}</span></p>`;
                         await checkConnection();
                         renderSyllabus();
                         await loadProgress();
@@ -401,7 +424,7 @@
             const statusEl = document.getElementById('connection-status');
             statusEl.textContent = 'Verificando conexión...';
             statusEl.className = 'mt-2 text-sm font-semibold text-yellow-600';
-            const testDocRef = doc(db, `artifacts/${appId}/public/data/${sessionId}`, "_connection_test");
+            const testDocRef = doc(db, `artifacts/${appId}/public/data/${sessionId}/_connection_test`);
             try {
                 await setDoc(testDocRef, { timestamp: new Date() });
                 await deleteDoc(testDocRef);
@@ -432,13 +455,18 @@
             if (isCollapsible) {
                 const icon = document.createElement('div');
                 icon.className = 'toggle-icon';
-                icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-down" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>`;
+                icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>`;
                 titleWrapper.appendChild(icon);
             }
 
             const titleEl = document.createElement(`h${level}`);
-            titleEl.className = {2: 'text-2xl md:text-3xl font-bold text-gray-800 border-b-2 border-blue-500 pb-2', 3: 'text-xl md:text-2xl font-semibold text-gray-700', 4: 'text-lg md:text-xl font-medium text-gray-600'}[level];
+            const styles = {2: 'text-2xl font-bold text-slate-800 border-b-2 border-slate-300 pb-2', 3: 'text-xl font-semibold text-slate-700', 4: 'text-base font-semibold'};
+            titleEl.className = styles[level];
             titleEl.textContent = title;
+            
+            const config = BLOCKS_CONFIG[title];
+            if(config) titleEl.classList.add(config.color);
+
             titleWrapper.appendChild(titleEl);
 
             const countersEl = document.createElement('div');
@@ -465,6 +493,7 @@
                     const mainBlockEl = document.createElement('div');
                     mainBlockEl.className = 'main-block mt-6 ml-4 collapsible collapsed';
                     mainBlockEl.dataset.mainBlockId = mainBlockId;
+                    mainBlockEl.dataset.mainBlockName = mainBlockTitle;
                     mainBlockEl.appendChild(createHeader(3, mainBlockTitle, mainBlockId, true));
 
                     const mainBlockContent = document.createElement('div');
@@ -472,33 +501,33 @@
                     
                     const subBlocksOrTopics = mainBlocks[mainBlockTitle];
 
-                    if (Array.isArray(subBlocksOrTopics)) { // Case for "Materias comunes" which has direct topics
+                    if (Array.isArray(subBlocksOrTopics)) {
                         const subBlockId = mainBlockId; 
-                        const subBlockName = mainBlockTitle; 
+                        const subBlockName = mainBlockTitle;
                         mainBlockEl.dataset.subBlockId = subBlockId;
                         mainBlockEl.dataset.subBlockName = subBlockName;
                         subBlocksOrTopics.forEach(topic => {
                             mainBlockContent.appendChild(createTopicElement(topic, mainBlockId, subBlockId, subBlockName));
                         });
-                    } else { // Case for "Materias específicas" which has sub-blocks
+                    } else {
+                        const compactContainer = document.createElement('div');
+                        compactContainer.className = 'compact-layout-container';
+
                         for (const subBlockKey in subBlocksOrTopics) {
                             const subBlockId = subBlockKey.replace(/[^a-zA-Z0-9]/g, '');
-                            const subBlockEl = document.createElement('div');
-                            subBlockEl.className = 'sub-block mt-4 ml-4 collapsible collapsed';
-                            subBlockEl.dataset.subBlockId = subBlockId;
-                            subBlockEl.dataset.subBlockName = subBlockKey;
+                            const subBlockWrapper = document.createElement('div'); // Wrapper for each sub-block in compact view
                             
-                            subBlockEl.appendChild(createHeader(4, subBlockKey, subBlockId, true));
-                            
-                            const subBlockContent = document.createElement('div');
-                            subBlockContent.className = 'collapsible-content pl-4';
+                            const subBlockHeader = document.createElement('h4');
+                            subBlockHeader.className = `sub-block-header text-base font-semibold mb-2 ${BLOCKS_CONFIG[subBlockKey]?.color || ''}`;
+                            subBlockHeader.textContent = subBlockKey;
+                            subBlockWrapper.appendChild(subBlockHeader);
                             
                             subBlocksOrTopics[subBlockKey].forEach(topic => {
-                                subBlockContent.appendChild(createTopicElement(topic, mainBlockId, subBlockId, subBlockKey));
+                                subBlockWrapper.appendChild(createTopicElement(topic, mainBlockId, subBlockId, subBlockKey));
                             });
-                            subBlockEl.appendChild(subBlockContent);
-                            mainBlockContent.appendChild(subBlockEl);
+                            compactContainer.appendChild(subBlockWrapper);
                         }
+                        mainBlockContent.appendChild(compactContainer);
                     }
                     mainBlockEl.appendChild(mainBlockContent);
                     topLevelBlock.appendChild(mainBlockEl);
@@ -517,7 +546,9 @@
             topicDiv.dataset.topicId = topicId;
 
             const topicP = document.createElement('p');
-            topicP.className = 'topic-text-container text-gray-800';
+            topicP.className = 'topic-text-container';
+            const config = BLOCKS_CONFIG[subBlockName];
+            if(config) topicP.classList.add(config.color);
             topicP.innerHTML = `${topic.id}. <span class="topic-full-name">${topic.text}</span>`;
 
             const ticksContainer = document.createElement('div');
@@ -555,78 +586,109 @@
         }
         
         function updateAllCounters() {
-            const subBlockStats = {};
-            const mainBlockStats = {};
-            const topSummaryStats = {};
-
-            document.querySelectorAll('.topic-card').forEach(card => {
-                const subBlockName = card.dataset.subBlockName;
-                const subBlockId = card.dataset.subBlockId;
-                const mainBlockId = card.dataset.mainBlockId;
-
-                if (!subBlockStats[subBlockId]) subBlockStats[subBlockId] = { counts: Array(5).fill(0), total: 0 };
-                if (!mainBlockStats[mainBlockId]) mainBlockStats[mainBlockId] = { counts: Array(5).fill(0), total: 0 };
-                
-                const abbr = summaryAbbrMap[subBlockName];
-                if (abbr && !topSummaryStats[abbr]) topSummaryStats[abbr] = 0;
-                
-                const ticks = card.querySelectorAll('.tick-box.orange, .tick-box.green').length;
-                if (ticks > 0) {
-                    subBlockStats[subBlockId].counts[ticks - 1]++;
-                    subBlockStats[subBlockId].total++;
-                    if (abbr) topSummaryStats[abbr]++;
-                }
-            });
-            
-            document.querySelectorAll('.main-block').forEach(mainBlockEl => {
-                const mainBlockId = mainBlockEl.dataset.mainBlockId;
-                const totalCounts = Array(5).fill(0);
-                let totalStudied = 0;
-                
-                if(subBlockStats[mainBlockId]) { // Handle direct children like ADM
-                    subBlockStats[mainBlockId].counts.forEach((count, i) => totalCounts[i] += count);
-                    totalStudied += subBlockStats[mainBlockId].total;
-                }
-
-                mainBlockEl.querySelectorAll('.sub-block').forEach(subBlockEl => {
-                    const subBlockId = subBlockEl.dataset.subBlockId;
-                    if(subBlockStats[subBlockId]) {
-                        subBlockStats[subBlockId].counts.forEach((count, i) => totalCounts[i] += count);
-                        totalStudied += subBlockStats[subBlockId].total;
-                    }
-                });
-                 mainBlockStats[mainBlockId] = { counts: totalCounts, total: totalStudied };
-            });
-
-            const updateCountersUI = (stats, prefix) => {
-                for(const id in stats) {
-                    const container = document.getElementById(`${prefix}-${id}`); 
-                    if (container) {
-                        const { counts, total } = stats[id];
-                        let badgesHTML = counts.map((count, i) => `<div class="count-badge">V${i+1}: <span>${count}</span></div>`).join('');
-                        badgesHTML += `<div class="count-badge total-badge">TOTAL: <span>${total}</span></div>`;
-                        container.innerHTML = badgesHTML;
-                    }
-                }
-            };
-            
-            updateCountersUI(subBlockStats, 'counters');
-            updateCountersUI(mainBlockStats, 'counters');
-            updateTopSummary(topSummaryStats);
+            updateTopSummaryTable();
         }
 
-        function updateTopSummary(stats) {
-            const summaryBar = document.getElementById('top-summary-bar');
-            summaryBar.innerHTML = '';
-            const orderedKeys = Object.values(summaryAbbrMap);
-            orderedKeys.forEach(key => { 
-                const count = stats[key] || 0;
-                const badge = document.createElement('div');
-                badge.className = 'count-badge';
-                badge.innerHTML = `${key}: <span>${count}</span>`;
-                summaryBar.appendChild(badge);
-            });
+        function updateTopSummaryTable() {
+            const summaryTable = document.getElementById('top-summary-table');
+            
+            const tableHead = `
+                <thead class="bg-slate-200 text-xs text-slate-700 uppercase tracking-wider">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Bloque</th>
+                        <th scope="col" class="px-6 py-3">Sub-bloque</th>
+                        <th scope="col" class="px-6 py-3 text-center">Estudiados</th>
+                        <th scope="col" class="px-6 py-3 text-center">Restantes</th>
+                        <th scope="col" class="px-6 py-3 text-center">Total</th>
+                    </tr>
+                </thead>`;
+
+            let tableBody = '<tbody>';
+            let grandTotalStudied = 0;
+            let grandTotalTopics = 0;
+
+            const allBlocks = {...syllabus["Materias comunes"], ...syllabus["Materias específicas"]};
+
+            for (const mainBlockTitle in allBlocks) {
+                const subBlocksOrTopics = allBlocks[mainBlockTitle];
+                
+                if (Array.isArray(subBlocksOrTopics)) { // Case for Materias Comunes
+                     const config = BLOCKS_CONFIG[mainBlockTitle];
+                     const totalCount = subBlocksOrTopics.length;
+                     const studiedCount = Array.from(document.querySelectorAll(`.topic-card[data-sub-block-name="${mainBlockTitle}"]`)).filter(card => card.querySelectorAll('.tick-box.orange, .tick-box.green').length > 0).length;
+                     
+                     grandTotalStudied += studiedCount;
+                     grandTotalTopics += totalCount;
+
+                     tableBody += `
+                        <tr class="bg-slate-100 border-b-4 border-slate-300">
+                            <td class="px-6 py-4 font-semibold ${config.color}" colspan="2">
+                                <i class="fas ${config.icon} fa-fw text-lg w-5 text-center"></i>
+                                ${mainBlockTitle}
+                            </td>
+                            <td class="px-6 py-4 text-center font-mono">${studiedCount}</td>
+                            <td class="px-6 py-4 text-center font-mono">${totalCount - studiedCount}</td>
+                            <td class="px-6 py-4 text-center font-mono">${totalCount}</td>
+                        </tr>`;
+
+                } else { // Case for Materias Específicas
+                    const subBlocks = subBlocksOrTopics;
+                    const mainBlockRowCount = Object.keys(subBlocks).length;
+                    let blockStudied = 0;
+                    let blockTotal = 0;
+                    
+                    Object.entries(subBlocks).forEach(([subBlockName, subBlockData], index) => {
+                        const config = BLOCKS_CONFIG[subBlockName];
+                        const totalCount = subBlockData.length;
+                        const subBlockId = subBlockName.replace(/[^a-zA-Z0-9]/g, '');
+                        const studiedCount = Array.from(document.querySelectorAll(`.topic-card[data-sub-block-id="${subBlockId}"]`)).filter(card => card.querySelectorAll('.tick-box.orange, .tick-box.green').length > 0).length;
+                        
+                        blockStudied += studiedCount;
+                        blockTotal += totalCount;
+
+                        tableBody += `
+                            <tr class="border-t border-slate-200">
+                                ${index === 0 ? `<td class="px-6 py-4 font-bold text-slate-800 align-top" rowspan="${mainBlockRowCount}">${mainBlockTitle}</td>` : ''}
+                                <td class="px-6 py-4 flex items-center gap-3 ${config.color}">
+                                    <i class="fas ${config.icon} fa-fw text-lg w-5 text-center"></i>
+                                    <span class="font-semibold">${subBlockName}</span>
+                                </td>
+                                <td class="px-6 py-4 text-center font-mono">${studiedCount}</td>
+                                <td class="px-6 py-4 text-center font-mono">${totalCount - studiedCount}</td>
+                                <td class="px-6 py-4 text-center font-mono">${totalCount}</td>
+                            </tr>`;
+                    });
+                    
+                    grandTotalStudied += blockStudied;
+                    grandTotalTopics += blockTotal;
+                    
+                    tableBody += `
+                        <tr class="bg-slate-100 font-semibold">
+                            <td colspan="2" class="px-6 py-3 text-right">Total Bloque:</td>
+                            <td class="px-6 py-3 text-center font-mono">${blockStudied}</td>
+                            <td class="px-6 py-3 text-center font-mono">${blockTotal - blockStudied}</td>
+                            <td class="px-6 py-3 text-center font-mono">${blockTotal}</td>
+                        </tr>
+                    `;
+                }
+            }
+            
+            tableBody += '</tbody>';
+
+            const tableFoot = `
+                <tfoot class="bg-blue-100 font-bold text-blue-800 text-base">
+                    <tr>
+                        <td colspan="2" class="px-6 py-4 text-right">TOTAL GENERAL:</td>
+                        <td class="px-6 py-4 text-center font-mono">${grandTotalStudied}</td>
+                        <td class="px-6 py-4 text-center font-mono">${grandTotalTopics - grandTotalStudied}</td>
+                        <td class="px-6 py-4 text-center font-mono">${grandTotalTopics}</td>
+                    </tr>
+                </tfoot>
+            `;
+            
+            summaryTable.innerHTML = tableHead + tableBody + tableFoot;
         }
+
 
         async function loadProgress() { 
             if (!sessionId) return;
