@@ -150,6 +150,24 @@
             overflow: hidden;
         }
 
+        /* New styles for unavailable topics */
+        .unassign-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0 4px;
+            color: #9ca3af; /* gray-400 */
+            transition: color 0.2s;
+            pointer-events: auto;
+        }
+        .unassign-btn:hover {
+            color: #ef4444; /* red-500 */
+        }
+        .topic-card.unavailable {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         /* Block Colors */
         .color-adm { color: #b45309; }
         .color-aguas { color: #0369a1; }
@@ -824,36 +842,142 @@
             subBlockFilterContainer.appendChild(select);
         }
 
+        function getTopicAssignmentStatus(topicId) {
+            // Check studied topics first
+            for (const dateStr in state.topicState.studiedTopics) {
+                const topic = state.topicState.studiedTopics[dateStr].find(t => t.id === topicId);
+                if (topic) {
+                    return { status: 'studied', date: dateStr, originalVuelta: topic.originalVuelta };
+                }
+            }
+            // Check assigned (not yet studied) topics
+            for (const vueltaId in state.topicState) {
+                if (vueltaId === 'studiedTopics' || !state.topicState[vueltaId].assigned) continue;
+                const roundState = state.topicState[vueltaId];
+                for (const dayIndex in roundState.assigned) {
+                    const topic = roundState.assigned[dayIndex].find(t => t.id === topicId);
+                    if (topic) {
+                        const roundInfo = state.rounds.find(r => r.vueltaId === vueltaId);
+                        if (roundInfo) {
+                            const date = new Date(roundInfo.startDate);
+                            date.setUTCDate(date.getUTCDate() + parseInt(dayIndex, 10));
+                            return { status: 'assigned', date: date.toISOString().split('T')[0], vueltaId: vueltaId };
+                        }
+                    }
+                }
+            }
+            return { status: 'unassigned' };
+        }
+
+        function unassignTopic(topicId, vueltaIdToReturnTo) {
+            const status = getTopicAssignmentStatus(topicId);
+
+            if (status.status === 'unassigned') return;
+
+            // Remove from studied list
+            if (status.status === 'studied') {
+                const dayTopics = state.topicState.studiedTopics[status.date];
+                const topicIndex = dayTopics.findIndex(t => t.id === topicId);
+                if (topicIndex > -1) {
+                    dayTopics.splice(topicIndex, 1);
+                    if (dayTopics.length === 0) delete state.topicState.studiedTopics[status.date];
+                }
+            }
+            // Remove from assigned list
+            else if (status.status === 'assigned') {
+                const roundState = state.topicState[status.vueltaId];
+                const roundInfo = state.rounds.find(r => r.vueltaId === status.vueltaId);
+                const dayIndex = Math.round((new Date(status.date + 'T00:00:00Z') - roundInfo.startDate) / (1000 * 60 * 60 * 24));
+                const dayTopics = roundState.assigned[dayIndex];
+                const topicIndex = dayTopics.findIndex(t => t.id === topicId);
+                if (topicIndex > -1) {
+                    dayTopics.splice(topicIndex, 1);
+                    if (dayTopics.length === 0) delete roundState.assigned[dayIndex];
+                }
+            }
+
+            // Add back to the unassigned list of the specified vuelta
+            if (!state.topicState[vueltaIdToReturnTo].unassigned.includes(topicId)) {
+                state.topicState[vueltaIdToReturnTo].unassigned.push(topicId);
+            }
+
+            // Re-render
+            renderTopicSourceList();
+            updateSingleDay(status.date);
+            renderSummaryTable();
+        }
+
         function renderTopicSourceList() {
-            const currentRoundState = state.topicState[state.currentVuelta];
-            if (!currentRoundState) return;
+            if (!state.topicState[state.currentVuelta]) return;
+
             topicSourceList.innerHTML = '';
             const searchTerm = topicSearchInput.value.toLowerCase();
             
-            let filteredTopics = currentRoundState.unassigned
-                .map(topicId => state.flatTopics.find(t => t.fullId === topicId))
-                .filter(Boolean);
+            let topicsToDisplay = [...state.flatTopics];
 
             if (state.currentSubBlock !== 'todos') {
-                filteredTopics = filteredTopics.filter(topic => topic.block === state.currentSubBlock);
+                topicsToDisplay = topicsToDisplay.filter(topic => topic.block === state.currentSubBlock);
             }
 
             if (searchTerm) {
-                filteredTopics = filteredTopics.filter(topic => topic.text.toLowerCase().includes(searchTerm) || topic.block.toLowerCase().includes(searchTerm));
+                topicsToDisplay = topicsToDisplay.filter(topic => 
+                    topic.text.toLowerCase().includes(searchTerm) || 
+                    topic.block.toLowerCase().includes(searchTerm) ||
+                    (SHORT_NAMES[topic.block] && SHORT_NAMES[topic.block].toLowerCase().includes(searchTerm))
+                );
             }
 
-            filteredTopics.sort((a, b) => a.block.localeCompare(b.block) || a.id - b.id);
+            topicsToDisplay.sort((a, b) => a.block.localeCompare(b.block) || a.id - b.id);
 
-            filteredTopics.forEach(topic => {
-                const el = document.createElement('div');
-                el.className = 'topic-card bg-gray-100 p-2 rounded-lg mb-2 flex items-center gap-2';
-                el.draggable = true;
-                el.dataset.topicId = topic.fullId;
-                const color = BLOCKS_CONFIG[topic.block]?.color || '#6b7280';
-                const displayName = SHORT_NAMES[topic.block] || topic.block;
-                el.innerHTML = `<div class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${color};"></div><span class="text-sm font-medium">${displayName} - T${topic.id}</span>`;
-                el.addEventListener('dragstart', handleDragStartFromSource);
-                topicSourceList.appendChild(el);
+            topicsToDisplay.forEach(topic => {
+                const assignment = getTopicAssignmentStatus(topic.fullId);
+                const isUnassignedInCurrentVuelta = state.topicState[state.currentVuelta].unassigned.includes(topic.fullId);
+
+                const isAssignedFromCurrentVuelta = (assignment.status === 'assigned' && assignment.vueltaId === state.currentVuelta) || 
+                                                  (assignment.status === 'studied' && assignment.originalVuelta === state.currentVuelta);
+
+                if (isUnassignedInCurrentVuelta) {
+                    const el = document.createElement('div');
+                    el.className = 'topic-card bg-gray-100 p-2 rounded-lg mb-2 flex items-center gap-2';
+                    el.draggable = true;
+                    el.dataset.topicId = topic.fullId;
+                    const color = BLOCKS_CONFIG[topic.block]?.color || '#6b7280';
+                    const displayName = SHORT_NAMES[topic.block] || topic.block;
+                    el.innerHTML = `<div class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${color};"></div><span class="text-sm font-medium">${displayName} - T${topic.id}</span>`;
+                    el.addEventListener('dragstart', handleDragStartFromSource);
+                    topicSourceList.appendChild(el);
+                } else if (isAssignedFromCurrentVuelta) {
+                    const el = document.createElement('div');
+                    el.className = 'topic-card unavailable bg-gray-50 p-2 rounded-lg mb-2 flex items-center justify-between';
+                    
+                    const color = BLOCKS_CONFIG[topic.block]?.color || '#6b7280';
+                    const displayName = SHORT_NAMES[topic.block] || topic.block;
+                    
+                    let statusIcon;
+                    if (assignment.status === 'studied') {
+                        statusIcon = `<i class="fas fa-check-circle text-green-500 mr-2" title="Estudiado"></i>`;
+                    } else {
+                        statusIcon = `<i class="fas fa-check-circle text-orange-400 mr-2" title="Asignado"></i>`;
+                    }
+
+                    el.innerHTML = `
+                        <div class="flex items-center overflow-hidden">
+                            ${statusIcon}
+                            <div class="w-2 h-2 rounded-full flex-shrink-0 mr-2" style="background-color: ${color};"></div>
+                            <span class="text-sm font-medium truncate">${displayName} - T${topic.id}</span>
+                        </div>
+                        <button title="Desasignar Tema" class="unassign-btn flex-shrink-0 ml-2">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    `;
+                    
+                    el.querySelector('.unassign-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        unassignTopic(topic.fullId, state.currentVuelta);
+                    });
+
+                    topicSourceList.appendChild(el);
+                }
             });
         }
 
@@ -946,8 +1070,8 @@
                 if (dayDate >= round.startDate && dayDate <= round.endDate) {
                     const dayIndex = Math.round((dayDate - round.startDate) / (1000 * 60 * 60 * 24));
                     const roundState = state.topicState[round.vueltaId];
-                    const dayTopics = roundState.assigned[dayIndex];
-                    if (dayTopics) {
+                    if (roundState && roundState.assigned[dayIndex]) {
+                        const dayTopics = roundState.assigned[dayIndex];
                         dayTopics.forEach(topicData => {
                             const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
                             if (topicInfo) {
@@ -1104,48 +1228,54 @@
 
             if (isStudied) {
                 // Move from relative to fixed
-                const roundState = state.topicState[topic.vueltaId];
-                const dayTopics = roundState.assigned[topic.dayIndex];
-                const topicIndex = dayTopics.findIndex(t => t.id === topicInfo.fullId);
-                if (topicIndex > -1) {
-                    dayTopics.splice(topicIndex, 1);
-                    if (dayTopics.length === 0) delete roundState.assigned[topic.dayIndex];
-                }
+                if (type === 'relative') {
+                    const roundState = state.topicState[topic.vueltaId];
+                    const dayTopics = roundState.assigned[topic.dayIndex];
+                    const topicIndex = dayTopics.findIndex(t => t.id === topicInfo.fullId);
+                    if (topicIndex > -1) {
+                        dayTopics.splice(topicIndex, 1);
+                        if (dayTopics.length === 0) delete roundState.assigned[topic.dayIndex];
+                    }
 
-                if (!state.topicState.studiedTopics[dateStr]) {
-                    state.topicState.studiedTopics[dateStr] = [];
+                    if (!state.topicState.studiedTopics[dateStr]) {
+                        state.topicState.studiedTopics[dateStr] = [];
+                    }
+                    state.topicState.studiedTopics[dateStr].push({
+                        id: topicInfo.fullId,
+                        studied: true,
+                        originalVuelta: topic.vueltaId
+                    });
                 }
-                state.topicState.studiedTopics[dateStr].push({
-                    id: topicInfo.fullId,
-                    studied: true,
-                    originalVuelta: topic.vueltaId
-                });
             } else {
                 // Move from fixed to relative on the same day
-                const dayTopics = state.topicState.studiedTopics[dateStr];
-                const topicIndex = dayTopics.findIndex(t => t.id === topicInfo.fullId);
-                if (topicIndex > -1) {
-                    const [unstudiedTopic] = dayTopics.splice(topicIndex, 1);
-                    if (dayTopics.length === 0) delete state.topicState.studiedTopics[dateStr];
+                if (type === 'fixed') {
+                    const dayTopics = state.topicState.studiedTopics[dateStr];
+                    const topicIndex = dayTopics.findIndex(t => t.id === topicInfo.fullId);
+                    if (topicIndex > -1) {
+                        const [unstudiedTopic] = dayTopics.splice(topicIndex, 1);
+                        if (dayTopics.length === 0) delete state.topicState.studiedTopics[dateStr];
 
-                    const dropDate = new Date(dateStr + 'T00:00:00Z');
-                    const targetRound = state.rounds.find(r => dropDate >= r.startDate && dropDate <= r.endDate);
+                        const dropDate = new Date(dateStr + 'T00:00:00Z');
+                        const targetRound = state.rounds.find(r => dropDate >= r.startDate && dropDate <= r.endDate);
 
-                    if (targetRound) {
-                        const targetDayIndex = Math.round((dropDate - targetRound.startDate) / (1000 * 60 * 60 * 24));
-                        const targetRoundState = state.topicState[targetRound.vueltaId];
-                        if (!targetRoundState.assigned[targetDayIndex]) {
-                            targetRoundState.assigned[targetDayIndex] = [];
+                        if (targetRound) {
+                            const targetDayIndex = Math.round((dropDate - targetRound.startDate) / (1000 * 60 * 60 * 24));
+                            const targetRoundState = state.topicState[targetRound.vueltaId];
+                            if (!targetRoundState.assigned[targetDayIndex]) {
+                                targetRoundState.assigned[targetDayIndex] = [];
+                            }
+                            targetRoundState.assigned[targetDayIndex].push({ id: unstudiedTopic.id, studied: false });
+                        } else {
+                            const originalRoundState = state.topicState[unstudiedTopic.originalVuelta];
+                            if (!originalRoundState.unassigned.includes(unstudiedTopic.id)) {
+                                originalRoundState.unassigned.push(unstudiedTopic.id);
+                            }
                         }
-                        targetRoundState.assigned[targetDayIndex].push({ id: unstudiedTopic.id, studied: false });
-                    } else {
-                        const originalRoundState = state.topicState[unstudiedTopic.originalVuelta];
-                        originalRoundState.unassigned.push(unstudiedTopic.id);
-                        renderTopicSourceList();
                     }
                 }
             }
             updateSingleDay(dateStr);
+            renderTopicSourceList();
             renderSummaryTable();
         }
 
@@ -1161,8 +1291,8 @@
                 if (date >= round.startDate && date <= round.endDate) {
                     const dayIndex = Math.round((date - round.startDate) / (1000 * 60 * 60 * 24));
                     const roundState = state.topicState[round.vueltaId];
-                    const dayTopics = roundState.assigned[dayIndex];
-                    if (dayTopics) {
+                     if (roundState && roundState.assigned[dayIndex]) {
+                        const dayTopics = roundState.assigned[dayIndex];
                         dayTopics.forEach(topicData => {
                             const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
                             if (topicInfo) {
@@ -1328,35 +1458,12 @@
 
             const { id } = state.draggedTopic;
             
-            if (state.draggedTopic.from === 'calendar_relative') {
-                const { sourceVuelta, sourceDayIndex } = state.draggedTopic;
-                const roundState = state.topicState[sourceVuelta];
-                const dayTopics = roundState.assigned[sourceDayIndex];
-                const topicIndex = dayTopics.findIndex(t => t.id === id);
-                if (topicIndex > -1) {
-                    dayTopics.splice(topicIndex, 1);
-                    if(dayTopics.length === 0) delete roundState.assigned[sourceDayIndex];
-                    roundState.unassigned.push(id);
-                }
-                 const sourceRoundInfo = state.rounds.find(r => r.vueltaId === sourceVuelta);
-                 const sourceDate = new Date(sourceRoundInfo.startDate);
-                 sourceDate.setUTCDate(sourceDate.getUTCDate() + sourceDayIndex);
-                 updateSingleDay(sourceDate.toISOString().split('T')[0]);
-            }
-            else if (state.draggedTopic.from === 'calendar_fixed') {
-                const { sourceDate, originalVuelta } = state.draggedTopic;
-                const dayTopics = state.topicState.studiedTopics[sourceDate];
-                const topicIndex = dayTopics.findIndex(t => t.id === id);
-                if (topicIndex > -1) {
-                    dayTopics.splice(topicIndex, 1);
-                    if(dayTopics.length === 0) delete state.topicState.studiedTopics[sourceDate];
-                    state.topicState[originalVuelta].unassigned.push(id);
-                }
-                updateSingleDay(sourceDate);
-            }
+            const vueltaToReturnTo = state.draggedTopic.from === 'calendar_fixed' 
+                ? state.draggedTopic.originalVuelta 
+                : state.draggedTopic.sourceVuelta;
+            
+            unassignTopic(id, vueltaToReturnTo);
 
-            renderTopicSourceList();
-            renderSummaryTable();
             state.draggedTopic = null;
             document.querySelector('.dragging')?.classList.remove('dragging');
         }
@@ -1375,7 +1482,7 @@
             }
             // Relative topics
             for (const vueltaId in state.topicState) {
-                if(vueltaId === 'studiedTopics') continue;
+                if(vueltaId === 'studiedTopics' || !state.topicState[vueltaId].assigned) continue;
                 const roundData = state.topicState[vueltaId];
                 for (const dayIndex in roundData.assigned) {
                     roundData.assigned[dayIndex].forEach(topicData => {
@@ -1435,7 +1542,7 @@
                     
                     // Remove from unassigned
                     for(const vId in state.topicState){
-                        if(vId === 'studiedTopics') continue;
+                        if(vId === 'studiedTopics' || !state.topicState[vId].unassigned) continue;
                         const unassignedIndex = state.topicState[vId].unassigned.indexOf(topicId);
                         if (unassignedIndex > -1) {
                             state.topicState[vId].unassigned.splice(unassignedIndex, 1);
