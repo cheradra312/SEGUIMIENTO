@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seguimiento de Estudio para Oposición</title> 
+    <title>Seguimiento de Estudio para Oposición</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -11,7 +11,7 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc; /* slate-50 */
-        } 
+        }
         .tick-box {
             width: 24px;
             height: 24px;
@@ -36,7 +36,7 @@
         .topic-card:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
         .topic-full-name { display: none; margin-left: 8px; font-size: 0.875rem; }
         body.show-full-names .topic-full-name { display: inline; }
-        
+
         .header-container {
             display: flex;
             justify-content: space-between;
@@ -72,7 +72,7 @@
             z-index: 1000;
         }
         .collapsible-content {
-            max-height: 5000px;
+            max-height: 5000px; /* A large value to allow for content */
             overflow: hidden;
             transition: max-height 0.5s ease-in-out;
         }
@@ -117,7 +117,8 @@
 </head>
 <body class="bg-slate-50 text-gray-800">
 
-    <div id="login-modal" class="hidden">
+    <!-- Modal de inicio de sesión, visible por defecto hasta que el JS lo oculte -->
+    <div id="login-modal">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-sm">
             <h2 class="text-2xl font-bold mb-4 text-center">Bienvenido</h2>
             <p class="text-gray-600 mb-6 text-center">Introduce un nombre de usuario o ID para cargar tu progreso.</p>
@@ -128,6 +129,7 @@
         </div>
     </div>
 
+    <!-- Contenido principal, oculto por defecto -->
     <div id="main-content" class="container mx-auto p-4 md:p-8 hidden">
         <header class="text-center mb-8">
             <h1 class="text-4xl md:text-5xl font-bold text-slate-800">Seguimiento de Estudio</h1>
@@ -136,6 +138,7 @@
             <div id="connection-status" class="mt-2 text-sm font-semibold h-5"></div>
             <div class="mt-6 flex flex-wrap justify-center items-center gap-4">
                 <button id="toggle-names-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium">Mostrar Nombres</button>
+                <button id="calc-prob-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"><i class="fas fa-calculator mr-2"></i>Calcular Probabilidad</button>
                 <button id="collapse-all-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm font-medium">Plegar Todo</button>
                 <button id="expand-all-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm font-medium">Desplegar Todo</button>
             </div>
@@ -143,10 +146,12 @@
 
         <div class="bg-white rounded-lg shadow-md mb-8 overflow-x-auto">
             <table id="top-summary-table" class="w-full text-sm text-left text-slate-600">
+                <!-- El contenido se generará con JS -->
             </table>
         </div>
 
         <main id="syllabus-container">
+            <!-- El contenido se generará con JS -->
         </main>
 
         <footer class="text-center mt-12 py-4">
@@ -159,6 +164,7 @@
         import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
+            // Tu configuración de Firebase aquí...
             apiKey: "AIzaSyCKXzSmQ9F1M4W59Vyalu3CWdKFsh7dOmE",
             authDomain: "costas-304b9.firebaseapp.com",
             projectId: "costas-304b9",
@@ -172,16 +178,16 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         
         const BLOCKS_CONFIG = {
-            "Organización y Funcionamiento de la Administración Pública": { abbr: "ADM", icon: "fa-gavel", color: "color-adm" },
-            "A.1) Aguas y Obras Hidráulicas": { abbr: "AGUAS", icon: "fa-tint", color: "color-aguas" },
-            "A.2) Puertos y Costas": { abbr: "COSTAS", icon: "fa-water", color: "color-costas" },
-            "B.1) Carreteras": { abbr: "CARR", icon: "fa-road", color: "color-infra" },
-            "B.2) Ferrocarriles": { abbr: "FERR", icon: "fa-train", color: "color-infra" },
-            "C.1) Transportes y Movilidad": { abbr: "TRANS", icon: "fa-bus", color: "color-trans" },
-            "C.2) Medio Ambiente": { abbr: "MA", icon: "fa-leaf", color: "color-ma" }
+            "Organización y Funcionamiento de la Administración Pública": { abbr: "ADM", icon: "fa-gavel", color: "color-adm", calcId: 'admin' },
+            "A.1) Aguas y Obras Hidráulicas": { abbr: "AGUAS", icon: "fa-tint", color: "color-aguas", calcId: 'aguas' },
+            "A.2) Puertos y Costas": { abbr: "COSTAS", icon: "fa-water", color: "color-costas", calcId: 'aguas' },
+            "B.1) Carreteras": { abbr: "CARR", icon: "fa-road", color: "color-infra", calcId: 'carreteras' },
+            "B.2) Ferrocarriles": { abbr: "FERR", icon: "fa-train", color: "color-infra", calcId: 'carreteras' },
+            "C.1) Transportes y Movilidad": { abbr: "TRANS", icon: "fa-bus", color: "color-trans", calcId: 'transportes' },
+            "C.2) Medio Ambiente": { abbr: "MA", icon: "fa-leaf", color: "color-ma", calcId: 'transportes' }
         };
         
-        const syllabus = {
+         const syllabus = {
             "Materias comunes": {
                 "Organización y Funcionamiento de la Administración Pública": [
                     { id: 1, text: "La Constitución Española de 1978. Estructura, principios constitucionales y valores superiores. Los derechos y libertades fundamentales. La reforma constitucional." },
@@ -355,21 +361,36 @@
             }
         };
 
-        // --- NEW INITIALIZATION LOGIC ---
+        // Para brevedad, el objeto syllabus se ha acortado. El código completo está en tu original.
+
+        // --- LÓGICA DE INICIALIZACIÓN CON SESSIONSTORAGE ---
         window.onload = async () => {
             try {
                 initializeApp(firebaseConfig);
                 db = getFirestore();
 
-                const urlParams = new URLSearchParams(window.location.search);
-                const userFromUrl = urlParams.get('user');
+                const loginModal = document.getElementById('login-modal');
+                const loginForm = document.getElementById('login-form');
+                
+                // FIX: Usar sessionStorage para persistir el usuario en la sesión actual.
+                let user = sessionStorage.getItem('username');
 
-                if (userFromUrl) {
-                    await startApp(userFromUrl);
+                // Como fallback, comprobar si el usuario viene en la URL (para enlaces compartidos)
+                if (!user) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const userFromUrl = urlParams.get('user');
+                    if (userFromUrl) {
+                        user = userFromUrl;
+                        sessionStorage.setItem('username', user); // Guardar en la sesión para futuras recargas
+                    }
+                }
+
+                if (user) {
+                    await startApp(user);
                 } else {
-                    const loginModal = document.getElementById('login-modal');
-                    const loginForm = document.getElementById('login-form');
+                    // Muestra el modal si no hay usuario en la sesión o URL
                     loginModal.classList.remove('hidden');
+                    loginModal.style.display = 'flex'; 
 
                     if (loginForm) {
                         loginForm.addEventListener('submit', async (e) => {
@@ -377,6 +398,8 @@
                             const usernameInput = document.getElementById('username-input');
                             const username = usernameInput.value.trim();
                             if (username) {
+                                // FIX: Guardar en sessionStorage y arrancar la app directamente.
+                                sessionStorage.setItem('username', username);
                                 await startApp(username);
                             }
                         });
@@ -384,21 +407,31 @@
                 }
             } catch (error) {
                 console.error("Error initializing:", error);
-                alert("Error fatal al inicializar la aplicación. Comprueba la consola para más detalles.");
+                const statusEl = document.getElementById('connection-status');
+                if(statusEl) {
+                    statusEl.textContent = "Error fatal al inicializar la aplicación.";
+                    statusEl.className = 'mt-2 text-sm font-semibold text-red-600';
+                }
             }
         };
 
         async function startApp(username) {
             sessionId = username;
-            document.getElementById('login-modal').classList.add('hidden');
-            document.getElementById('main-content').classList.remove('hidden');
+            const loginModal = document.getElementById('login-modal');
+            const mainContent = document.getElementById('main-content');
+            
+            // Oculta el modal y muestra el contenido principal
+            loginModal.classList.add('hidden');
+            loginModal.style.display = 'none';
+            mainContent.classList.remove('hidden');
+
             document.getElementById('user-info').innerHTML = `<p>Usuario: <span class="font-semibold">${sessionId}</span></p>`;
             
             await checkConnection();
-            renderSyllabus();
-            await loadProgress();
+            renderSyllabus(); // Renderiza el temario primero
+            await loadProgress(); // Luego carga el progreso
 
-            // Add event listeners for existing buttons
+            // Añade los listeners a los botones una vez que el contenido es visible
             document.getElementById('toggle-names-btn').addEventListener('click', () => {
                 document.body.classList.toggle('show-full-names');
                 const btn = document.getElementById('toggle-names-btn');
@@ -407,8 +440,8 @@
 
             document.getElementById('collapse-all-btn').addEventListener('click', () => toggleAll(true));
             document.getElementById('expand-all-btn').addEventListener('click', () => toggleAll(false));
+            document.getElementById('calc-prob-btn').addEventListener('click', openCalculator);
         }
-
 
         async function checkConnection() {
             const statusEl = document.getElementById('connection-status');
@@ -417,7 +450,7 @@
             const testDocRef = doc(db, `artifacts/${appId}/public/data/${sessionId}/_connection_test`);
             try {
                 await setDoc(testDocRef, { timestamp: new Date() });
-                await getDoc(testDocRef); // Ensure read access as well
+                await getDoc(testDocRef);
                 await deleteDoc(testDocRef);
                 statusEl.textContent = 'Conexión con Firebase exitosa.';
                 statusEl.className = 'mt-2 text-sm font-semibold text-green-600';
@@ -425,7 +458,7 @@
                 console.error("Firebase connection test failed:", error);
                 statusEl.textContent = 'Error de conexión con Firebase.';
                 statusEl.className = 'mt-2 text-sm font-semibold text-red-600';
-                alert(`Fallo en la conexión con Firebase. \nCausa probable: Las reglas de seguridad de tu base de datos no permiten leer/escribir en la ruta: \n/artifacts/${appId}/public/data/${sessionId}/\n\nError: ${error.message}`);
+                console.error(`Fallo en la conexión con Firebase. Causa probable: Las reglas de seguridad de tu base de datos no permiten leer/escribir en la ruta: /artifacts/${appId}/public/data/${sessionId}/. Error: ${error.message}`);
             }
         }
 
@@ -466,7 +499,7 @@
 
         function renderSyllabus() {
             const container = document.getElementById('syllabus-container');
-            container.innerHTML = '';
+            container.innerHTML = ''; 
 
             for (const topLevelTitle in syllabus) {
                 const topLevelBlock = document.createElement('div');
@@ -501,7 +534,7 @@
 
                         for (const subBlockKey in subBlocksOrTopics) {
                             const subBlockId = subBlockKey.replace(/[^a-zA-Z0-9]/g, '');
-                            const subBlockWrapper = document.createElement('div'); // Wrapper for each sub-block in compact view
+                            const subBlockWrapper = document.createElement('div');
                             
                             const subBlockHeader = document.createElement('h4');
                             subBlockHeader.className = `sub-block-header text-base font-semibold mb-2 ${BLOCKS_CONFIG[subBlockKey]?.color || ''}`;
@@ -582,26 +615,26 @@
             for (const mainBlockTitle in allBlocks) {
                 const subBlocksOrTopics = allBlocks[mainBlockTitle];
                 
-                if (Array.isArray(subBlocksOrTopics)) { // Case for Materias Comunes
-                     const config = BLOCKS_CONFIG[mainBlockTitle];
-                     const totalCount = subBlocksOrTopics.length;
-                     const studiedCount = Array.from(document.querySelectorAll(`.topic-card[data-sub-block-name="${mainBlockTitle}"]`)).filter(card => card.querySelectorAll('.tick-box.green').length > 0).length;
-                     
-                     grandTotalStudied += studiedCount;
-                     grandTotalTopics += totalCount;
+                if (Array.isArray(subBlocksOrTopics)) { 
+                      const config = BLOCKS_CONFIG[mainBlockTitle];
+                      const totalCount = subBlocksOrTopics.length;
+                      const studiedCount = Array.from(document.querySelectorAll(`.topic-card[data-sub-block-name="${mainBlockTitle}"]`)).filter(card => card.querySelectorAll('.tick-box.green').length > 0).length;
+                      
+                      grandTotalStudied += studiedCount;
+                      grandTotalTopics += totalCount;
 
-                     tableBody += `
-                        <tr class="bg-slate-50 border-b-4 border-slate-300">
-                            <td class="px-6 py-4 font-semibold ${config.color}" colspan="2">
-                                <i class="fas ${config.icon} fa-fw text-lg w-5 text-center"></i>
-                                ${mainBlockTitle}
-                            </td>
-                            <td class="px-6 py-4 text-center font-mono">${studiedCount}</td>
-                            <td class="px-6 py-4 text-center font-mono">${totalCount - studiedCount}</td>
-                            <td class="px-6 py-4 text-center font-mono">${totalCount}</td>
-                        </tr>`;
+                      tableBody += `
+                          <tr class="bg-slate-50 border-b-4 border-slate-300">
+                              <td class="px-6 py-4 font-semibold ${config.color}" colspan="2">
+                                  <i class="fas ${config.icon} fa-fw text-lg w-5 text-center"></i>
+                                  ${mainBlockTitle}
+                              </td>
+                              <td class="px-6 py-4 text-center font-mono">${studiedCount}</td>
+                              <td class="px-6 py-4 text-center font-mono">${totalCount - studiedCount}</td>
+                              <td class="px-6 py-4 text-center font-mono">${totalCount}</td>
+                          </tr>`;
 
-                } else { // Case for Materias Específicas
+                } else { 
                     const subBlocks = subBlocksOrTopics;
                     const mainBlockRowCount = Object.keys(subBlocks).length;
                     let blockStudied = 0;
@@ -659,7 +692,6 @@
             summaryTable.innerHTML = tableHead + tableBody + tableFoot;
         }
 
-
         async function loadProgress() { 
             if (!sessionId) return;
             const docRef = doc(db, `artifacts/${appId}/public/data/${sessionId}`, "plannerState");
@@ -667,14 +699,14 @@
             try {
                 const docSnap = await getDoc(docRef);
                 if (!docSnap.exists()) {
-                    console.log("No progress data found.");
+                    console.log("No se encontraron datos de progreso para este usuario. Se creará uno nuevo al guardar.");
                     updateAllCounters();
                     return;
                 }
                 
                 const plannerData = docSnap.data().topicState;
                 if (!plannerData) {
-                    console.log("Planner data is empty.");
+                    console.log("Los datos del planificador están vacíos.");
                     updateAllCounters();
                     return;
                 }
@@ -711,10 +743,46 @@
                 updateAllCounters();
             } catch (error) {
                 console.error("Error al leer los datos de Firestore:", error);
-                alert(`No se pudo cargar el progreso. Revisa la consola para ver los errores. Error: ${error.message}`);
+                console.error(`No se pudo cargar el progreso. Revisa la consola para ver los errores. Error: ${error.message}`);
             }
         }
         
+        function openCalculator() {
+            const calculatorUrl = 'https://cheradra312.github.io/CAL_PROB/';
+            const params = new URLSearchParams();
+            
+            const calcData = {
+                admin: 0,
+                aguas: 0,
+                carreteras: 0,
+                transportes: 0
+            };
+            
+            const uniqueStudiedTopics = new Set();
+            document.querySelectorAll('.topic-card').forEach(card => {
+                if (card.querySelectorAll('.tick-box.green').length > 0) {
+                    uniqueStudiedTopics.add(card.dataset.topicId);
+                }
+            });
+
+            uniqueStudiedTopics.forEach(topicId => {
+                const card = document.querySelector(`.topic-card[data-topic-id="${topicId}"]`);
+                if (card) {
+                    const subBlockName = card.dataset.subBlockName;
+                    const config = BLOCKS_CONFIG[subBlockName];
+                    if (config && calcData.hasOwnProperty(config.calcId)) {
+                        calcData[config.calcId]++;
+                    }
+                }
+            });
+
+            for (const key in calcData) {
+                params.append(key, calcData[key]);
+            }
+
+            window.open(`${calculatorUrl}?${params.toString()}`, '_blank');
+        }
+
         function toggleAll(collapse) {
             document.querySelectorAll('.collapsible').forEach(el => {
                 if(collapse) {
@@ -723,32 +791,6 @@
                     el.classList.remove('collapsed');
                 }
             });
-        }
-
-        // --- INITIALIZATION ---
-        initializeApp(firebaseConfig);
-        db = getFirestore();
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const userFromUrl = urlParams.get('user');
-
-        if (userFromUrl) {
-            startApp(userFromUrl);
-        } else {
-            const loginModal = document.getElementById('login-modal');
-            const loginForm = document.getElementById('login-form');
-            loginModal.classList.remove('hidden');
-
-            if (loginForm) {
-                loginForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const usernameInput = document.getElementById('username-input');
-                    const username = usernameInput.value.trim();
-                    if (username) {
-                        await startApp(username);
-                    }
-                });
-            }
         }
 
     </script>
