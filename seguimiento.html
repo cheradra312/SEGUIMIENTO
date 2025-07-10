@@ -17,14 +17,12 @@
             height: 24px;
             border: 2px solid #d1d5db;
             border-radius: 6px;
-            cursor: pointer;
             transition: all 0.2s ease-in-out;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
         }
-        .tick-box.orange { background-color: #f97316; border-color: #f97316; }
         .tick-box.green { background-color: #22c55e; border-color: #22c55e; }
         .tick-box .tick-mark {
             display: none;
@@ -34,7 +32,7 @@
             border-width: 0 3px 3px 0;
             transform: rotate(45deg);
         }
-        .tick-box.orange .tick-mark, .tick-box.green .tick-mark { display: block; }
+        .tick-box.green .tick-mark { display: block; }
         .topic-card:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
         .topic-full-name { display: none; margin-left: 8px; font-size: 0.875rem; }
         body.show-full-names .topic-full-name { display: inline; }
@@ -54,30 +52,6 @@
             align-items: center;
             flex-grow: 1;
             min-width: 0;
-        }
-        .header-counters {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            align-items: center;
-            font-size: 0.8rem;
-            flex-shrink: 0;
-        }
-        .header-counters .count-badge {
-            background-color: #e5e7eb;
-            color: #374151;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-        .header-counters .count-badge span {
-            font-weight: 700;
-        }
-        .total-badge {
-            background-color: #dbeafe;
-            color: #1e40af;
-            border: 1px solid #93c5fd;
         }
         .topic-text-container {
             flex-grow: 0;
@@ -146,7 +120,7 @@
     <div id="login-modal" class="hidden">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-sm">
             <h2 class="text-2xl font-bold mb-4 text-center">Bienvenido</h2>
-            <p class="text-gray-600 mb-6 text-center">Introduce un nombre de usuario o ID para guardar y cargar tu progreso.</p>
+            <p class="text-gray-600 mb-6 text-center">Introduce un nombre de usuario o ID para cargar tu progreso.</p>
             <form id="login-form">
                 <input type="text" id="username-input" placeholder="Tu nombre de usuario" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4" required>
                 <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold">Empezar</button>
@@ -154,7 +128,7 @@
         </div>
     </div>
 
-    <div id="main-content" class="container mx-auto p-4 md:p-8">
+    <div id="main-content" class="container mx-auto p-4 md:p-8 hidden">
         <header class="text-center mb-8">
             <h1 class="text-4xl md:text-5xl font-bold text-slate-800">Seguimiento de Estudio</h1>
             <p class="text-lg text-slate-500 mt-2">Cuerpo de Ingenieros de Caminos, Canales y Puertos del Estado</p>
@@ -381,43 +355,61 @@
             }
         };
 
+        // --- NEW INITIALIZATION LOGIC ---
         window.onload = async () => {
             try {
                 initializeApp(firebaseConfig);
                 db = getFirestore();
-                
-                document.getElementById('login-form').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const usernameInput = document.getElementById('username-input');
-                    const username = usernameInput.value.trim();
-                    if (username) {
-                        sessionId = username;
-                        document.getElementById('login-modal').style.display = 'none';
-                        document.getElementById('main-content').classList.remove('hidden');
-                        document.getElementById('user-info').innerHTML = `<p>Usuario: <span class="font-semibold">${sessionId}</span></p>`;
-                        await checkConnection();
-                        renderSyllabus();
-                        await loadProgress();
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const userFromUrl = urlParams.get('user');
+
+                if (userFromUrl) {
+                    await startApp(userFromUrl);
+                } else {
+                    const loginModal = document.getElementById('login-modal');
+                    const loginForm = document.getElementById('login-form');
+                    loginModal.classList.remove('hidden');
+
+                    if (loginForm) {
+                        loginForm.addEventListener('submit', async (e) => {
+                            e.preventDefault();
+                            const usernameInput = document.getElementById('username-input');
+                            const username = usernameInput.value.trim();
+                            if (username) {
+                                await startApp(username);
+                            }
+                        });
                     }
-                });
-
-                document.getElementById('toggle-names-btn').addEventListener('click', () => {
-                    document.body.classList.toggle('show-full-names');
-                    const btn = document.getElementById('toggle-names-btn');
-                    btn.textContent = document.body.classList.contains('show-full-names') ? 'Ocultar Nombres' : 'Mostrar Nombres';
-                });
-
-                document.getElementById('save-btn').addEventListener('click', saveAllProgress);
-                document.getElementById('collapse-all-btn').addEventListener('click', () => toggleAll(true));
-                document.getElementById('expand-all-btn').addEventListener('click', () => toggleAll(false));
-                document.getElementById('calc-prob-btn').addEventListener('click', openCalculator);
-
+                }
             } catch (error) {
-                console.error("Error initializing Firebase:", error);
-                alert("Error fatal al inicializar Firebase. Comprueba la consola para más detalles.");
+                console.error("Error initializing:", error);
+                alert("Error fatal al inicializar la aplicación. Comprueba la consola para más detalles.");
             }
         };
-        
+
+        async function startApp(username) {
+            sessionId = username;
+            document.getElementById('login-modal').classList.add('hidden');
+            document.getElementById('main-content').classList.remove('hidden');
+            document.getElementById('user-info').innerHTML = `<p>Usuario: <span class="font-semibold">${sessionId}</span></p>`;
+            
+            await checkConnection();
+            renderSyllabus();
+            await loadProgress();
+
+            // Add event listeners for existing buttons
+            document.getElementById('toggle-names-btn').addEventListener('click', () => {
+                document.body.classList.toggle('show-full-names');
+                const btn = document.getElementById('toggle-names-btn');
+                btn.textContent = document.body.classList.contains('show-full-names') ? 'Ocultar Nombres' : 'Mostrar Nombres';
+            });
+
+            document.getElementById('collapse-all-btn').addEventListener('click', () => toggleAll(true));
+            document.getElementById('expand-all-btn').addEventListener('click', () => toggleAll(false));
+        }
+
+
         async function checkConnection() {
             const statusEl = document.getElementById('connection-status');
             statusEl.textContent = 'Verificando conexión...';
@@ -425,14 +417,14 @@
             const testDocRef = doc(db, `artifacts/${appId}/public/data/${sessionId}/_connection_test`);
             try {
                 await setDoc(testDocRef, { timestamp: new Date() });
-                await deleteDoc(testDocRef);
+                await getDoc(testDocRef); // Ensure read access as well
                 statusEl.textContent = 'Conexión con Firebase exitosa.';
                 statusEl.className = 'mt-2 text-sm font-semibold text-green-600';
             } catch (error) {
                 console.error("Firebase connection test failed:", error);
-                statusEl.textContent = 'Error de conexión con Firebase. El progreso no se guardará.';
+                statusEl.textContent = 'Error de conexión con Firebase.';
                 statusEl.className = 'mt-2 text-sm font-semibold text-red-600';
-                alert(`Fallo en la conexión con Firebase. \nCausa probable: Las reglas de seguridad de tu base de datos no permiten escribir en la ruta: \n/artifacts/${appId}/public/data/${sessionId}/\n\nError: ${error.message}`);
+                alert(`Fallo en la conexión con Firebase. \nCausa probable: Las reglas de seguridad de tu base de datos no permiten leer/escribir en la ruta: \n/artifacts/${appId}/public/data/${sessionId}/\n\nError: ${error.message}`);
             }
         }
 
@@ -467,12 +459,7 @@
 
             titleWrapper.appendChild(titleEl);
 
-            const countersEl = document.createElement('div');
-            countersEl.className = 'header-counters';
-            countersEl.id = `counters-${id}`;
-
             headerWrapper.appendChild(titleWrapper);
-            headerWrapper.appendChild(countersEl);
             return headerWrapper;
         }
 
@@ -738,31 +725,29 @@
         }
 
         // --- INITIALIZATION ---
+        initializeApp(firebaseConfig);
+        db = getFirestore();
+
         const urlParams = new URLSearchParams(window.location.search);
         const userFromUrl = urlParams.get('user');
 
         if (userFromUrl) {
-            sessionId = userFromUrl;
-            document.getElementById('login-modal').classList.add('hidden');
-            document.getElementById('main-content').classList.remove('hidden');
-            document.getElementById('user-info').innerHTML = `<p>Usuario: <span class="font-semibold">${sessionId}</span></p>`;
-            
-            initializeApp(firebaseConfig);
-            db = getFirestore();
-            
-            renderSyllabus();
-            loadProgress();
-
-            document.getElementById('toggle-names-btn').addEventListener('click', () => {
-                document.body.classList.toggle('show-full-names');
-                const btn = document.getElementById('toggle-names-btn');
-                btn.textContent = document.body.classList.contains('show-full-names') ? 'Ocultar Nombres' : 'Mostrar Nombres';
-            });
-
-            document.getElementById('collapse-all-btn').addEventListener('click', () => toggleAll(true));
-            document.getElementById('expand-all-btn').addEventListener('click', () => toggleAll(false));
+            startApp(userFromUrl);
         } else {
-            document.getElementById('login-modal').classList.remove('hidden');
+            const loginModal = document.getElementById('login-modal');
+            const loginForm = document.getElementById('login-form');
+            loginModal.classList.remove('hidden');
+
+            if (loginForm) {
+                loginForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const usernameInput = document.getElementById('username-input');
+                    const username = usernameInput.value.trim();
+                    if (username) {
+                        await startApp(username);
+                    }
+                });
+            }
         }
 
     </script>
