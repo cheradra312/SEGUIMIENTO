@@ -156,7 +156,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCKXzSmQ9F1M4W59Vyalu3CWdKFsh7dOmE",
@@ -418,6 +418,7 @@
             try {
                 await setDoc(testDocRef, { timestamp: new Date() });
                 await getDoc(testDocRef); // Ensure read access as well
+                await deleteDoc(testDocRef);
                 statusEl.textContent = 'Conexión con Firebase exitosa.';
                 statusEl.className = 'mt-2 text-sm font-semibold text-green-600';
             } catch (error) {
