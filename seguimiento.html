@@ -12,6 +12,12 @@
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc; /* slate-50 */
         }
+        .tick-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 40px; /* Ancho para el tick y la fecha */
+        }
         .tick-box {
             width: 24px;
             height: 24px;
@@ -24,7 +30,6 @@
             flex-shrink: 0;
         }
         .tick-box.green { background-color: #22c55e; border-color: #22c55e; }
-        /* Color naranja para temas asignados pero no estudiados */
         .tick-box.orange { background-color: #f97316; border-color: #f97316; }
         .tick-box .tick-mark {
             display: none;
@@ -35,13 +40,18 @@
             transform: rotate(45deg);
         }
         .tick-box.green .tick-mark, .tick-box.orange .tick-mark { display: block; }
-        /* El tick naranja será un círculo para diferenciarlo */
         .tick-box.orange .tick-mark {
              width: 10px;
              height: 10px;
              border: 2px solid white;
              border-radius: 50%;
              transform: none;
+        }
+        .tick-date {
+            font-size: 0.65rem; /* 10.4px */
+            color: #6b7280; /* gray-500 */
+            margin-top: 2px;
+            height: 1em; /* Altura para evitar saltos de layout */
         }
         .topic-card:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
         .topic-full-name { display: none; margin-left: 8px; font-size: 0.875rem; }
@@ -64,9 +74,6 @@
             min-width: 0;
         }
         .topic-text-container {
-            flex-grow: 0;
-        }
-        body.show-full-names .topic-text-container {
             flex-grow: 1;
         }
         #login-modal {
@@ -182,7 +189,7 @@
             authDomain: "costas-304b9.firebaseapp.com",
             projectId: "costas-304b9",
             storageBucket: "costas-304b9.appspot.com",
-            messagingSenderId: "251850800414",
+            messagingSenderId: "251850800414", 
             appId: "1:251850800414:web:435e20e5305881732e5d0f",
             measurementId: "G-C2NTL72PZH"
         };
@@ -523,25 +530,34 @@
         function createTopicElement(topic, subBlockName) {
             const topicId = `${subBlockName}-${topic.id}`;
             const topicDiv = document.createElement('div');
-            topicDiv.className = 'topic-card bg-white p-3 rounded-lg shadow-sm mb-3 flex items-center justify-between gap-4';
+            topicDiv.className = 'topic-card bg-white p-3 rounded-lg shadow-sm mb-3 flex items-start justify-between gap-4';
             topicDiv.dataset.topicId = topicId;
             topicDiv.dataset.subBlockName = subBlockName;
 
             const topicP = document.createElement('p');
-            topicP.className = 'topic-text-container';
+            topicP.className = 'topic-text-container pt-1'; // Padding top to align with tick-box
             const config = BLOCKS_CONFIG[subBlockName];
             if(config) topicP.classList.add(config.c || config.color);
             topicP.innerHTML = `${topic.id}. <span class="topic-full-name">${topic.text}</span>`;
 
             const ticksContainer = document.createElement('div');
-            ticksContainer.className = 'flex items-center space-x-2';
+            ticksContainer.className = 'flex items-start space-x-2'; // Align items to the start
             for (let i = 0; i < 5; i++) {
+                const tickContainer = document.createElement('div');
+                tickContainer.className = 'tick-container';
+
                 const tickBox = document.createElement('div');
                 tickBox.className = 'tick-box';
                 const tickMark = document.createElement('div');
                 tickMark.className = 'tick-mark';
                 tickBox.appendChild(tickMark);
-                ticksContainer.appendChild(tickBox);
+                
+                const dateSpan = document.createElement('span');
+                dateSpan.className = 'tick-date';
+
+                tickContainer.appendChild(tickBox);
+                tickContainer.appendChild(dateSpan);
+                ticksContainer.appendChild(tickContainer);
             }
             topicDiv.appendChild(topicP);
             topicDiv.appendChild(ticksContainer);
@@ -575,8 +591,8 @@
                 const subBlocksOrTopics = allBlocks[mainBlockTitle];
                 if (Array.isArray(subBlocksOrTopics)) {
                     const blockName = mainBlockTitle;
-                    const pendingCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${blockName}"] .tick-box:nth-child(${selectedVuelta}).orange`).length;
-                    const studiedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${blockName}"] .tick-box:nth-child(${selectedVuelta}).green`).length;
+                    const pendingCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${blockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.orange`).length;
+                    const studiedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${blockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.green`).length;
                     const totalAssigned = pendingCount + studiedCount;
                     const totalTopics = subBlocksOrTopics.length;
                     
@@ -598,9 +614,9 @@
                     let subRows = '';
                     const subBlockKeys = Object.keys(subBlocksOrTopics);
 
-                    subBlockKeys.forEach(subBlockName => {
-                        const pendingCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${subBlockName}"] .tick-box:nth-child(${selectedVuelta}).orange`).length;
-                        const studiedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${subBlockName}"] .tick-box:nth-child(${selectedVuelta}).green`).length;
+                    subBlockKeys.forEach((subBlockName, index) => {
+                        const pendingCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${subBlockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.orange`).length;
+                        const studiedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${subBlockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.green`).length;
                         const totalAssigned = pendingCount + studiedCount;
                         const totalTopics = subBlocksOrTopics[subBlockName].length;
                         
@@ -611,6 +627,7 @@
 
                         const config = BLOCKS_CONFIG[subBlockName];
                         subRows += `<tr class="border-t border-slate-200">
+                            ${index === 0 ? `<td class="px-6 py-4 font-bold align-top" rowspan="${subBlockKeys.length}">${mainBlockTitle}</td>` : ''}
                             <td class="px-6 py-4 flex items-center gap-3 ${config.c || config.color}"><i class="fas ${config.icon} fa-fw w-5 text-center"></i><span class="font-semibold">${subBlockName}</span></td>
                             <td class="px-6 py-4 text-center font-mono text-orange-600">${pendingCount}</td>
                             <td class="px-6 py-4 text-center font-mono text-green-600">${studiedCount}</td>
@@ -624,9 +641,8 @@
                     grandTotal.assigned += blockTotals.assigned;
                     grandTotal.total += blockTotals.total;
 
-                    tableBody += `<tr><td class="px-6 py-4 font-bold" rowspan="${subBlockKeys.length + 1}">${mainBlockTitle}</td></tr>` + subRows;
-                    // Fila de total de bloque
-                    tableBody += `<tr class="bg-slate-100 font-semibold"><td class="px-6 py-2 text-right font-bold" colspan="1">Total Bloque:</td><td class="px-6 py-2 text-center font-mono text-orange-600">${blockTotals.pending}</td><td class="px-6 py-2 text-center font-mono text-green-600">${blockTotals.studied}</td><td class="px-6 py-2 text-center font-mono">${blockTotals.assigned}</td><td class="px-6 py-2 text-center font-mono">${blockTotals.total}</td></tr>`;
+                    tableBody += subRows;
+                    tableBody += `<tr class="bg-slate-100 font-semibold"><td class="px-6 py-2 text-right font-bold" colspan="2">Total Bloque:</td><td class="px-6 py-2 text-center font-mono text-orange-600">${blockTotals.pending}</td><td class="px-6 py-2 text-center font-mono text-green-600">${blockTotals.studied}</td><td class="px-6 py-2 text-center font-mono">${blockTotals.assigned}</td><td class="px-6 py-2 text-center font-mono">${blockTotals.total}</td></tr>`;
                 }
             }
             
@@ -668,18 +684,33 @@
                 const topicState = plannerData.topicState;
                 const progressByVuelta = {};
                 for (let i = 1; i <= 5; i++) {
-                    progressByVuelta[`vuelta-${i}`] = { assigned: new Set(), studied: new Set() };
+                    progressByVuelta[`vuelta-${i}`] = {};
                 }
 
+                // Helper to calculate round dates
+                const roundDates = {};
+                if (plannerData.endDate && plannerData.roundDurations) {
+                    const deadline = new Date(plannerData.endDate.split('/').reverse().join('-') + 'T00:00:00Z');
+                    const durations = plannerData.roundDurations.map(Number);
+                    const totalDuration = durations.reduce((sum, d) => sum + d, 0);
+                    let planStartDate = new Date(deadline.getTime());
+                    planStartDate.setUTCDate(planStartDate.getUTCDate() - totalDuration + 1);
+
+                    let currentStartDate = new Date(planStartDate.getTime());
+                    for (let i = 0; i < 5; i++) {
+                        roundDates[`vuelta-${i + 1}`] = new Date(currentStartDate.getTime());
+                        currentStartDate.setUTCDate(currentStartDate.getUTCDate() + durations[i]);
+                    }
+                }
+                
                 // 1. Process studied topics (fixed dates)
                 if (topicState.studiedTopics) {
-                    for (const date in topicState.studiedTopics) {
-                        topicState.studiedTopics[date].forEach(topic => {
+                    for (const dateStr in topicState.studiedTopics) {
+                        topicState.studiedTopics[dateStr].forEach(topic => {
                             if (progressByVuelta[topic.originalVuelta]) {
-                                if (topic.studied) {
-                                    progressByVuelta[topic.originalVuelta].studied.add(topic.id);
-                                }
-                                progressByVuelta[topic.originalVuelta].assigned.add(topic.id);
+                                const topicDate = new Date(dateStr + 'T00:00:00Z');
+                                const formattedDate = `${String(topicDate.getUTCDate()).padStart(2,'0')}/${String(topicDate.getUTCMonth()+1).padStart(2,'0')}`;
+                                progressByVuelta[topic.originalVuelta][topic.id] = { status: 'studied', date: formattedDate };
                             }
                         });
                     }
@@ -689,11 +720,15 @@
                 for (let i = 1; i <= 5; i++) {
                     const vueltaId = `vuelta-${i}`;
                     const roundState = topicState[vueltaId];
-                    if (roundState && roundState.assigned) {
+                    if (roundState && roundState.assigned && roundDates[vueltaId]) {
+                        const vueltaStartDate = roundDates[vueltaId];
                         for (const dayIndex in roundState.assigned) {
                             roundState.assigned[dayIndex].forEach(topic => {
-                                 if (progressByVuelta[vueltaId]) {
-                                     progressByVuelta[vueltaId].assigned.add(topic.id);
+                                 if (progressByVuelta[vueltaId] && !progressByVuelta[vueltaId][topic.id]) { // Don't overwrite studied
+                                    const assignedDate = new Date(vueltaStartDate.getTime());
+                                    assignedDate.setUTCDate(assignedDate.getUTCDate() + parseInt(dayIndex));
+                                    const formattedDate = `${String(assignedDate.getUTCDate()).padStart(2,'0')}/${String(assignedDate.getUTCMonth()+1).padStart(2,'0')}`;
+                                    progressByVuelta[vueltaId][topic.id] = { status: 'assigned', date: formattedDate };
                                  }
                             });
                         }
@@ -703,17 +738,24 @@
                 // 3. Update the UI based on the gathered progress
                 document.querySelectorAll('.topic-card').forEach(card => {
                     const topicId = card.dataset.topicId;
-                    const tickBoxes = card.querySelectorAll('.tick-box');
+                    const tickContainers = card.querySelectorAll('.tick-container');
                     
-                    tickBoxes.forEach((tickBox, index) => {
+                    tickContainers.forEach((container, index) => {
+                        const tickBox = container.querySelector('.tick-box');
+                        const dateSpan = container.querySelector('.tick-date');
                         const vueltaId = `vuelta-${index + 1}`;
-                        tickBox.classList.remove('green', 'orange'); // Reset colors
-                        if (progressByVuelta[vueltaId]) {
-                            if (progressByVuelta[vueltaId].studied.has(topicId)) {
+                        
+                        tickBox.classList.remove('green', 'orange');
+                        dateSpan.textContent = '';
+
+                        const progress = progressByVuelta[vueltaId]?.[topicId];
+                        if (progress) {
+                            if (progress.status === 'studied') {
                                 tickBox.classList.add('green');
-                            } else if (progressByVuelta[vueltaId].assigned.has(topicId)) {
+                            } else if (progress.status === 'assigned') {
                                 tickBox.classList.add('orange');
                             }
+                            dateSpan.textContent = progress.date;
                         }
                     });
                 });
@@ -735,8 +777,7 @@
             const calcData = { admin: 0, aguas: 0, carreteras: 0, transportes: 0 };
             
             document.querySelectorAll('.topic-card').forEach(card => {
-                // Contar solo los temas estudiados (verdes) en la vuelta seleccionada
-                const tickBox = card.querySelector(`.tick-box:nth-child(${vueltaIndex})`);
+                const tickBox = card.querySelector(`.tick-container:nth-child(${vueltaIndex}) .tick-box`);
                 if (tickBox && tickBox.classList.contains('green')) {
                     const subBlockName = card.dataset.subBlockName;
                     const config = BLOCKS_CONFIG[subBlockName];
