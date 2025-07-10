@@ -877,6 +877,16 @@
             // Remove from studied list
             if (status.status === 'studied') {
                 const dayTopics = state.topicState.studiedTopics[status.date];
+                // Defensive check
+                if (!dayTopics) {
+                    console.error(`Inconsistent state: Topic ${topicId} thought to be studied on ${status.date}, but no topics found for that date.`);
+                    if (!state.topicState[vueltaIdToReturnTo].unassigned.includes(topicId)) {
+                        state.topicState[vueltaIdToReturnTo].unassigned.push(topicId);
+                    }
+                    renderTopicSourceList();
+                    renderSummaryTable();
+                    return;
+                }
                 const topicIndex = dayTopics.findIndex(t => t.id === topicId);
                 if (topicIndex > -1) {
                     dayTopics.splice(topicIndex, 1);
@@ -887,8 +897,30 @@
             else if (status.status === 'assigned') {
                 const roundState = state.topicState[status.vueltaId];
                 const roundInfo = state.rounds.find(r => r.vueltaId === status.vueltaId);
+
+                if (!roundInfo) {
+                    console.error(`Inconsistent state: Could not find round info for ${status.vueltaId} for topic ${topicId}.`);
+                     if (!state.topicState[vueltaIdToReturnTo].unassigned.includes(topicId)) {
+                        state.topicState[vueltaIdToReturnTo].unassigned.push(topicId);
+                    }
+                    renderTopicSourceList();
+                    renderSummaryTable();
+                    return;
+                }
+
                 const dayIndex = Math.round((new Date(status.date + 'T00:00:00Z') - roundInfo.startDate) / (1000 * 60 * 60 * 24));
                 const dayTopics = roundState.assigned[dayIndex];
+                
+                if (!dayTopics) {
+                    console.error(`Inconsistent state: Topic ${topicId} thought to be assigned on day ${dayIndex} of ${status.vueltaId}, but no topics found for that day.`);
+                    if (!state.topicState[vueltaIdToReturnTo].unassigned.includes(topicId)) {
+                        state.topicState[vueltaIdToReturnTo].unassigned.push(topicId);
+                    }
+                    renderTopicSourceList();
+                    renderSummaryTable();
+                    return;
+                }
+
                 const topicIndex = dayTopics.findIndex(t => t.id === topicId);
                 if (topicIndex > -1) {
                     dayTopics.splice(topicIndex, 1);
@@ -903,7 +935,9 @@
 
             // Re-render
             renderTopicSourceList();
-            updateSingleDay(status.date);
+            if (status.date) {
+                updateSingleDay(status.date);
+            }
             renderSummaryTable();
         }
 
