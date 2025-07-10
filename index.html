@@ -3,147 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seguimiento de Estudio para Oposición</title> 
+    <title>Planificador de Estudio Interactivo</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        body {
+        body { 
             font-family: 'Inter', sans-serif;
-            background-color: #f8fafc; /* slate-50 */
-        } 
-        .tick-box {
-            width: 24px;
-            height: 24px;
-            border: 2px solid #d1d5db;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease-in-out;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
+            background-color: #f3f4f6;
         }
-        .tick-box.orange { background-color: #f97316; border-color: #f97316; }
-        .tick-box.green { background-color: #22c55e; border-color: #22c55e; }
-        .tick-box .tick-mark {
-            display: none;
-            width: 8px;
-            height: 14px;
-            border: solid white;
-            border-width: 0 3px 3px 0;
-            transform: rotate(45deg);
-        }
-        .tick-box.orange .tick-mark, .tick-box.green .tick-mark { display: block; }
-        .topic-card:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
-        .topic-full-name { display: none; margin-left: 8px; font-size: 0.875rem; }
-        body.show-full-names .topic-full-name { display: inline; }
+        .topic-source-list::-webkit-scrollbar, .calendar-day-topics::-webkit-scrollbar, #day-modal-content::-webkit-scrollbar { width: 6px; }
+        .topic-source-list::-webkit-scrollbar-track, .calendar-day-topics::-webkit-scrollbar-track, #day-modal-content::-webkit-scrollbar-track { background: #e5e7eb; border-radius: 10px; }
+        .topic-source-list::-webkit-scrollbar-thumb, .calendar-day-topics::-webkit-scrollbar-thumb, #day-modal-content::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; }
+        .topic-source-list::-webkit-scrollbar-thumb:hover, .calendar-day-topics::-webkit-scrollbar-thumb:hover, #day-modal-content::-webkit-scrollbar-thumb:hover { background: #6b7280; }
         
-        .header-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-        .header-container.is-collapsible {
+        .calendar-day {
+            min-height: 160px;
+            transition: background-color 0.2s ease-in-out;
             cursor: pointer;
         }
-        .header-title-wrapper {
-            display: flex;
-            align-items: center;
-            flex-grow: 1;
-            min-width: 0;
+        .drag-over {
+            background-color: #c7d2fe !important; /* indigo-200 */
+            border: 2px dashed #6366f1; /* indigo-500 */
         }
-        .header-counters {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            align-items: center;
-            font-size: 0.8rem;
+        .topic-card, .calendar-topic-item {
+            cursor: grab;
+            transition: all 0.2s ease;
+        }
+        .topic-card:active, .calendar-topic-item:active {
+            cursor: grabbing;
+            opacity: 0.8;
+            transform: scale(1.05);
+        }
+        .dragging {
+            opacity: 0.5;
+            background: #e0e7ff;
+        }
+
+        .form-checkbox {
+            -webkit-appearance: none; appearance: none;
+            background-color: #fff; margin: 0; font: inherit; color: currentColor;
+            width: 1.1em; height: 1.1em; border: 0.1em solid #9ca3af;
+            border-radius: 0.25em; transform: translateY(-0.075em);
+            display: grid; place-content: center; cursor: pointer;
             flex-shrink: 0;
         }
-        .header-counters .count-badge {
-            background-color: #e5e7eb;
-            color: #374151;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-weight: 600;
+        .form-checkbox::before {
+            content: ""; width: 0.65em; height: 0.65em; transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em #4f46e5;
+            transform-origin: bottom left;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        }
+        .form-checkbox:checked { border-color: #4f46e5; }
+        .form-checkbox:checked::before { transform: scale(1); }
+
+        .calendar-topic-item {
+            padding: 4px;
+            font-size: 0.75rem;
+            gap: 6px;
+        }
+        
+        .topics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px;
+        }
+
+        .topics-column {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0; /* Fix for grid layout issues */
+        }
+
+        .calendar-topic-item.in-grid {
+            font-size: 0.7rem; /* Adjusted font-size for better fit */
+            padding: 2px 4px;
+            gap: 4px;
+        }
+        .calendar-topic-item.in-grid .form-checkbox {
+             width: 0.8em; height: 0.8em;
+        }
+         .calendar-topic-item.in-grid .color-dot {
+             width: 0.4rem; height: 0.4rem;
+        }
+        .calendar-topic-item.in-grid span {
+            overflow: hidden;
+            text-overflow: ellipsis;
             white-space: nowrap;
         }
-        .header-counters .count-badge span {
-            font-weight: 700;
+
+        .drop-invalid {
+            border: 2px dashed #ef4444 !important; /* red-500 */
         }
-        .total-badge {
-            background-color: #dbeafe;
-            color: #1e40af;
-            border: 1px solid #93c5fd;
-        }
-        .topic-text-container {
-            flex-grow: 0;
-        }
-        body.show-full-names .topic-text-container {
-            flex-grow: 1;
-        }
-        #login-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        .collapsible-content {
-            max-height: 5000px;
-            overflow: hidden;
-            transition: max-height 0.5s ease-in-out;
-        }
-        .collapsible.collapsed > .collapsible-content {
-            max-height: 0;
-            margin-top: 0;
-            margin-bottom: 0;
-            padding-top: 0;
-            padding-bottom: 0;
+        .content-panel.hidden {
+            display: none;
         }
         .toggle-icon {
             transition: transform 0.3s ease;
-            flex-shrink: 0;
-            margin-right: 0.75rem;
-            color: #6b7280;
         }
-        .collapsible.collapsed .toggle-icon {
+        .collapsed .toggle-icon {
             transform: rotate(-90deg);
         }
+        aside.collapsed {
+            width: 50px !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            overflow: hidden;
+        }
+        aside.collapsed > #topics-content {
+            display: none;
+        }
+        aside.collapsed #topics-header h2 {
+            display: none;
+        }
+        aside {
+            transition: width 0.3s ease, padding 0.3s ease;
+        }
+        
+        #day-modal-backdrop {
+            transition: opacity 0.3s ease-in-out;
+        }
+        #day-modal-container {
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+        #day-modal-backdrop.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #day-modal-container.hidden {
+            opacity: 0;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
 
-        /* Color Theming */
+        #config-panel {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.4s ease-in-out;
+        }
+        #config-panel.expanded {
+            grid-template-rows: 1fr;
+        }
+        .config-panel-inner {
+            overflow: hidden;
+        }
+
+        /* Block Colors */
         .color-adm { color: #b45309; }
         .color-aguas { color: #0369a1; }
         .color-costas { color: #0e7490; }
         .color-infra { color: #4b5563; }
         .color-trans { color: #059669; }
         .color-ma { color: #15803d; }
-
-        /* Compact Layout for Hidden Names */
-        body:not(.show-full-names) .compact-layout-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-        body:not(.show-full-names) .sub-block-header {
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-            grid-column: 1 / -1; /* Header spans both columns */
-        }
-
     </style>
 </head>
-<body class="bg-slate-50 text-gray-800">
+<body class="text-gray-800">
 
-    <div id="login-modal">
+    <div id="login-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-sm">
             <h2 class="text-2xl font-bold mb-4 text-center">Bienvenido</h2>
             <p class="text-gray-600 mb-6 text-center">Introduce un nombre de usuario o ID para guardar y cargar tu progreso.</p>
@@ -154,38 +172,121 @@
         </div>
     </div>
 
-    <div id="main-content" class="container mx-auto p-4 md:p-8 hidden">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl md:text-5xl font-bold text-slate-800">Seguimiento de Estudio</h1>
-            <p class="text-lg text-slate-500 mt-2">Cuerpo de Ingenieros de Caminos, Canales y Puertos del Estado</p>
-            <div id="user-info" class="mt-4 text-sm text-gray-500"></div>
-            <div id="connection-status" class="mt-2 text-sm font-semibold h-5"></div>
-            <div class="mt-6 flex flex-wrap justify-center items-center gap-4">
-                <button id="toggle-names-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium">Mostrar Nombres</button>
-                <button id="save-btn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm font-medium">Guardar Progreso</button>
-                <button id="calc-prob-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"><i class="fas fa-calculator mr-2"></i>Calcular Probabilidad</button>
-                <button id="collapse-all-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm font-medium">Plegar Todo</button>
-                <button id="expand-all-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm font-medium">Desplegar Todo</button>
+    <div id="main-content" class="p-4 md:p-6 hidden">
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
+            <header class="text-center mb-4">
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Planificador de Estudio Interactivo</h1>
+                <p class="text-md text-gray-600 mt-2">Arrastra los temas al calendario para organizar tu estudio por vueltas.</p>
+            </header>
+            
+            <div class="flex flex-wrap items-center justify-center gap-4">
+                 <div>
+                    <button id="view-rounds-btn" class="bg-cyan-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-cyan-700 transition-colors shadow-md">
+                        <i class="fas fa-tasks mr-2"></i>Ver Vueltas
+                    </button>
+                    <button id="generate-btn" class="bg-indigo-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors shadow-md">
+                        <i class="fas fa-sync-alt mr-2"></i>Actualizar Plan
+                    </button>
+                    <button id="save-btn" class="bg-green-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-green-700 transition-colors shadow-md">
+                        <i class="fas fa-save mr-2"></i>Guardar Progreso
+                    </button>
+                </div>
+                <div class="ml-auto flex items-center gap-2">
+                    <button id="export-csv-btn" title="Exportar a CSV" class="bg-gray-200 text-gray-600 font-semibold w-10 h-10 text-sm rounded-lg hover:bg-gray-300 transition-colors shadow-md flex items-center justify-center">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <label for="import-csv-input" title="Importar desde CSV" class="bg-gray-200 text-gray-600 font-semibold w-10 h-10 text-sm rounded-lg hover:bg-gray-300 transition-colors shadow-md cursor-pointer flex items-center justify-center">
+                        <i class="fas fa-upload"></i>
+                    </label>
+                    <input type="file" id="import-csv-input" class="hidden" accept=".csv">
+                     <button id="toggle-config-btn" class="bg-gray-700 text-white font-semibold w-10 h-10 rounded-lg hover:bg-gray-800 transition-colors shadow-md flex items-center justify-center">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
             </div>
-            <div id="save-status" class="mt-2 text-sm font-medium h-5"></div>
-        </header>
-
-        <div class="bg-white rounded-lg shadow-md mb-8 overflow-x-auto">
-            <table id="top-summary-table" class="w-full text-sm text-left text-slate-600">
-            </table>
+            <div id="config-panel">
+                <div class="config-panel-inner">
+                    <div class="pt-4 mt-4 border-t border-gray-200 flex flex-col md:flex-row items-center justify-center gap-4">
+                        <div>
+                            <label for="end-date" class="block text-sm font-medium text-gray-700 mb-1">Fecha Límite</label>
+                            <input type="text" id="end-date" value="15/09/2025" placeholder="DD/MM/YYYY" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm">
+                        </div>
+                        <div id="round-durations-container" class="flex flex-wrap items-end justify-center gap-3">
+                            <!-- Inputs for round durations will be generated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <main id="syllabus-container">
-        </main>
+        <div id="save-status" class="text-center text-sm font-medium h-5 mb-2"></div>
+        
+        <div id="summary-panel" class="bg-white rounded-xl shadow-lg mb-4">
+            <div id="summary-header" class="p-4 cursor-pointer flex justify-between items-center border-b border-transparent">
+                <h3 class="font-bold text-lg">Resumen de Progreso</h3>
+                <div class="toggle-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>
+                </div>
+            </div>
+            <div id="summary-content" class="p-4 content-panel hidden">
+                <div class="mb-4">
+                    <label for="summary-round-select" class="block text-sm font-medium text-gray-700 mb-1">Seleccionar Vuelta para el Resumen:</label>
+                    <select id="summary-round-select" class="w-full md:w-1/3 p-2 border border-gray-300 rounded-lg"></select>
+                </div>
+                <div id="summary-table-container" class="overflow-x-auto"></div>
+            </div>
+        </div>
 
-        <footer class="text-center mt-12 py-4">
-            <p class="text-sm text-gray-500">Aplicación generada para el seguimiento de estudio.</p>
-        </footer>
+        <div class="flex flex-row gap-6">
+            <aside id="topics-panel" class="lg:w-1/3 bg-white rounded-xl shadow-lg p-4 flex flex-col">
+                <div id="topics-header" class="flex justify-between items-center mb-2 cursor-pointer">
+                    <h2 class="text-xl font-bold">Temas por Asignar</h2>
+                    <div class="toggle-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>
+                    </div>
+                </div>
+                <div id="topics-content" class="content-panel">
+                    <div class="flex flex-wrap gap-2 items-center border-b border-gray-200 pb-2 mb-2">
+                        <div id="round-tabs" class="flex"></div>
+                        <div id="sub-block-filter-container" class="flex-grow"></div>
+                    </div>
+                    <input type="text" id="topic-search" placeholder="Buscar tema..." class="w-full p-2 border border-gray-300 rounded-lg mb-2">
+                    <div id="topic-source-list" class="overflow-y-auto h-96 lg:h-[45vh] p-1"></div>
+                </div>
+            </aside>
+
+            <main class="flex-grow bg-white rounded-xl shadow-lg p-4 flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <button id="prev-month-btn" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">&lt; Anterior</button>
+                    <h2 id="calendar-title" class="text-xl font-bold text-center"></h2>
+                    <button id="next-month-btn" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Siguiente &gt;</button> 
+                </div>
+                <div id="calendar-container" class="grid grid-cols-1 gap-8"></div>
+            </main>
+        </div>
     </div>
+    
+    <!-- Day Details Modal -->
+    <div id="day-modal-backdrop" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-40 hidden">
+        <div id="day-modal-container" class="fixed inset-0 flex items-center justify-center p-4 hidden">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col" style="max-height: 90vh;">
+                <div class="flex justify-between items-center p-4 border-b">
+                    <h3 id="day-modal-title" class="text-xl font-bold"></h3>
+                    <button id="day-modal-close-btn" class="text-gray-500 hover:text-gray-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
+                    </button>
+                </div>
+                <div id="day-modal-content" class="p-6 overflow-y-auto space-y-3">
+                    <!-- Topic details will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCKXzSmQ9F1M4W59Vyalu3CWdKFsh7dOmE",
@@ -196,633 +297,1159 @@
             appId: "1:251850800414:web:435e20e5305881732e5d0f",
             measurementId: "G-C2NTL72PZH"
         };
-
         let db, sessionId;
-        let progressData = {};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-planner-app';
+
         const BLOCKS_CONFIG = {
-            "Organización y Funcionamiento de la Administración Pública": { abbr: "ADM", icon: "fa-gavel", color: "color-adm", calcId: 'admin' },
-            "A.1) Aguas y Obras Hidráulicas": { abbr: "AGUAS", icon: "fa-tint", color: "color-aguas", calcId: 'aguas' },
-            "A.2) Puertos y Costas": { abbr: "COSTAS", icon: "fa-water", color: "color-costas", calcId: 'aguas' },
-            "B.1) Carreteras": { abbr: "CARR", icon: "fa-road", color: "color-infra", calcId: 'carreteras' },
-            "B.2) Ferrocarriles": { abbr: "FERR", icon: "fa-train", color: "color-infra", calcId: 'carreteras' },
-            "C.1) Transportes y Movilidad": { abbr: "TRANS", icon: "fa-bus", color: "color-trans", calcId: 'transportes' },
-            "C.2) Medio Ambiente": { abbr: "MA", icon: "fa-leaf", color: "color-ma", calcId: 'transportes' }
+            "Organización y Funcionamiento de la Administración Pública": { color: "#b45309", icon: "fa-gavel", c: "color-adm" },
+            "A.1) Aguas y Obras Hidráulicas": { color: "#0369a1", icon: "fa-tint", c: "color-aguas" },
+            "A.2) Puertos y Costas": { color: "#0e7490", icon: "fa-water", c: "color-costas" },
+            "B.1) Carreteras": { color: "#4b5563", icon: "fa-road", c: "color-infra" },
+            "B.2) Ferrocarriles": { color: "#4b5563", icon: "fa-train", c: "color-infra" },
+            "C.1) Transportes y Movilidad": { color: "#059669", icon: "fa-bus", c: "color-trans" },
+            "C.2) Medio Ambiente": { color: "#15803d", icon: "fa-leaf", c: "color-ma" }
         };
-        
-        const syllabus = {
-            "Materias comunes": {
-                "Organización y Funcionamiento de la Administración Pública": [
-                    { id: 1, text: "La Constitución Española de 1978. Estructura, principios constitucionales y valores superiores. Los derechos y libertades fundamentales. La reforma constitucional." },
-                    { id: 2, text: "La estructura de poderes del Estado. Poder legislativo, poder ejecutivo y poder judicial. La Corona." },
-                    { id: 3, text: "Fuentes del ordenamiento jurídico administrativo. La Constitución. Los tratados internacionales. La ley. El reglamento. Otras fuentes del derecho administrativo." },
-                    { id: 4, text: "La Administración General del Estado. Órganos superiores y órganos directivos. La organización central. La organización periférica. Delegados y Subdelegados del Gobierno. Especial referencia al Ministerio de Transportes y Movilidad Sostenible." },
-                    { id: 5, text: "Las Comunidades Autónomas. El proceso autonómico y el sistema de distribución de competencias entre la Administración General del Estado y las Comunidades Autónomas. Los Estatutos de Autonomía y la organización institucional de las Comunidades Autónomas. La Administración Local: entidades que la integran." },
-                    { id: 6, text: "La Unión Europea y sus tratados constitutivos. Sistema institucional. Fuentes del Derecho de la Unión y su trasposición al ordenamiento jurídico español. Políticas comunes." },
-                    { id: 7, text: "El régimen jurídico de las Administraciones Públicas y su regulación. Principios que rigen las relaciones de las Administraciones Públicas. Actividad de las administraciones públicas: derechos y deberes de los ciudadanos." },
-                    { id: 8, text: "La Gobernanza Pública y el Gobierno Abierto. Concepto y principios informadores del Gobierno Abierto en España." },
-                    { id: 9, text: "El acto administrativo: concepto, elementos y clases. Requisitos. Motivación, notificación y publicación. Nulidad y anulabilidad de los actos. Disposiciones administrativas generales: jerarquía y competencia. Publicidad e inderogabilidad." },
-                    { id: 10, text: "El procedimiento administrativo común y sus fases. Concepto de persona interesada. Iniciación y ordenación del procedimiento, instrucción, finalización. El silencio administrativo. Ejecución." },
-                    { id: 11, text: "Revisión de los actos en vía administrativa. Recursos administrativos: concepto, naturaleza y clases. Revisión de oficio. La jurisdicción contencioso-administrativa. El recurso contencioso-administrativo." },
-                    { id: 12, text: "La responsabilidad patrimonial de la Administración. Regulación, Principios y procedimientos. La indemnización: concepto y naturaleza. La responsabilidad civil y penal de las autoridades y personal al servicio de las Administraciones Públicas. La potestad sancionadora. Regulación, naturaleza y principios rectores de la potestad sancionadora y del procedimiento sancionador." },
-                    { id: 13, text: "La expropiación forzosa. Actos administrativos previos de expropiación. Justiprecio. Jurado Provincial de Expropiación. Pago y ocupación de bienes. Inscripción registral." },
-                    { id: 14, text: "Los contratos del sector público (1): ámbito subjetivo y objetivo de aplicación de la legislación de contratación del sector público. Disposiciones comunes sobre la contratación del sector público. Los sujetos parte en el contrato. Tipología de contratos." },
-                    { id: 15, text: "Los contratos del sector público (II). Actuaciones administrativas. Preparación: consultas, expediente de contratación, pliegos. Adjudicación: normas generales y formas de adjudicación. Perfección, formalización y extinción de los contratos. Ejecución." },
-                    { id: 16, text: "El modelo de Función Pública del Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público. Características generales. El personal al servicio de las Administraciones Públicas: clasificación, derechos y deberes." },
-                    { id: 17, text: "Principios, políticas y medidas de igualdad de género y contra la violencia de género. Normativa vigente en el ordenamiento español y en el de la Unión Europea, con especial referencia al III Plan para la Igualdad de Género en la Administración General del Estado y en sus Organismos Autónomos vinculados o dependientes de ella. Políticas de igualdad de trato y no discriminación de las personas LGTBI. Políticas dirigidas a la atención a personas con discapacidad y a las personas en situación de dependencia." }
-                ]
-            },
+
+        const SHORT_NAMES = {
+            "Organización y Funcionamiento de la Administración Pública": "Administrativo",
+            "A.1) Aguas y Obras Hidráulicas": "Aguas",
+            "A.2) Puertos y Costas": "Costas",
+            "B.1) Carreteras": "Carreteras",
+            "B.2) Ferrocarriles": "Ferrocarriles",
+            "C.1) Transportes y Movilidad": "Transportes",
+            "C.2) Medio Ambiente": "MA"
+        };
+
+        const fullSyllabus = {
+            "Materias comunes": { "Organización y Funcionamiento de la Administración Pública": Array.from({length: 17}, (_, i) => ({id: i + 1, text: `Tema Común ${i+1}`}))},
             "Materias específicas": {
-                "A) Aguas y Obras Hidráulicas, Puertos y Costas": {
-                    "A.1) Aguas y Obras Hidráulicas": [
-                        { id: 1, text: "Marco normativo en materia de aguas en España. Elementos que regula el texto refundido de la Ley de Aguas. Organización de la Administración Hidráulica en España. Reglamento del Dominio Público Hidráulico. Dominio Público Hidráulico: aguas públicas y privadas. Utilización del Dominio Público Hidráulico: servidumbres, usos comunes y privativos, concesiones y autorizaciones, registro de aguas y régimen jurídico de las comunidades de usuarios. Reconocimiento de derechos anteriores a 1986. Protección del Dominio Público Hidráulico y de la calidad de las aguas continentales: zonas de servidumbre y de policía, apeo y deslinde; vertidos; reutilización. Régimen económico-financiero de la utilización del dominio público hidráulico. Infracciones y sanciones. Contrato de cesión de derechos al uso privativo de las aguas públicas. Seguridad de presas, embalses y balsas." },
-                        { id: 2, text: "Directiva 2000/60/CE Marco del Agua y directivas relacionadas. Objetivos medioambientales. Tipos de masas de agua, caracterización de masas de agua, presiones e impactos. Estado ecológico, potencial ecológico y designación de masas artificiales y muy modificadas. Real Decreto 817/2015, de 11 de septiembre, por el que se establecen los criterios de seguimiento y evaluación del estado de las aguas superficiales y las normas de calidad ambiental. Reglamento de planificación hidrológica. Marco normativo de los Planes hidrológicos. Características de la demarcación hidrográfica. Recuperación de costes. Programa de medidas." },
-                        { id: 3, text: "Avenidas e inundaciones. La Directiva 2007/60/CE de Evaluación y Gestión de los Riesgos de Inundación y Real Decreto 903/2010, de 9 de julio, de evaluación y gestión de riesgos de inundación. Planes de Gestión del Riesgo de Inundación. Sequías. Planes especiales de alerta y eventual sequía. Estudios relativos a inundaciones y sequías. Prevención y control. Sistema automático de información hidrológica." },
-                        { id: 4, text: "Cooperación internacional y participación pública. Principales convenios internacionales relacionados con la gestión de los recursos transfronterizos: Convenio de Albufeira, Convenio OSPAR, Convenio de Barcelona y Plan de Acción del Mediterráneo, Convenio RAMSAR, Acuerdo de Toulouse, Conferencia de Directores Iberoamericanos del Agua (CODIA), Convenio de Helsinki. Principales organismos internacionales relacionados con la gestión de los recursos hídricos." },
-                        { id: 5, text: "Legislación de aguas en relación a la calidad del agua. La Directiva 91/271/CEE. El Real-Decreto Ley 11/1995, de 28 de diciembre y el Real Decreto 509/1996, de 15 de marzo. Las zonas sensibles: La Resolución de 25 de mayo de 1998. Vertidos. Declaración de vertidos. Autorizaciones de vertido. Procedimientos de infracción abiertos por la Comisión Europea al Reino de España por incumplimiento de la Directiva 91/271/CEE." },
-                        { id: 6, text: "Las zonas húmedas. Inventario español de zonas húmedas. La delimitación de zonas húmedas. Mecanismos de protección y conservación de las zonas húmedas. Rehabilitación o restauración. Directivas de Hábitats y de Aves." },
-                        { id: 7, text: "El régimen económico financiero de la Ley de Aguas. Canon de ocupación o utilización. El canon de control de vertidos. Canon de regulación y tarifa de utilización del agua. Distribución entre los beneficiarios. Canon por utilización de las aguas continentales para la producción de energía eléctrica." },
-                        { id: 8, text: "Principios generales de la administración pública del agua. El Consejo Nacional del Agua. Los Organismos de cuenca: configuración y funciones. Atribuciones y cometidos. Órganos de gobierno, administración y cooperación. Comité de autoridades competentes de las Demarcaciones Hidrográficas intercomunitarias. Hacienda y patrimonio. Régimen jurídico de las comunidades de usuarios. Derechos y obligaciones. Reparto y distribución del agua." },
-                        { id: 9, text: "Objetivos generales de la planificación hidrológica. La Ley de Aguas y sus Reglamentos en relación con la planificación hidrológica. Instrucción de planificación hidrológica. El proceso de planificación hidrológico, elaboración y contenido de los planes hidrológicos de demarcación. Programas de medidas de los planes hidrológicos. Criterios para la selección de las medidas. Financiación. Coordinación con otros Planes y Programas." },
-                        { id: 10, text: "Evaluación de recursos existentes: recursos en régimen natural, recursos disponibles y recursos libres. Las demandas. La demanda medioambiental. Balances hidráulicos. Los sistemas de explotación de recursos: Modelos de optimización y simulación de recursos. Rasgos del balance hidráulico nacional." },
-                        { id: 11, text: "Hidrología. Ciclo hidrológico Red Integrada de Estaciones de Aforos (SAIH-ROEA), el Sistema Automático de Información de Calidad de las Aguas (SAICA) y las redes de control de las aguas subterráneas. Los SIG y su aplicación a la gestión de los recursos hidráulicos. Orden TED/1191/2024, de 24 de octubre, por la que se regulan los sistemas electrónicos de control de los volúmenes de agua utilizados por los aprovechamientos de agua, los retornos y los vertidos al dominio público hidráulico." },
-                        { id: 12, text: "Regulación. Garantía de la regulación. Criterios de garantía. Modelos matemáticos de regulación. Leyes de distribución de aportaciones." },
-                        { id: 13, text: "Hidrología de las aguas subterráneas. Utilización y aprovechamiento de las aguas subterráneas: régimen de explotación. Masas de agua subterráneas en riesgo de no alcanzar el buen estado cuantitativo o químico. Técnicas de investigación hidrogeológica y evaluación de recursos." },
-                        { id: 14, text: "Usos de agua en abastecimiento a poblaciones. Prognosis de la demanda de abastecimiento. Dotaciones. Pérdidas en la red de distribución. Captaciones de aguas superficiales y subterráneas: tipos. Perímetros de protección de captaciones." },
-                        { id: 15, text: "Técnicas especiales e indirectas para incrementar la eficacia de los recursos del agua. Actuaciones sobre la oferta de recursos. Desalación de agua del mar y salobre; conceptos y requisitos. Reutilización de aguas residuales. Real Decreto 1085/2024, de 22 de octubre, por el que se aprueba el Reglamento de reutilización del agua y se modifican diversos reales decretos que regulan la gestión del agua. Prevención de evaporación de embalses. Actuaciones sobre la demanda: soluciones legales, técnicas y de gestión." },
-                        { id: 16, text: "Condiciones de potabilidad del agua. Técnicas de potabilización, desalación y técnicas de tratamiento de aguas industriales. Pretratamientos y postratamientos necesarios. Obras de abastecimiento y saneamiento en general." },
-                        { id: 17, text: "Depuración de aguas residuales. Control e índices de contaminación. Autodepuración en cursos naturales. Tecnología de la depuración físico-química: Pretratamiento y tratamientos primarios. Tecnología de eliminación biológica de nutrientes: Tratamientos secundarios. Tecnología del tratamiento terciario: filtración y esterilización. Tratamientos avanzados de eliminación de nutrientes: fósforo y nitrógeno." },
-                        { id: 18, text: "Problemas de contaminación en relación con los efluentes industriales. Reutilización de efluentes industriales. Evaluación de la carga contaminante por sector industrial. Categorización del sector industrial. Características de los efluentes. Selección de parámetros contaminantes a efectos de establecimiento de niveles de emisión. Tecnologías disponibles para reducir la contaminación de efluentes: medidas internas y tratamiento de efluentes." },
-                        { id: 19, text: "Uso del agua para regadío. El agua en la fisiología vegetal. Técnicas de aplicación del agua al terreno y obras de riego en general. Dotaciones, garantía y calidad del agua. Reutilización de caudales de riego. Los fertilizantes y los productos fitosanitarios como agentes contaminantes potenciales. La contaminación difusa. Problemas de salinidad. Gestión sostenible de regadíos. Plan Nacional de Regadíos." },
-                        { id: 20, text: "Energía. Aprovechamientos hidráulicos convencionales. Centrales de acumulación o de bombeo y de usos múltiples. Obras civiles de carácter hidroeléctrico. Tecnologías energéticas, convencionales y renovables. Usos: generación eléctrica, aprovechamiento térmico y transporte." },
-                        { id: 21, text: "Otros usos del agua. El agua en la industria. Evaluación de necesidades. Refrigeración de las centrales térmicas de combustión fósil y nuclear. Calor a disipar. Caudal de refrigeración y de dilución. Navegación fluvial. Usos recreativos." },
-                        { id: 22, text: "Las obras hidráulicas. Concepto y naturaleza jurídica de las obras hidráulicas: competencias para la ejecución, gestión y explotación de las obras hidráulicas públicas. Obras hidráulicas de interés general, declaración de obras hidráulicas de interés general, prerrogativas de las obras hidráulicas de interés general. Coordinación de competencias concurrentes, declaración de utilidad pública y necesidad de ocupación. Régimen jurídico de las Sociedades Estatales de Aguas. Contrato de concesión de obras hidráulicas." },
-                        { id: 23, text: "Presas: Generalidades. Avenidas y otros criterios de proyecto. Criterios generales de pre dimensionamiento. Clasificación tipológica de las presas." },
-                        { id: 24, text: "Presas II: Presas de hormigón y de materiales sueltos: tipologías, elementos funcionales y materiales. Construcción de presas. Órganos de desagüe de la presa." },
-                        { id: 25, text: "Normativa de seguridad de presas, embalses y balsas. Gestión de seguridad de las presas. Inventario de presas y embalses. Planes de emergencia y revisiones de seguridad de las presas." },
-                        { id: 26, text: "Biodiversidad, conservación y restauración de ecosistemas fluviales y acuáticos. Indicadores. Caudales ecológicos. Eutrofización de las masas de agua. Infraestructuras verdes y soluciones basadas en la naturaleza en el medio hídrico." },
-                        { id: 27, text: "Canales y conducciones en carga. Revestimientos, juntas y obras singulares. Redes de distribución de agua potable. Redes de saneamiento. Emisarios submarinos. Depósitos. Construcción, explotación y conservación." },
-                        { id: 28, text: "Estaciones de bombeo. Conceptos básicos. Tipos de bombas: características, selección, transitorios. Protección y tipos de estaciones. Estaciones de sobrepresión. Elementos constructivos. Ingeniería de impulsiones: Trazado, tipos y cálculo." }
-                    ],
-                    "A.2) Puertos y Costas": [
-                        { id: 1, text: "Evolución de la Normativa de Costas. Leyes de Puertos de 1880 y 1928. Ley sobre costas de 1969. La Ley 22/1988, de 28 de julio, de Costas y la Ley 2/2013, de 29 de mayo, de protección y uso sostenible del litoral y de modificación de la Ley 22/1988, de Costas. Real Decreto 876/2014, de 10 de octubre, por el que se aprueba el Reglamento General de Costas." },
-                        { id: 2, text: "Los bienes de dominio público marítimo-terrestre. Clasificación y definiciones. Prevalencia del dominio público marítimo-terrestre. Potestades de la Administración. El deslinde del dominio público marítimo-terrestre. Procedimiento. Estudios para la justificación del deslinde. Proyecto de deslinde. Efectos de la aprobación del deslinde. Inmatriculación de fincas colindantes con el dominio público marítimo-terrestre. Afectación y desafectación." },
-                        { id: 3, text: "Limitaciones a la propiedad sobre los terrenos contiguos a la ribera del mar por razones de protección del dominio público marítimo-terrestre. Servidumbres de protección, tránsito y acceso al mar. Anchura y usos permitidos. La disposición transitoria tercera de la Ley 22/1988. Otras limitaciones a la propiedad. Zona de influencia." },
-                        { id: 4, text: "Utilización del dominio público marítimo-terrestre. Disposiciones Generales. Proyectos y obras en el dominio público marítimo-terrestre. Estudios complementarios. Reservas, adscripciones, autorizaciones y concesiones." },
-                        { id: 5, text: "El Régimen económico-financiero de la utilización del dominio público marítimo-terrestre. Cánones. Fianzas. Rescates. El Régimen sancionador en el dominio público marítimo-terrestre. Infracciones, sanciones y responsabilidad. Procedimientos y medios de ejecución." },
-                        { id: 6, text: "Competencias de la Administración General del Estado según la Normativa de costas. Decretos de transferencias a las Comunidades Autónomas. Obras de interés general. Informes preceptivos y vinculantes. Competencias de las Comunidades Autónomas. Competencias Municipales." },
-                        { id: 7, text: "Régimen Transitorio de la Ley 22/1988 y de la Ley 2/2013. La Disposición Transitoria Primera de la Ley 22/1988 y su desarrollo reglamentario. Los Fundamentos Jurídicos de la Sentencia del Tribunal Constitucional en relación con ella." },
-                        { id: 8, text: "Las Autorizaciones en servidumbre de protección. Competencia. La declaración responsable. La disposición transitoria cuarta de la Ley 22/1988 y su desarrollo reglamentario. Autorización de nuevos usos y construcciones conforme a los instrumentos de ordenación: fachadas marítimas." },
-                        { id: 9, text: "Biodiversidad y conservación de ecosistemas marinos y costeros. Las zonas húmedas y las zonas dunares costeras: definición y evolución en la normativa de costas. Las zonas de fanerógamas marinas. Importancia y tratamiento." },
-                        { id: 10, text: "La gestión integral del litoral (GIZC). La GIZC como herramienta de la compatibilidad de usos y mecanismo de interacción entre Administraciones. La ordenación del espacio marítimo (OEM)." },
-                        { id: 11, text: "Las distintas teorías de ondas. La propagación del oleaje. Los fenómenos de refracción, difracción, transmisión y reflexión del oleaje." },
-                        { id: 12, text: "El transporte sólido litoral. Distintas formulaciones. Evolución de la línea de costa. Modelos. El perfil de playa. Distintas formulaciones teóricas. Variaciones del perfil. La profundidad del cierre." },
-                        { id: 13, text: "Los efectos del cambio climático sobre las dinámicas oceánicas, el litoral, los ecosistemas y los recursos marinos. Factores de degradación del litoral. Adaptación de la costa a los efectos del cambio climático. Evaluación del riesgo de inundación en zonas costeras. Efectos del cambio climático sobre la inundación costera. Las infraestructuras costeras ante los impactos del cambio climático: análisis y diseño de medidas de adaptación. Huella de carbono de los proyectos en análisis de ciclo de vida. Principales medidas en infraestructuras para contribuir a la reducción de emisiones de gases de efecto invernadero." },
-                        { id: 14, text: "Las estrategias marinas en España. El buen estado ambiental del medio marino. Programas de seguimiento y programas de medidas." },
-                        { id: 15, text: "La erosión en los distintos tipos de playas. Causas de la erosión. Efectos de las infraestructuras litorales sobre las playas. Medidas correctoras y actuaciones. Efectos del cambio climático sobre la erosión costera." },
-                        { id: 16, text: "Proyecto de playas artificiales. Formas de playa en planta. La espiral logarítmica y las soluciones parabólicas. La granulometría de la arena como condicionante del diseño. Aspectos ambientales de la regeneración de playas. Efectos sobre las comunidades pelágicas y bentónicas." },
-                        { id: 17, text: "Las fuentes naturales de sedimentos. Las zonas de préstamo para alimentación artificial. Aspectos ambientales de la extracción de materiales del fondo marino. Directrices para la caracterización del material dragado y su reubicación en aguas del dominio público marítimo-terrestre. Métodos de prospección submarina." },
-                        { id: 18, text: "El puerto: Aspectos generales y físicos. Objetivos y funciones. El sistema portuario español. Real Decreto Legislativo 2/2011, de 5 de septiembre, por el que se aprueba el texto refundido de la Ley de Puertos del Estado y de la Marina Mercante. Financiación de puertos. Modelos de gestión. Planificación portuaria. Fundamentos y planes. Previsiones de tráfico. Estudio de capacidad. Ordenación de terminales." },
-                        { id: 19, text: "Obras de abrigo y portuarias (1). Definición y caracterización de la situación y factores de proyecto. Carácter de las obras. Estados límite últimos. Períodos de retorno. Bases de datos. Clima marítimo: Caracterización estadística del oleaje. Análisis estadístico del oleaje en aguas profundas y poco profundas: Régimen extremal y régimen medio." },
-                        { id: 20, text: "Obras de abrigo y portuarias (II). Diseños y dimensionamiento. Diseño en planta. Obras exteriores: diques verticales, diques en talud, diques rebasables. Obras interiores: muelles, dársenas, amarres, fondeo. Superficies portuarias. Profundidades accesorias, maniobrabilidad de buques." }
-                    ]
-                },
-                "B) Infraestructuras de Transporte": {
-                    "B.1) Carreteras": [
-                        { id: 1, text: "La legislación de carreteras. Ley 37/2015, de 29 de septiembre, de carreteras. Reglamento General de Carreteras. Funciones y estructura de la Dirección General de Carreteras. Catálogo de la Red de Carreteras del Estado." },
-                        { id: 2, text: "La planificación estratégica de carreteras del Estado y los programas de carreteras. Evaluación coste-beneficio, análisis multicriterio y viabilidad financiera. Estudios informativos y anteproyectos. Nota de Servicio 3/2014 sobre prescripciones y recomendaciones técnicas relativas a los contenidos mínimos a incluir en los estudios de rentabilidad de los estudios informativos o anteproyectos. Criterios aplicables a carreteras de la Orden FOM/3317/2010 por la que se aprueba la instrucción sobre las medidas específicas para la mejora de la eficiencia en la ejecución de las obras públicas de infraestructuras ferroviarias, carreteras y aeropuertos del Ministerio de Transportes, Movilidad y Agenda Urbana." },
-                        { id: 3, text: "Estudios de carreteras (1): cartografía y topografía. Estudios geológicos, geotécnicos y de procedencia de materiales. Estudios climatológicos e hidrológicos. Normativa sísmica." },
-                        { id: 4, text: "Estudios de carreteras (II): estudios de tráfico. Toma de datos: sistemas convencionales y nuevas tecnologías. Modelización del tráfico. Prognosis de tráfico. Plan de aforos. Mapas de tráfico del Ministerio de Transportes, Movilidad y Agenda Urbana." },
-                        { id: 5, text: "Trazado de carreteras: norma 3.1-IC de trazado. Trazado en planta. Trazado en alzado. Sección transversal. Nudos, enlaces e intersecciones. Orden Circular 1/2021 sobre recomendaciones para el diseño de carreteras 2+1 y carriles adicionales de adelantamiento." },
-                        { id: 6, text: "Drenaje superficial y subterráneo. Norma 5.2-IC de drenaje superficial. Orden Circular 17/2003 de recomendaciones para el proyecto y construcción del drenaje subterráneo en obras de carretera." },
-                        { id: 7, text: "Movimiento de tierras: clasificación y características de los suelos según el PG-3. Construcción de terraplenes, pedraplenes y rellenos todo uno. Compactación. Ejecución de excavaciones: estabilidad de taludes. Protección de la infraestructura frente a la caída de materiales. Técnicas de mejora del terreno. Cimentaciones de estructuras: tipologías y métodos constructivos." },
-                        { id: 8, text: "Firmes (1): conceptos generales. La explanada: capacidad de soporte y materiales. Materiales de los firmes: zahorras, suelocemento, gravacemento y mezclas bituminosas. Clasificaciones de las mezclas bituminosas. Pavimentos de hormigón. Norma 6.1-IC de secciones de firme." },
-                        { id: 9, text: "Firmes (II): características superficiales y estructurales de los firmes. Auscultación de firmes. Estrategias de conservación de los firmes. Rehabilitación de firmes: norma 6.3-IC. Orden Circular 40/2017: reciclado in situ con emulsión de capas bituminosas, reciclado in situ con cemento de capas de firme, reciclado en caliente y semicaliente en central de capas bituminosas (RAP). Transformación de firmes rígidos degradados en firmes mixtos. Consideraciones ambientales: carencia de materiales y huella energética." },
-                        { id: 10, text: "Obras de paso: tipologías y materiales. Métodos constructivos y medios auxiliares. Conservación e inspección de obras de paso. Patologías de degradación. Rehabilitación de las obras de paso. Normativa aplicable. Aspectos principales del Real Decreto 470/2021 por el que se aprueba el Código Estructural. Monitorización en tiempo real de estructuras y taludes." },
-                        { id: 11, text: "Túneles en carreteras (1): métodos constructivos. Maquinaria y medios auxiliares. Sostenimiento. Revestimiento. Equipamiento e instalaciones en los túneles. Real Decreto 635/2006 sobre requisitos mínimos de seguridad en los túneles de carreteras del Estado." },
-                        { id: 12, text: "Túneles de carreteras (II): mantenimiento de túneles de carreteras. Plan de adecuación de túneles al Real Decreto 635/2006. Metodología de análisis de riesgo en túneles de la RCE. Orden Circular 27/2008 sobre metodología de inspección de túneles. Orden Circular 33/2013 sobre el manual de explotación de los túneles de la RCE." },
-                        { id: 13, text: "Señalización: norma 8.1-IC de señalización vertical. Norma 8.2- IC de marcas viales. Sistema de señalización turística homologada en carreteras estatales (SISTHO). Balizamiento. Sistemas de contención: Orden Circular 35/2014 sobre criterios de aplicación de sistemas de contención de vehículos." },
-                        { id: 14, text: "Pliego de prescripciones técnicas generales para obras de carreteras y puentes (PG-3). El Reglamento UE 305/2011 de productos de la construcción. El marcado CE. Los Eurocódigos." },
-                        { id: 15, text: "Proyecto de trazado. Trámite de información pública. Proyecto de construcción. Documentos del proyecto de construcción: memoria y anejos, pliego de prescripciones técnicas particulares, mediciones y presupuestos. Dirección del proyecto. Supervisión y aprobación del proyecto. Principios de la metodología BIM aplicados a los proyectos de carreteras." },
-                        { id: 16, text: "Construcción de carreteras (1): dirección de obras de carreteras. Plan de obra. Organización de las obras. Aseguramiento de la calidad. Plan de seguridad y salud. Plan de vigilancia medioambiental. Servicios afectados." },
-                        { id: 17, text: "Construcción de carreteras (II): incidencias en las obras. Certificaciones de obras y relaciones valoradas. La certificación final y liquidación. Garantía de las obras y vicios ocultos." },
-                        { id: 18, text: "La gestión de la Red de Carreteras del Estado: sistemas de gestión directos e indirectos. Concesiones de carreteras del Estado: autopistas de peaje y autovías en régimen de concesión. Actuaciones preparatorias de los contratos de concesión: el estudio de viabilidad. Inspección de concesiones. La Delegación del Gobierno en las sociedades concesionarias de autopistas nacionales de peaje. La gestión a través de la Sociedad Estatal de Infraestructuras del Transporte Terrestre, S.M.E., SA." },
-                        { id: 19, text: "Conservación de carreteras (1): contratos de conservación y explotación empleados en la Red de Carreteras del Estado. Vialidad invernal. Inspecciones de elementos y sistemas de gestión. Nota de Servicio 2/2021: seguridad en las actividades de conservación. Nota de Servicio 1/2022: recomendaciones para mejorar la sostenibilidad en los centros de conservación y explotación." },
-                        { id: 20, text: "Conservación de carreteras (II): proyectos y obras de conservación extraordinaria. Normativa específica de conservación y particularidades de la normativa genérica aplicables. Nota de Servicio 1/2019. Obras de emergencia. Orden Circular 36/2015, sobre criterios a aplicar en la iluminación de carreteras a cielo abierto y túneles." },
-                        { id: 21, text: "Explotación de carreteras (1): protección del dominio público viario y limitaciones a la propiedad: zonas de dominio público, servidumbre y afección. Zona de limitación a la edificabilidad. Publicidad. Procedimiento de autorizaciones. Informes vinculantes a instrumentos de planeamiento urbanístico y ordenación territorial. Aplicación del Real Decreto Legislativo 7/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley de Suelo y Rehabilitación Urbana, en materia de explotación de carreteras. Régimen sancionador." },
-                        { id: 22, text: "Explotación de carreteras (II): transportes especiales. Nota de Servicio 1/2018. Áreas de servicio y estaciones de servicio. Aparcamientos seguros. Accesos a la Red de Carreteras del Estado: normativa aplicable. Travesías y tramos urbanos. Estudios de delimitación de tramos urbanos. Cesión de tramos. Orden TMA/1160/2021, de cesión de tramos a Ayuntamientos. Gestión y seguimiento en materia de ruido: aplicación de la Ley 37/2003 de ruido a la Red de Carreteras del Estado. Mapas de ruido y planes de acción." },
-                        { id: 23, text: "Innovación aplicada a la movilidad por carretera: sistemas inteligentes de transporte cooperativos (C-ITS): experiencias piloto. Vehículo autónomo y conectado. Carreteras inteligentes. Tecnologías aplicables para la tarificación de las carreteras. Digitalización de la Red de Carreteras del Estado." },
-                        { id: 24, text: "Seguridad vial: indicadores de seguridad vial. Últimas cifras y evolución de los principales indicadores. Aspectos de la infraestructura que más incidencia tienen sobre la seguridad vial. Real Decreto 345/2011 sobre gestión de la seguridad de las infraestructuras viarias en la Red de Carreteras del Estado y su desarrollo en la Orden Circular 30/2012 y Orden Circular 39/2017." }
-                    ],
-                    "B.2) Ferrocarriles": [
-                        { id: 1, text: "La infraestructura ferroviaria dentro de la Ley 38/2015, de 29 de septiembre, del Sector Ferroviario, y el Real Decreto 2387/2004, de 30 de diciembre, por el que se aprueba el Reglamento del Sector Ferroviario (I). La Red Ferroviaria de Interés General. La planificación, proyecto y construcción de sus infraestructuras. La Estrategia Indicativa. Estudios y proyectos: tipos, contenido y tramitación. La construcción y puesta en servicio. Incidencia sobre el planeamiento urbanístico." },
-                        { id: 2, text: "La infraestructura ferroviaria dentro de la Ley 38/2015, de 29 de septiembre, del Sector Ferroviario, y el Real Decreto 2387/2004, de 30 de diciembre, por el que se aprueba el Reglamento del Sector Ferroviario (II). Los administradores de infraestructuras ferroviarias. Funciones, naturaleza, recursos, y patrimonio. Declaración de Red. Adjudicación de capacidad. Prestación de servicios." },
-                        { id: 3, text: "La infraestructura ferroviaria dentro de la Ley 38/2015, de 29 de septiembre, del Sector Ferroviario, y el Real Decreto 2387/2004, de 30 de diciembre, por el que se aprueba el Reglamento del Sector Ferroviario (III). Zonas de servicio. Limitaciones a la propiedad. Infraestructuras ferroviarias en puertos y aeropuertos. Infraestructuras ferroviarias privadas." },
-                        { id: 4, text: "El transporte ferroviario dentro de la Ley 38/2015, de 29 de septiembre, del Sector Ferroviario, y el Real Decreto 2387/2004, de 30 de diciembre, por el que se aprueba el Reglamento del Sector Ferroviario. Actores del sistema ferroviario nacional y europeo. Administradores de infraestructura y empresas ferroviarias. Concepto de empresa ferroviaria, obtención de licencias de empresas ferroviarias. Los cánones y tarifas." },
-                        { id: 5, text: "Infraestructura ferroviaria: trazado y geometría. Definición de los parámetros básicos en planta y alzado. Valores recomendados y límite. Secciones transversales. Gálibos. Entre-eje. Criterios en infraestructuras ferroviarias de la Orden FOM/3317/2010, de 17 de diciembre, por la que se aprueba la Instrucción sobre las medidas específicas para la mejora de la eficiencia en la ejecución de las obras públicas de infraestructuras ferroviarias, carreteras y aeropuertos del Ministerio de Fomento." },
-                        { id: 6, text: "Las capas de asiento ferroviario. Plataforma: capas constitutivas, características de los materiales. El balasto: funciones y características de los materiales. Dimensionamiento." },
-                        { id: 7, text: "La vía y sus elementos constitutivos. Tipología y materiales. Aparatos de vía. La vía en placa. El ancho de vía en España. Problemática de la coexistencia de varios anchos y alternativas técnicas para su solución. Cambiadores de ancho. La vía de tres hilos, principales elementos y su problemática." },
-                        { id: 8, text: "Túneles de ferrocarril. Normativa técnica, secciones, métodos constructivos, efectos aerodinámicos y seguridad. Estructuras ferroviarias: Instrucción sobre las acciones a considerar en el proyecto de puentes de ferrocarril (IAPF). Singularidad de los efectos dinámicos." },
-                        { id: 9, text: "Conceptos básicos de la ejecución de obras ferroviarias. Procedimientos constructivos, condicionantes y maquinaria. El mantenimiento de la red. Operaciones de auscultación de la vía en servicio. Mantenimiento preventivo y correctivo. Plan de contingencias. Renovaciones y otras operaciones, procedimientos constructivos. Inspecciones técnicas en los puentes de ferrocarril." },
-                        { id: 10, text: "Pasos a nivel. Marco legal. Definición y clasificación. Tipología de protecciones. Alternativas de supresión. Procedimientos constructivos singulares. Otros cruces a nivel y cruces entre andenes." },
-                        { id: 11, text: "Instalaciones de servicio ferroviarias. Tipologías: viajeros, mercancías y técnicas. Necesidades funcionales ferroviarias. Condicionantes de diseño y dimensionamiento. Andenes. Accesibilidad. Autopistas ferroviarias." },
-                        { id: 12, text: "Electrificación ferroviaria. Sistemas de sustentación. Tipologías de catenarias. Tensiones de funcionamiento. Otros sistemas de alimentación. Normativa de aplicación." },
-                        { id: 13, text: "Señalización e instalaciones de seguridad ferroviaria. Conceptos generales. Sistemas tradicionales clase B y nuevas tendencias: el ERTMS. Normativa de aplicación Explotación ferroviaria: estudios de capacidad y de demanda y sistemas de gestión de capacidad." },
-                        { id: 14, text: "Las infraestructuras ferroviarias en el entorno urbano. Problemática. Alternativas para su integración. Sistemas de financiación en colaboración con otras administraciones." },
-                        { id: 15, text: "La seguridad ferroviaria en la Directiva 2016/798/UE de seguridad y en el Real Decreto 929/2020, de 27 de octubre de seguridad operacional e interoperabilidad ferroviarias (I). Desarrollo y gestión de la seguridad ferroviaria. Funciones de los agentes del sistema ferroviario. Objetivos comunes de seguridad. Métodos comunes de seguridad. Sistemas de gestión de la seguridad." },
-                        { id: 16, text: "La seguridad ferroviaria en la Directiva 2016/798/UE de seguridad y en el Real Decreto 929/2020, de 27 de octubre de seguridad operacional e interoperabilidad ferroviarias (II). Certificados y autorizaciones de seguridad. Evaluación y supervisión. La Agencia Estatal de Seguridad Ferroviaria. La Autoridad Administrativa Independiente para la Investigación Técnica de Accidentes e Incidentes ferroviarios, marítimos y de aviación civil. La Agencia Ferroviaria de la Unión Europea." },
-                        { id: 17, text: "La interoperabilidad ferroviaria en la Directiva 2016/797/UE de interoperabilidad y en el Real Decreto 929/2020, de 27 de octubre de seguridad operacional e interoperabilidad ferroviarias (I). Especificaciones técnicas de interoperabilidad (ETIS) y normas nacionales (Instrucciones ferroviarias). Componentes de interoperabilidad. Subsistemas estructurales y funcionales. Organismos notificados." },
-                        { id: 18, text: "La interoperabilidad ferroviaria en la Directiva 2016/797/UE de interoperabilidad y en el Real Decreto 929/2020, de 27 de octubre de seguridad operacional e interoperabilidad ferroviarias (II). Entrada en servicio de subsistemas estructurales fijos y de puesta en servicio de líneas, tramos, estaciones y terminales." },
-                        { id: 19, text: "Personal ferroviario. Conceptos generales de la Orden FOM/2872/2010, de 5 de noviembre: categorías de personal con actividades relacionadas con la seguridad, licencias y certificados de maquinistas, centros de formación y centros de reconocimiento médico. Conceptos generales de la ETI OPE en relación con el personal ferroviario." },
-                        { id: 20, text: "Material rodante ferroviario. Entrada en servicio de vehículos. Mantenimiento de vehículos y organismos responsables: entidades encargadas de mantenimiento y centros de mantenimiento. Normativa básica." },
-                        { id: 21, text: "Conceptos básicos de normativa de circulación ferroviaria: la Especificación Técnica de Interoperabilidad de Explotación y Gestión del tráfico (ETI OPE) y el Reglamento de Circulación Ferroviaria (Real Decreto 664/2015, de 17 de julio)." },
-                        { id: 22, text: "La gestión de la seguridad operacional en los cambios en el sistema ferroviario: El Reglamento UE 402/2013 relativo a la adopción de un método común de seguridad para la evaluación y valoración del riesgo. Concepto de cambio significativo. Fases del proceso de gestión del riesgo: definición del sistema, identificación de amenazas, análisis del riesgo, registro de amenazas, funciones del evaluador independiente, informe del evaluador independiente. Declaración del proponente. Integración Segura." }
-                    ]
-                },
-                "C) Transportes, Movilidad y Medio Ambiente": { 
-                    "C.1) Transportes y Movilidad": [
-                        { id: 1, text: "Transporte y movilidad en España (I). Movilidad interior y movilidad exterior de viajeros y mercancías. Repartos modales, principales magnitudes y evolución. Comparación con otros países de la Unión Europea. Relación entre movilidad y actividad económica. El transporte y la industria del turismo." },
-                        { id: 2, text: "Transporte y movilidad en España (II). El transporte y la logística como sector empresarial. Participación en la economía nacional, empresas y participación en el empleo. Comparativa con otros países de la Unión Europea. Gasto de los ciudadanos en transporte. Gasto de los diferentes sectores empresariales en transporte de mercancías y logística. El Observatorio del Transporte y la Logística en España." },
-                        { id: 3, text: "Organización del sistema de transporte en España. Función normativa. Inspección, supervisión y otorgamiento de permisos. Gestores de infraestructuras. Operadores. Prestadores de servicios auxiliares. Comisiones de estudio de accidentes. Regulador del mercado." },
-                        { id: 4, text: "Conceptos básicos de la legislación en el transporte terrestre. Ley 16/1987 de Ordenación de los Transportes Terrestres (modificada por la Ley 9/2013) y su Reglamento." },
-                        { id: 5, text: "Evolución y principios básicos de la legislación del transporte ferroviario en Europa. Los paquetes ferroviarios y la Agencia Ferroviaria Europea. El cuarto paquete ferroviario." },
-                        { id: 6, text: "Mercados de transporte liberalizados y mercados en monopolio. Las obligaciones de servicio público en los servicios de transporte de competencia estatal. Normativa europea y su aplicación en España. El Reglamento (CE) N.º 1370/2007 del Parlamento europeo y del Consejo de 23 de octubre de 2007 sobre los servicios públicos de transporte de viajeros por ferrocarril y carretera. La liberalización del transporte ferroviario: modelos de acceso al mercado y situación actual en España. El modelo concesional en los servicios de transporte de viajeros en autobús." },
-                        { id: 7, text: "Subvenciones al transporte. Conceptos básicos. Base de datos nacional de subvenciones. Ayudas de Estado." },
-                        { id: 8, text: "La intermodalidad en el transporte de viajeros y mercancías. Principales objetivos. Principales magnitudes. Evolución. Corredores y nodos intermodales. Cadenas logísticas intermodales." },
-                        { id: 9, text: "El transporte internacional. Principales acuerdos internacionales. Acuerdos internacionales para el transporte de mercancías peligrosas. Organismos y asociaciones internacionales: OACI, OMI. Principios y normativa de la Unión Europea en materia de política de transportes. Europa en Movimiento (Europe on the Move). La Estrategia Europea de Movilidad Sostenible e Inteligente de 2020." },
-                        { id: 10, text: "Principales políticas nacionales en transporte y movilidad. Principios básicos de la Estrategia Española de Movilidad Segura, Sostenible y Conectada 2030. Estrategia Estatal por la Bicicleta. Plan de Recuperación, Transformación y Resiliencia de España (PRTR). Componentes 1 y 6." },
-                        { id: 11, text: "La movilidad urbana y metropolitana, de viajeros y de mercancías. Principales actores. Movilidad sostenible en ámbito urbano y metropolitano. El transporte público en la movilidad de viajeros. Organización y gestión. Las autoridades de transporte metropolitano. Competencias de la Administración General del Estado. La Agenda Urbana Española. Tendencias. Retos. Movilidad rural." },
-                        { id: 12, text: "El coste del transporte. Costes desde el punto de vista económico-privado (costes internos). Estructura de costes en los distintos modos de transporte, en viajeros y mercancías. Costes desde el punto de vista económico-social (costes externos). Internalización de costes externos. Fiscalidad verde." },
-                        { id: 13, text: "La investigación, desarrollo e innovación en transportes y movilidad. Los Programas Marco de la Unión Europea. Horizonte Europa 2021-2027: pilares y programas horizontales, elementos principales, asociaciones. El sistema español de investigación, desarrollo e innovación en transportes y movilidad." },
-                        { id: 14, text: "Nuevas tecnologías y desarrollos en el transporte y la movilidad (1). Digitalización y nuevos servicios y formas de movilidad. Datos abiertos. Puntos de Acceso Nacionales. La Movilidad como Servicio (MaaS). Big Data. Vehículos autónomos. Movilidad conectada. Automatización de la cadena logística." },
-                        { id: 15, text: "Nuevas tecnologías y desarrollos en el transporte y la movilidad (II). Los Sistemas Inteligentes de Transporte (ITS): aplicación de la tecnología a la gestión del sistema de infraestructuras y transporte. Los sistemas de navegación por satélite (GNSS) Galileo y EGNOS y su aplicación en transporte y movilidad." },
-                        { id: 16, text: "Planificación del sistema de infraestructuras y transporte de ámbito estatal. Historia reciente de la planificación estratégica de infraestructuras y transporte en España. Planificación estratégica en vigor. La planificación sectorial por modo de transporte. La participación pública en el proceso de planificación. Nuevo enfoque en las políticas de inversión." },
-                        { id: 17, text: "Demanda de transporte y análisis coste-beneficio en la planificación del sistema de infraestructuras y transporte. Modelos de demanda de transporte. Empleo de la tecnología Big Data en la planificación. Encuestas y billetaje en la cuantificación y cualificación de la movilidad. Evaluación coste-beneficio (ACB) en el ámbito del transporte." },
-                        { id: 18, text: "Infraestructuras de transporte, inversión y financiación. Dotación de infraestructuras de transporte y comparativa con otros países de la Unión Europea. Volumen de inversión en infraestructuras de transporte. La financiación de las infraestructuras: financiación presupuestaria y extrapresupuestaria. Participación del sector privado en la financiación de infraestructuras. Tarificación por uso de las infraestructuras." },
-                        { id: 19, text: "La Red Transeuropea de Transporte (RTE-T). Reglamentos CE de desarrollo y financiación de la RTE-T. Los corredores Europeos de Transporte. La RTE-T en España. Financiación europea de infraestructuras. El Banco Europeo de Inversiones. Fondo Europeo de Inversiones Estratégicas (EFSI). Mecanismo Conectar Europa. Fondo Europeo de Desarrollo Regional. Next Generation EU." },
-                        { id: 20, text: "La planificación del sistema de infraestructuras y transporte y su integración con las políticas del territorio y ambientales. Efectos ambientales de las infraestructuras de transporte. Gestión y mantenimiento sostenible de las infraestructuras de transporte. Resiliencia de las infraestructuras de transporte frente a los fenómenos meteorológicos extremos y su adaptación al cambio climático durante su ciclo de vida: análisis y diseño de medidas de adaptación. Huella de carbono de los proyectos en análisis de ciclo de vida. Principales medidas en infraestructuras para contribuir a la reducción de emisiones de gases de efecto invernadero." },
-                        { id: 21, text: "Sostenibilidad ambiental del transporte. Consumo energético y eficiencia energética. Emisiones a la atmósfera de gases de efecto invernadero y otros contaminantes: papel del transporte en las causas del cambio climático y del deterioro de la calidad del aire. Fuentes de energía alternativas y tecnologías innovadoras de tracción para una movilidad de bajas emisiones. Transporte y políticas en materia de energía y clima: categorización y ejemplos. Marco normativo europeo y nacional sobre infraestructuras para combustibles alternativos." }
-                    ],
-                    "C.2) Medio Ambiente": [
-                        { id: 1, text: "Desarrollo sostenible. Antecedentes, conceptos y estrategias internacionales, europeas y nacionales. La Agenda 2030 para el Desarrollo Sostenible y los Objetivos de desarrollo sostenible (ODS). Programa de las Naciones Unidas para el Medio Ambiente (PNUMA)." },
-                        { id: 2, text: "La I+D+i ambiental. Estrategias y Planes Europeos y Nacionales. Ley 14/2011, de 1 de junio, de la Ciencia, la Tecnología y la Innovación. La Agencia Estatal de Innovación. Competitividad, innovación y sostenibilidad. Medidas de ahorro y eficiencia energética, situación actual y nuevas tendencias." },
-                        { id: 3, text: "Política de la Unión Europea y nacional en materia de residuos. Directiva marco de residuos (Directiva 98/2008/CE) y Directiva (UE) 2018/851. Ley 7/2022, de 8 de abril, de residuos y suelos contaminados para una economía circular. Principios. La planificación en materia de residuos: el Plan Estatal Marco de Gestión de Residuos 2016-2022, el Plan Estatal de Inspección en materia de Traslados Transfronterizos de Residuos 2021-2026 (PEITTR) y el Plan Nacional Integral de Residuos de España (PNIR). Consejo de Economía Circular." },
-                        { id: 4, text: "Normativa nacional en materia de contaminación del suelo. Real Decreto 9/2005, de 14 de enero, por el que se establece la relación de actividades potencialmente contaminantes del suelo y los criterios y estándares para la declaración de suelos contaminados. Tipos de contaminantes. Usos del suelo. Evaluación del riesgo. Niveles genéricos de referencia. Técnicas de recuperación de suelos." },
-                        { id: 5, text: "La Estrategia Española de Economía Circular y sus Planes de Acción: vínculo y aplicación en el sector de la construcción y demolición. Producción y gestión de residuos de construcción y demolición: el Real Decreto 105/2008 de 1 de febrero. Utilización de residuos en obra pública (neumáticos fuera de uso, escorias de incineradores urbanos y materiales de dragado, etc.). La eliminación de residuos mediante depósito en vertedero. Orden APM/1007/2017, de 10 de octubre, sobre normas generales de valorización de materiales naturales excavados para su utilización en operaciones de relleno y obras distintas a aquéllas en las que se generaron." },
-                        { id: 6, text: "Conservación, uso sostenible, mejora y restauración del patrimonio natural y de la biodiversidad. Normativa nacional y de la Unión Europea. La Ley 42/2007, de 13 de diciembre, del Patrimonio Natural y la Biodiversidad. La Red Natura 2000. La infraestructura verde." },
-                        { id: 7, text: "La Directiva 2010/75/UE de 24 de noviembre de Emisiones Industriales. Real Decreto Legislativo 1/2016, de 16 de diciembre, por el que se aprueba el texto refundido de la Ley de prevención y control integrados de la contaminación. Contaminación: principios, valores y límites de emisión. Las autorizaciones ambientales integradas. Los intercambios de información." },
-                        { id: 8, text: "La contaminación atmosférica. Tipos, orígenes y características. Sus fuentes. Sectores y actividades contaminantes. Contaminación atmosférica transfronteriza a larga distancia. Normativa española. Ley 34/2007 de, 15 de noviembre, de calidad del aire y protección de la atmósfera. Programa Nacional de Control de la Contaminación atmosférica." },
-                        { id: 9, text: "La contaminación acústica. Normativa de la Unión Europea y española sobre ruido. La ley 37/2003, de 17 de noviembre, del Ruido. Efectos sobre la salud y el medio ambiente. La evaluación, prevención y reducción del ruido ambiental. Medidas correctoras." },
-                        { id: 10, text: "La Convención Marco de Naciones Unidas sobre Cambio Climático, el Protocolo de Kioto y el Acuerdo de París. Acción Europea en la lucha contra el cambio climático: comercio europeo de derechos de emisión, normativa en sectores difusos y LULUCF, Estrategia Europea de Adaptación. Pacto Verde Europeo. Ley 7/2021, de 20 de mayo, de Cambio Climático y Transición Energética." },
-                        { id: 11, text: "La evaluación ambiental de proyectos y la evaluación ambiental estratégica de planes y programas. Principios. El marco jurídico de la evaluación de impacto ambiental: Ley 21/2013, de 9 de diciembre, de evaluación ambiental. Su aplicación a las infraestructuras del transporte, hidráulicas y costeras." },
-                        { id: 12, text: "Acceso a la información en materia de medio ambiente. Convenio de Aarhus. La participación en la gestión ambiental. Normativa de la Unión Europea. La Ley 27/2006, de 18 de julio, por la que se regulan los derechos de acceso a la información, de participación pública y de acceso a la justicia en materia de medio ambiente. Instrumentos y publicaciones para facilitar el acceso a la información ambiental en el ámbito del Ministerio para la Transición Ecológica y el Reto Demográfico." },
-                        { id: 13, text: "La normativa de responsabilidad medioambiental. Ley 26/2007, de 23 de octubre, de Responsabilidad Medioambiental." },
-                        { id: 14, text: "La protección del medio marino. Ley 41/2010, de 29 de diciembre, sobre protección del Medio Marino. Los Convenios regionales de protección del medio marino de los que España es Parte: el Convenio de Barcelona y el Convenio OSPAR." },
-                        { id: 15, text: "Prevención y mitigación de la fragmentación de hábitats causada por las infraestructuras de transporte. Restauración ecológica y prevención de especies exóticas invasoras. Permeabilización de infraestructuras para la conservación de especies protegidas. Protección de la avifauna. Corrección de tendidos eléctricos para evitar la colisión y electrocución de la avifauna." }
-                    ]
-                }
+                "A) Aguas y Obras Hidráulicas, Puertos y Costas": { "A.1) Aguas y Obras Hidráulicas": Array.from({length: 28}, (_, i) => ({id: i + 1, text: `Tema A.1.${i+1}`})), "A.2) Puertos y Costas": Array.from({length: 20}, (_, i) => ({id: i + 1, text: `Tema A.2.${i+1}`}))},
+                "B) Infraestructuras de Transporte": { "B.1) Carreteras": Array.from({length: 24}, (_, i) => ({id: i + 1, text: `Tema B.1.${i+1}`})), "B.2) Ferrocarriles": Array.from({length: 22}, (_, i) => ({id: i + 1, text: `Tema B.2.${i+1}`}))},
+                "C) Transportes, Movilidad y Medio Ambiente": { "C.1) Transportes y Movilidad": Array.from({length: 21}, (_, i) => ({id: i + 1, text: `Tema C.1.${i+1}`})), "C.2) Medio Ambiente": Array.from({length: 15}, (_, i) => ({id: i + 1, text: `Tema C.2.${i+1}`}))}
             }
         };
 
-        window.onload = async () => {
-            try {
-                initializeApp(firebaseConfig);
-                db = getFirestore();
-                
-                document.getElementById('login-form').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const usernameInput = document.getElementById('username-input');
-                    const username = usernameInput.value.trim();
-                    if (username) {
-                        sessionId = username;
-                        document.getElementById('login-modal').style.display = 'none';
-                        document.getElementById('main-content').classList.remove('hidden');
-                        document.getElementById('user-info').innerHTML = `<p>Usuario: <span class="font-semibold">${sessionId}</span></p>`;
-                        await checkConnection();
-                        renderSyllabus();
-                        await loadProgress();
-                    }
-                });
-
-                document.getElementById('toggle-names-btn').addEventListener('click', () => {
-                    document.body.classList.toggle('show-full-names');
-                    const btn = document.getElementById('toggle-names-btn');
-                    btn.textContent = document.body.classList.contains('show-full-names') ? 'Ocultar Nombres' : 'Mostrar Nombres';
-                });
-
-                document.getElementById('save-btn').addEventListener('click', saveAllProgress);
-                document.getElementById('collapse-all-btn').addEventListener('click', () => toggleAll(true));
-                document.getElementById('expand-all-btn').addEventListener('click', () => toggleAll(false));
-                document.getElementById('calc-prob-btn').addEventListener('click', openCalculator);
-
-            } catch (error) {
-                console.error("Error initializing Firebase:", error);
-                alert("Error fatal al inicializar Firebase. Comprueba la consola para más detalles.");
-            }
+        const ROUND_COLORS = {
+            bg: ['bg-red-100', 'bg-orange-100', 'bg-yellow-100', 'bg-blue-100', 'bg-green-100'],
+            text: ['text-red-800', 'text-orange-800', 'text-yellow-800', 'text-blue-800', 'text-green-800']
         };
-        
-        async function checkConnection() {
-            const statusEl = document.getElementById('connection-status');
-            statusEl.textContent = 'Verificando conexión...';
-            statusEl.className = 'mt-2 text-sm font-semibold text-yellow-600';
-            const testDocRef = doc(db, `artifacts/${appId}/public/data/${sessionId}/_connection_test`);
+
+        const endDateInput = document.getElementById('end-date');
+        const generateBtn = document.getElementById('generate-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const saveStatus = document.getElementById('save-status');
+        const calendarContainer = document.getElementById('calendar-container');
+        const topicSourceList = document.getElementById('topic-source-list');
+        const topicSearchInput = document.getElementById('topic-search');
+        const roundTabsContainer = document.getElementById('round-tabs');
+        const subBlockFilterContainer = document.getElementById('sub-block-filter-container');
+        const prevMonthBtn = document.getElementById('prev-month-btn');
+        const nextMonthBtn = document.getElementById('next-month-btn');
+        const calendarTitle = document.getElementById('calendar-title');
+        const summaryPanel = document.getElementById('summary-panel');
+        const summaryHeader = document.getElementById('summary-header');
+        const summaryContent = document.getElementById('summary-content');
+        const summaryRoundSelect = document.getElementById('summary-round-select');
+        const summaryTableContainer = document.getElementById('summary-table-container');
+        const exportCsvBtn = document.getElementById('export-csv-btn');
+        const importCsvInput = document.getElementById('import-csv-input');
+        const topicsPanel = document.getElementById('topics-panel');
+        const topicsHeader = document.getElementById('topics-header');
+        const topicsContent = document.getElementById('topics-content');
+        const dayModalBackdrop = document.getElementById('day-modal-backdrop');
+        const dayModalContainer = document.getElementById('day-modal-container');
+        const dayModalTitle = document.getElementById('day-modal-title');
+        const dayModalContent = document.getElementById('day-modal-content');
+        const dayModalCloseBtn = document.getElementById('day-modal-close-btn');
+        const toggleConfigBtn = document.getElementById('toggle-config-btn');
+        const configPanel = document.getElementById('config-panel');
+        const viewRoundsBtn = document.getElementById('view-rounds-btn');
+
+        let state = {
+            flatTopics: [],
+            subBlocks: [],
+            mainBlocks: {},
+            rounds: [],
+            topicState: {},
+            currentVuelta: 'vuelta-1',
+            currentSubBlock: 'todos',
+            currentSummaryVuelta: 'vuelta-1',
+            displayDate: new Date(),
+            draggedTopic: null 
+        };
+
+        function initialize() {
+            if (Object.keys(firebaseConfig).length > 0) {
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                } catch (e) {
+                    console.error("Error initializing Firebase:", e);
+                    alert("No se pudo inicializar Firebase. Comprueba la configuración.");
+                }
+            } else {
+                console.warn("Firebase config is empty. Persistence is disabled.");
+            }
+
+            document.getElementById('login-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const username = document.getElementById('username-input').value.trim();
+                if(username) {
+                    startApp(username);
+                }
+            });
+        }
+
+        async function startApp(username) {
+            sessionId = username;
+            document.getElementById('login-modal').style.display = 'none';
+            document.getElementById('main-content').classList.remove('hidden');
+            
+            parseSyllabus();
+            setupRoundDurationInputs();
+            await loadStateFromFirebase();
+
+            generateBtn.addEventListener('click', generateNewPlan);
+            saveBtn.addEventListener('click', saveStateToFirebase);
+            topicSearchInput.addEventListener('input', () => renderTopicSourceList());
+            prevMonthBtn.addEventListener('click', () => changeMonth(-1));
+            nextMonthBtn.addEventListener('click', () => changeMonth(1));
+            
+            topicSourceList.addEventListener('dragover', handleDragOver);
+            topicSourceList.addEventListener('dragleave', handleDragLeave);
+            topicSourceList.addEventListener('drop', handleDropOnSourceList);
+            
+            document.addEventListener('dragend', handleDragEnd);
+            
+            summaryHeader.addEventListener('click', () => {
+                summaryContent.classList.toggle('hidden');
+                summaryPanel.classList.toggle('collapsed');
+            });
+            topicsHeader.addEventListener('click', () => {
+                topicsPanel.classList.toggle('collapsed');
+            });
+            summaryRoundSelect.addEventListener('change', (e) => {
+                state.currentSummaryVuelta = e.target.value;
+                renderSummaryTable();
+            });
+
+            exportCsvBtn.addEventListener('click', exportToCSV);
+            importCsvInput.addEventListener('change', importFromCSV);
+            
+            dayModalCloseBtn.addEventListener('click', hideExpandedDayView);
+            dayModalBackdrop.addEventListener('click', (e) => {
+                if (e.target === dayModalBackdrop) {
+                    hideExpandedDayView();
+                }
+            });
+            toggleConfigBtn.addEventListener('click', () => {
+                configPanel.classList.toggle('expanded');
+            });
+            viewRoundsBtn.addEventListener('click', () => {
+                window.open(`seguimiento.html?user=${sessionId}`, '_blank');
+            });
+
+            renderAll();
+        }
+
+        function setupRoundDurationInputs() {
+            const roundDurationsContainer = document.getElementById('round-durations-container');
+            roundDurationsContainer.innerHTML = ''; // Clear previous
+            const defaultDurations = [48, 24, 12, 6, 3]; 
+            for (let i = 1; i <= 5; i++) {
+                const div = document.createElement('div');
+                div.className = 'flex-shrink-0';
+                const label = document.createElement('label');
+                label.htmlFor = `round-${i}-duration`;
+                label.className = 'block text-xs font-medium text-gray-600 mb-1 text-center';
+                label.textContent = `Vuelta ${i}`;
+                
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.id = `round-${i}-duration`;
+                input.min = '1';
+                input.value = defaultDurations[i-1];
+                input.className = 'w-20 p-2 border border-gray-300 rounded-lg shadow-sm text-center';
+                
+                div.appendChild(label);
+                div.appendChild(input);
+                roundDurationsContainer.appendChild(div);
+            }
+        }
+
+        async function saveStateToFirebase() {
+            if (!db || !sessionId) return;
+            saveStatus.textContent = "Guardando...";
+            saveStatus.className = "text-center text-sm font-medium text-blue-600";
             try {
-                await setDoc(testDocRef, { timestamp: new Date() });
-                await deleteDoc(testDocRef);
-                statusEl.textContent = 'Conexión con Firebase exitosa.';
-                statusEl.className = 'mt-2 text-sm font-semibold text-green-600';
+                const docRef = doc(db, `artifacts/${appId}/public/data/${sessionId}/plannerState`);
+                const roundDurations = [];
+                for (let i = 1; i <= 5; i++) {
+                    roundDurations.push(document.getElementById(`round-${i}-duration`).value);
+                }
+                const dataToSave = {
+                    topicState: state.topicState,
+                    endDate: endDateInput.value,
+                    roundDurations: roundDurations
+                };
+                await setDoc(docRef, dataToSave);
+                saveStatus.textContent = "¡Progreso guardado!";
+                saveStatus.className = "text-center text-sm font-medium text-green-600";
             } catch (error) {
-                console.error("Firebase connection test failed:", error);
-                statusEl.textContent = 'Error de conexión con Firebase. El progreso no se guardará.';
-                statusEl.className = 'mt-2 text-sm font-semibold text-red-600';
-                alert(`Fallo en la conexión con Firebase. \nCausa probable: Las reglas de seguridad de tu base de datos no permiten escribir en la ruta: \n/artifacts/${appId}/public/data/${sessionId}/\n\nError: ${error.message}`);
+                console.error("Error saving to Firebase:", error);
+                saveStatus.textContent = "Error al guardar.";
+                saveStatus.className = "text-center text-sm font-medium text-red-600";
+            } finally {
+                setTimeout(() => saveStatus.textContent = "", 3000);
             }
         }
 
-        function createHeader(level, title, id, isCollapsible = false) {
-            const headerWrapper = document.createElement('div');
-            headerWrapper.className = 'header-container';
-             if (isCollapsible) {
-                headerWrapper.classList.add('is-collapsible');
-                headerWrapper.addEventListener('click', (e) => {
-                    if (e.target.closest('.header-counters')) return;
-                    headerWrapper.parentElement.classList.toggle('collapsed');
-                });
-            }
-
-            const titleWrapper = document.createElement('div');
-            titleWrapper.className = 'header-title-wrapper';
-
-            if (isCollapsible) {
-                const icon = document.createElement('div');
-                icon.className = 'toggle-icon';
-                icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>`;
-                titleWrapper.appendChild(icon);
-            }
-
-            const titleEl = document.createElement(`h${level}`);
-            const styles = {2: 'text-2xl font-bold text-slate-800 border-b-2 border-slate-300 pb-2', 3: 'text-xl font-semibold text-slate-700', 4: 'text-base font-semibold'};
-            titleEl.className = styles[level];
-            titleEl.textContent = title;
-            
-            const config = BLOCKS_CONFIG[title];
-            if(config) titleEl.classList.add(config.color);
-
-            titleWrapper.appendChild(titleEl);
-
-            const countersEl = document.createElement('div');
-            countersEl.className = 'header-counters';
-            countersEl.id = `counters-${id}`;
-
-            headerWrapper.appendChild(titleWrapper);
-            headerWrapper.appendChild(countersEl);
-            return headerWrapper;
-        }
-
-        function renderSyllabus() {
-            const container = document.getElementById('syllabus-container');
-            container.innerHTML = '';
-
-            for (const topLevelTitle in syllabus) {
-                const topLevelBlock = document.createElement('div');
-                topLevelBlock.className = 'mt-8';
-                topLevelBlock.appendChild(createHeader(2, topLevelTitle, topLevelTitle.replace(/[^a-zA-Z0-9]/g, '')));
-                
-                const mainBlocks = syllabus[topLevelTitle];
-                for (const mainBlockTitle in mainBlocks) {
-                    const mainBlockId = mainBlockTitle.replace(/[^a-zA-Z0-9]/g, '');
-                    const mainBlockEl = document.createElement('div');
-                    mainBlockEl.className = 'main-block mt-6 ml-4 collapsible collapsed';
-                    mainBlockEl.dataset.mainBlockId = mainBlockId;
-                    mainBlockEl.dataset.mainBlockName = mainBlockTitle;
-                    mainBlockEl.appendChild(createHeader(3, mainBlockTitle, mainBlockId, true));
-
-                    const mainBlockContent = document.createElement('div');
-                    mainBlockContent.className = 'collapsible-content';
-                    
-                    const subBlocksOrTopics = mainBlocks[mainBlockTitle];
-
-                    if (Array.isArray(subBlocksOrTopics)) {
-                        const subBlockId = mainBlockId; 
-                        const subBlockName = mainBlockTitle;
-                        mainBlockEl.dataset.subBlockId = subBlockId;
-                        mainBlockEl.dataset.subBlockName = subBlockName;
-                        subBlocksOrTopics.forEach(topic => {
-                            mainBlockContent.appendChild(createTopicElement(topic, mainBlockId, subBlockId, subBlockName));
-                        });
-                    } else {
-                        const compactContainer = document.createElement('div');
-                        compactContainer.className = 'compact-layout-container';
-
-                        for (const subBlockKey in subBlocksOrTopics) {
-                            const subBlockId = subBlockKey.replace(/[^a-zA-Z0-9]/g, '');
-                            const subBlockWrapper = document.createElement('div'); // Wrapper for each sub-block in compact view
-                            
-                            const subBlockHeader = document.createElement('h4');
-                            subBlockHeader.className = `sub-block-header text-base font-semibold mb-2 ${BLOCKS_CONFIG[subBlockKey]?.color || ''}`;
-                            subBlockHeader.textContent = subBlockKey;
-                            subBlockWrapper.appendChild(subBlockHeader);
-                            
-                            subBlocksOrTopics[subBlockKey].forEach(topic => {
-                                subBlockWrapper.appendChild(createTopicElement(topic, mainBlockId, subBlockId, subBlockKey));
-                            });
-                            compactContainer.appendChild(subBlockWrapper);
-                        }
-                        mainBlockContent.appendChild(compactContainer);
-                    }
-                    mainBlockEl.appendChild(mainBlockContent);
-                    topLevelBlock.appendChild(mainBlockEl);
-                }
-                container.appendChild(topLevelBlock); 
-            }
-        }
-
-        function createTopicElement(topic, mainBlockId, subBlockId, subBlockName) {
-            const topicId = `${subBlockId}-${topic.id}`;
-            const topicDiv = document.createElement('div');
-            topicDiv.className = 'topic-card bg-white p-3 rounded-lg shadow-sm mb-3 flex items-center justify-between gap-4';
-            topicDiv.dataset.mainBlockId = mainBlockId;
-            topicDiv.dataset.subBlockId = subBlockId;
-            topicDiv.dataset.subBlockName = subBlockName;
-            topicDiv.dataset.topicId = topicId;
-
-            const topicP = document.createElement('p');
-            topicP.className = 'topic-text-container';
-            const config = BLOCKS_CONFIG[subBlockName];
-            if(config) topicP.classList.add(config.color);
-            topicP.innerHTML = `${topic.id}. <span class="topic-full-name">${topic.text}</span>`;
-
-            const ticksContainer = document.createElement('div');
-            ticksContainer.className = 'flex items-center space-x-2';
-
-            for (let i = 0; i < 5; i++) {
-                const tickBox = document.createElement('div');
-                tickBox.className = 'tick-box';
-                tickBox.dataset.tickIndex = i;
-                tickBox.addEventListener('click', (e) => handleTickClick(e, topicId));
-                const tickMark = document.createElement('div');
-                tickMark.className = 'tick-mark';
-                tickBox.appendChild(tickMark);
-                ticksContainer.appendChild(tickBox);
-            }
-
-            topicDiv.appendChild(topicP);
-            topicDiv.appendChild(ticksContainer);
-            return topicDiv;
-        }
-
-        function handleTickClick(event, topicId) {
-            const tickBox = event.currentTarget;
-            const { tickIndex } = tickBox.dataset;
-
-            let currentState = tickBox.classList.contains('green') ? 'green' : (tickBox.classList.contains('orange') ? 'orange' : 'none');
-            let newState = 'orange';
-            if (currentState === 'orange') newState = 'green';
-            if (currentState === 'green') newState = 'none';
-
-            tickBox.classList.remove('orange', 'green');
-            if (newState !== 'none') tickBox.classList.add(newState);
-            
-            updateAllCounters();
-        }
-        
-        function updateAllCounters() {
-            updateTopSummaryTable();
-        }
-
-        function updateTopSummaryTable() {
-            const summaryTable = document.getElementById('top-summary-table');
-            
-            const tableHead = `
-                <thead class="bg-slate-200 text-xs text-slate-700 uppercase tracking-wider">
-                    <tr>
-                        <th scope="col" class="px-6 py-3">Bloque</th>
-                        <th scope="col" class="px-6 py-3">Sub-bloque</th>
-                        <th scope="col" class="px-6 py-3 text-center">Estudiados</th>
-                        <th scope="col" class="px-6 py-3 text-center">Restantes</th>
-                        <th scope="col" class="px-6 py-3 text-center">Total</th>
-                    </tr>
-                </thead>`;
-
-            let tableBody = '<tbody>';
-            let grandTotalStudied = 0;
-            let grandTotalTopics = 0;
-
-            const allBlocks = {...syllabus["Materias comunes"], ...syllabus["Materias específicas"]};
-
-            for (const mainBlockTitle in allBlocks) {
-                const subBlocksOrTopics = allBlocks[mainBlockTitle];
-                
-                if (Array.isArray(subBlocksOrTopics)) { // Case for Materias Comunes
-                     const config = BLOCKS_CONFIG[mainBlockTitle];
-                     const totalCount = subBlocksOrTopics.length;
-                     const studiedCount = Array.from(document.querySelectorAll(`.topic-card[data-sub-block-name="${mainBlockTitle}"]`)).filter(card => card.querySelectorAll('.tick-box.orange, .tick-box.green').length > 0).length;
-                     
-                     grandTotalStudied += studiedCount;
-                     grandTotalTopics += totalCount;
-
-                     tableBody += `
-                        <tr class="bg-slate-50 border-b-4 border-slate-300">
-                            <td class="px-6 py-4 font-semibold ${config.color}" colspan="2">
-                                <i class="fas ${config.icon} fa-fw text-lg w-5 text-center"></i>
-                                ${mainBlockTitle}
-                            </td>
-                            <td class="px-6 py-4 text-center font-mono">${studiedCount}</td>
-                            <td class="px-6 py-4 text-center font-mono">${totalCount - studiedCount}</td>
-                            <td class="px-6 py-4 text-center font-mono">${totalCount}</td>
-                        </tr>`;
-
-                } else { // Case for Materias Específicas
-                    const subBlocks = subBlocksOrTopics;
-                    const mainBlockRowCount = Object.keys(subBlocks).length;
-                    let blockStudied = 0;
-                    let blockTotal = 0;
-                    
-                    Object.entries(subBlocks).forEach(([subBlockName, subBlockData], index) => {
-                        const config = BLOCKS_CONFIG[subBlockName];
-                        const totalCount = subBlockData.length;
-                        const subBlockId = subBlockName.replace(/[^a-zA-Z0-9]/g, '');
-                        const studiedCount = Array.from(document.querySelectorAll(`.topic-card[data-sub-block-id="${subBlockId}"]`)).filter(card => card.querySelectorAll('.tick-box.orange, .tick-box.green').length > 0).length;
-                        
-                        blockStudied += studiedCount;
-                        blockTotal += totalCount;
-
-                        tableBody += `
-                            <tr class="border-t border-slate-200">
-                                ${index === 0 ? `<td class="px-6 py-4 font-bold text-slate-800 align-top" rowspan="${mainBlockRowCount}">${mainBlockTitle}</td>` : ''}
-                                <td class="px-6 py-4 flex items-center gap-3 ${config.color}">
-                                    <i class="fas ${config.icon} fa-fw text-lg w-5 text-center"></i>
-                                    <span class="font-semibold">${subBlockName}</span>
-                                </td>
-                                <td class="px-6 py-4 text-center font-mono">${studiedCount}</td>
-                                <td class="px-6 py-4 text-center font-mono">${totalCount - studiedCount}</td>
-                                <td class="px-6 py-4 text-center font-mono">${totalCount}</td>
-                            </tr>`;
-                    });
-                    
-                    grandTotalStudied += blockStudied;
-                    grandTotalTopics += blockTotal;
-                    
-                    tableBody += `
-                        <tr class="bg-slate-100 font-semibold">
-                            <td colspan="2" class="px-6 py-3 text-right">Total Bloque:</td>
-                            <td class="px-6 py-3 text-center font-mono">${blockStudied}</td>
-                            <td class="px-6 py-3 text-center font-mono">${blockTotal - blockStudied}</td>
-                            <td class="px-6 py-3 text-center font-mono">${blockTotal}</td>
-                        </tr>
-                    `;
-                }
-            }
-            
-            tableBody += '</tbody>';
-
-            const tableFoot = `
-                <tfoot class="bg-blue-100 font-bold text-blue-800 text-base">
-                    <tr>
-                        <td colspan="2" class="px-6 py-4 text-right">TOTAL GENERAL:</td>
-                        <td class="px-6 py-4 text-center font-mono">${grandTotalStudied}</td>
-                        <td class="px-6 py-4 text-center font-mono">${grandTotalTopics - grandTotalStudied}</td>
-                        <td class="px-6 py-4 text-center font-mono">${grandTotalTopics}</td>
-                    </tr>
-                </tfoot>
-            `;
-            
-            summaryTable.innerHTML = tableHead + tableBody + tableFoot;
-        }
-
-
-        async function loadProgress() { 
-            if (!sessionId) return;
-            const docRef = doc(db, `artifacts/${appId}/public/data/${sessionId}`, "progress");
-
+        async function loadStateFromFirebase() {
+            if (!db || !sessionId) {
+                resetTopicState();
+                return;
+            };
+            const docRef = doc(db, `artifacts/${appId}/public/data/${sessionId}/plannerState`);
             try {
                 const docSnap = await getDoc(docRef);
-                progressData = docSnap.exists() ? docSnap.data() : {};
-                
-                document.querySelectorAll('.tick-box').forEach(tickBox => {
-                    const topicId = tickBox.closest('.topic-card').dataset.topicId;
-                    const tickIndex = tickBox.dataset.tickIndex; 
-                    const key = `${topicId}_${tickIndex}`;
-                    const state = progressData[key] || 'none';
-                    
-                    tickBox.classList.remove('orange', 'green');
-                    if (state !== 'none') tickBox.classList.add(state);
-                });
-                updateAllCounters();
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.endDate) {
+                        endDateInput.value = data.endDate;
+                    }
+                    if (data.roundDurations && data.roundDurations.length === 5) {
+                        for (let i = 1; i <= 5; i++) {
+                            const input = document.getElementById(`round-${i}-duration`);
+                            if(input) input.value = data.roundDurations[i-1];
+                        }
+                    }
+                    if (data.topicState) {
+                        state.topicState = data.topicState;
+                        if (!state.topicState.studiedTopics) {
+                            state.topicState.studiedTopics = {};
+                        }
+                        console.log("Previous state loaded.");
+                    } else {
+                         resetTopicState();
+                    }
+                } else {
+                    console.log("No previous state found, starting fresh.");
+                    resetTopicState();
+                }
             } catch (error) {
-                console.error("Error al leer los datos de Firestore:", error);
-                alert(`No se pudo cargar el progreso. Revisa la consola para ver los errores. Error: ${error.message}`);
+                console.error("Error loading from Firebase:", error);
+                resetTopicState();
             }
         }
 
-        async function saveAllProgress() {
-            if (!sessionId) return;
-            const saveStatus = document.getElementById('save-status');
-            saveStatus.textContent = 'Guardando...';
-            saveStatus.classList.add('text-blue-600');
-            saveStatus.classList.remove('text-green-600', 'text-red-600');
-            
-            const currentProgress = {};
-            document.querySelectorAll('.topic-card').forEach(card => {
-                const topicId = card.dataset.topicId;
-                card.querySelectorAll('.tick-box').forEach(tickBox => {
-                    const tickIndex = tickBox.dataset.tickIndex;
-                    const key = `${topicId}_${tickIndex}`;
-                    let state = 'none';
-                    if (tickBox.classList.contains('green')) state = 'green';
-                    else if (tickBox.classList.contains('orange')) state = 'orange';
+        function parseSyllabus() {
+            const subBlockSet = new Set();
+            state.flatTopics = [];
+            state.mainBlocks = {};
 
-                    if (state !== 'none') {
-                        currentProgress[key] = state;
+            for (const topLevelTitle in fullSyllabus) {
+                const mainBlocks = fullSyllabus[topLevelTitle];
+                for (const mainBlockTitle in mainBlocks) {
+                    const subBlocksOrTopics = mainBlocks[mainBlockTitle];
+                    if (Array.isArray(subBlocksOrTopics)) {
+                        const blockName = mainBlockTitle;
+                        subBlockSet.add(blockName);
+                        state.mainBlocks[blockName] = topLevelTitle;
+                        subBlocksOrTopics.forEach(topic => state.flatTopics.push({ ...topic, fullId: `${blockName}-${topic.id}`, block: blockName }));
+                    } else {
+                        for (const subBlockTitle in subBlocksOrTopics) {
+                            const blockName = subBlockTitle;
+                            subBlockSet.add(blockName);
+                            state.mainBlocks[blockName] = mainBlockTitle;
+                            subBlocksOrTopics[subBlockTitle].forEach(topic => state.flatTopics.push({ ...topic, fullId: `${blockName}-${topic.id}`, block: blockName }));
+                        }
                     }
-                });
-            });
-            progressData = currentProgress;
+                }
+            }
+            state.subBlocks = Array.from(subBlockSet).sort();
+        }
+        
+        function generateNewPlan() {
+            renderAll();
+        }
 
-            const docRef = doc(db, `artifacts/${appId}/public/data/${sessionId}`, "progress");
+        function renderAll() {
+            calculateRounds();
+            reconcileAssignments();
+            if (state.rounds.length > 0 && !state.displayDate) {
+                 const planStartDate = state.rounds[0].startDate;
+                 state.displayDate = new Date(Date.UTC(planStartDate.getUTCFullYear(), planStartDate.getUTCMonth(), 1));
+            }
+            renderSummaryRoundSelect();
+            renderSummaryTable();
+            renderRoundTabs();
+            renderSubBlockFilter();
+            renderTopicSourceList();
+            renderCalendar();
+        }
 
-            try {
-                await setDoc(docRef, progressData);
-                saveStatus.textContent = '¡Progreso guardado!';
-                saveStatus.classList.add('text-green-600');
-                saveStatus.classList.remove('text-blue-600');
-                setTimeout(() => saveStatus.textContent = '', 3000);
-            } catch (error) {
-                console.error("Error al guardar el progreso:", error);
-                saveStatus.textContent = 'Error al guardar.';
-                saveStatus.classList.add('text-red-600');
-                saveStatus.classList.remove('text-blue-600');
-                alert(`No se pudo guardar el progreso. Revisa la consola para ver los errores. Error: ${error.message}`);
+        function resetTopicState() {
+            state.topicState = {
+                studiedTopics: {}
+            };
+            const allTopicIds = state.flatTopics.map(t => t.fullId);
+            for (let i = 1; i <= 5; i++) {
+                state.topicState[`vuelta-${i}`] = {
+                    unassigned: [...allTopicIds],
+                    assigned: {} 
+                };
             }
         }
         
-        function openCalculator() {
-            const calculatorUrl = 'https://cheradra312.github.io/CAL_PROB/';
-            const params = new URLSearchParams();
+        function parseDateString(dateStr) {
+            const parts = dateStr.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+            if (!parts) return null;
+            const day = parseInt(parts[1], 10);
+            const month = parseInt(parts[2], 10);
+            const year = parseInt(parts[3], 10);
+            if (day > 31 || month > 12 || year < 1970) return null;
+            return new Date(Date.UTC(year, month - 1, day));
+        }
 
-            const studiedTotals = {
-                admin: 0,
-                aguas: 0,
-                carreteras: 0,
-                transportes: 0
-            };
-
-            document.querySelectorAll('.topic-card').forEach(card => {
-                const subBlockName = card.dataset.subBlockName;
-                const config = BLOCKS_CONFIG[subBlockName];
-                if (!config) return;
-
-                const calcId = config.calcId;
-                if (card.querySelectorAll('.tick-box.orange, .tick-box.green').length > 0) {
-                    if (studiedTotals.hasOwnProperty(calcId)) {
-                        // This logic is flawed if we just increment. We need to count unique topics.
-                        // Let's recalculate from scratch.
-                    }
+        function calculateRounds() {
+            const deadline = parseDateString(endDateInput.value);
+            const durations = [];
+            for (let i = 1; i <= 5; i++) {
+                const input = document.getElementById(`round-${i}-duration`);
+                const duration = parseInt(input.value, 10);
+                if (isNaN(duration) || duration < 1) {
+                    state.rounds = [];
+                    console.error(`Invalid duration for round ${i}`);
+                    return;
                 }
-            });
-
-            const calcData = {
-                admin: 0,
-                aguas: 0,
-                carreteras: 0,
-                transportes: 0
-            };
-            
-            const uniqueStudiedTopics = new Set();
-            document.querySelectorAll('.topic-card').forEach(card => {
-                if (card.querySelectorAll('.tick-box.orange, .tick-box.green').length > 0) {
-                    uniqueStudiedTopics.add(card.dataset.topicId);
-                }
-            });
-
-            uniqueStudiedTopics.forEach(topicId => {
-                const card = document.querySelector(`.topic-card[data-topic-id="${topicId}"]`);
-                if (card) {
-                    const subBlockName = card.dataset.subBlockName;
-                    const config = BLOCKS_CONFIG[subBlockName];
-                    if (config && calcData.hasOwnProperty(config.calcId)) {
-                        calcData[config.calcId]++;
-                    }
-                }
-            });
-
-            for (const key in calcData) {
-                params.append(key, calcData[key]);
+                durations.push(duration);
             }
 
-            window.open(`${calculatorUrl}?${params.toString()}`, '_blank');
+            if (!deadline) {
+                state.rounds = [];
+                return;
+            }
+
+            const totalDuration = durations.reduce((sum, d) => sum + d, 0);
+
+            let planStartDate = new Date(deadline.getTime());
+            planStartDate.setUTCDate(planStartDate.getUTCDate() - totalDuration + 1);
+
+            const newRounds = [];
+            let currentStartDate = new Date(planStartDate.getTime());
+
+            for (let i = 0; i < 5; i++) {
+                const duration = durations[i];
+                const roundEndDate = new Date(currentStartDate.getTime());
+                roundEndDate.setUTCDate(roundEndDate.getUTCDate() + duration - 1);
+                
+                newRounds.push({
+                    roundNumber: i + 1,
+                    vueltaId: `vuelta-${i + 1}`,
+                    startDate: new Date(currentStartDate.getTime()),
+                    endDate: roundEndDate,
+                    duration: duration
+                });
+                
+                currentStartDate = new Date(roundEndDate.getTime());
+                currentStartDate.setUTCDate(currentStartDate.getUTCDate() + 1);
+            }
+            state.rounds = newRounds;
         }
 
-        function toggleAll(collapse) {
-            document.querySelectorAll('.collapsible').forEach(el => {
-                if(collapse) {
-                    el.classList.add('collapsed');
-                } else {
-                    el.classList.remove('collapsed');
+        function reconcileAssignments() {
+            if (!state.rounds || state.rounds.length === 0) return;
+
+            for (const round of state.rounds) {
+                const roundState = state.topicState[round.vueltaId];
+                if (!roundState || !roundState.assigned) continue;
+
+                const lastDayIndex = round.duration - 1;
+                const assignedIndices = Object.keys(roundState.assigned).map(Number);
+
+                for (const dayIndex of assignedIndices) {
+                    if (dayIndex > lastDayIndex) {
+                        const overflowedTopics = roundState.assigned[dayIndex];
+                        if (!roundState.assigned[lastDayIndex]) {
+                            roundState.assigned[lastDayIndex] = [];
+                        }
+                        roundState.assigned[lastDayIndex].push(...overflowedTopics);
+                        delete roundState.assigned[dayIndex];
+                        console.log(`Moved ${overflowedTopics.length} topics from overflowed day ${dayIndex} to last valid day ${lastDayIndex} in ${round.vueltaId}`);
+                    }
                 }
+            }
+        }
+        
+        function renderSummaryRoundSelect() {
+            summaryRoundSelect.innerHTML = '';
+            for (let i = 1; i <= 5; i++) {
+                const option = document.createElement('option');
+                option.value = `vuelta-${i}`;
+                option.textContent = `Vuelta ${i}`;
+                summaryRoundSelect.appendChild(option);
+            }
+            summaryRoundSelect.value = state.currentSummaryVuelta;
+        }
+        
+        function calculateSummary() {
+            const summary = {};
+            const roundState = state.topicState[state.currentSummaryVuelta];
+            if (!roundState) return {};
+
+            const assignedInRound = Object.values(roundState.assigned).flat();
+            const studiedInRound = Object.values(state.topicState.studiedTopics)
+                .flat()
+                .filter(t => t.originalVuelta === state.currentSummaryVuelta);
+            
+            const allAssignedTopics = [...assignedInRound, ...studiedInRound];
+
+            state.subBlocks.forEach(subBlock => {
+                const mainBlock = state.mainBlocks[subBlock];
+                if (!summary[mainBlock]) {
+                    summary[mainBlock] = {};
+                }
+                
+                const topicsInSubBlock = state.flatTopics.filter(t => t.block === subBlock);
+                const assignedInSubBlock = allAssignedTopics.filter(assignedTopic => topicsInSubBlock.some(t => t.fullId === assignedTopic.id));
+                const studiedInSubBlock = assignedInSubBlock.filter(t => t.studied).length;
+
+                summary[mainBlock][subBlock] = {
+                    total: topicsInSubBlock.length,
+                    asignados: assignedInSubBlock.length,
+                    estudiados: studiedInSubBlock,
+                    pendientes: assignedInSubBlock.length - studiedInSubBlock
+                };
+            });
+            return summary;
+        }
+
+        function renderSummaryTable() {
+            const summaryData = calculateSummary();
+            let tableHTML = `<table class="w-full text-sm text-left text-gray-700">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-3">Bloque</th>
+                        <th class="px-4 py-3">Sub-bloque</th>
+                        <th class="px-4 py-3 text-center">Asignados</th>
+                        <th class="px-4 py-3 text-center">Estudiados</th>
+                        <th class="px-4 py-3 text-center">Pendientes</th>
+                        <th class="px-4 py-3 text-center">Total</th>
+                    </tr>
+                </thead><tbody>`;
+            
+            let grandTotal = { total: 0, asignados: 0, estudiados: 0, pendientes: 0 };
+
+            for (const mainBlock in summaryData) {
+                const subBlocks = summaryData[mainBlock];
+                const subBlockKeys = Object.keys(subBlocks);
+                let blockTotal = { total: 0, asignados: 0, estudiados: 0, pendientes: 0 };
+
+                subBlockKeys.forEach((subBlock, index) => {
+                    const data = subBlocks[subBlock];
+                    const config = BLOCKS_CONFIG[subBlock] || {};
+                    blockTotal.total += data.total;
+                    blockTotal.asignados += data.asignados;
+                    blockTotal.estudiados += data.estudiados;
+                    blockTotal.pendientes += data.pendientes;
+
+                    tableHTML += `<tr class="border-b">
+                        ${index === 0 ? `<td class="px-4 py-4 font-semibold align-top" rowspan="${subBlockKeys.length}">${mainBlock}</td>` : ''}
+                        <td class="px-4 py-4 font-semibold ${config.c || ''}"><i class="fas ${config.icon || ''} fa-fw w-5"></i> ${SHORT_NAMES[subBlock] || subBlock}</td>
+                        <td class="px-4 py-4 text-center">${data.asignados}</td>
+                        <td class="px-4 py-4 text-center">${data.estudiados}</td>
+                        <td class="px-4 py-4 text-center">${data.pendientes}</td>
+                        <td class="px-4 py-4 text-center">${data.total}</td>
+                    </tr>`;
+                });
+                
+                grandTotal.total += blockTotal.total;
+                grandTotal.asignados += blockTotal.asignados;
+                grandTotal.estudiados += blockTotal.estudiados;
+                grandTotal.pendientes += blockTotal.pendientes;
+
+                tableHTML += `<tr class="bg-gray-50 font-semibold border-b-4 border-white">
+                    <td class="px-4 py-2 text-right" colspan="2">Total Bloque:</td>
+                    <td class="px-4 py-2 text-center">${blockTotal.asignados}</td>
+                    <td class="px-4 py-2 text-center">${blockTotal.estudiados}</td>
+                    <td class="px-4 py-2 text-center">${blockTotal.pendientes}</td>
+                    <td class="px-4 py-2 text-center">${blockTotal.total}</td>
+                </tr>`;
+            }
+            
+            tableHTML += `</tbody><tfoot class="bg-indigo-100 font-bold text-indigo-800">
+                <tr>
+                    <td class="px-4 py-3 text-right" colspan="2">TOTAL GENERAL:</td>
+                    <td class="px-4 py-3 text-center">${grandTotal.asignados}</td>
+                    <td class="px-4 py-3 text-center">${grandTotal.estudiados}</td>
+                    <td class="px-4 py-3 text-center">${grandTotal.pendientes}</td>
+                    <td class="px-4 py-3 text-center">${grandTotal.total}</td>
+                </tr>
+            </tfoot></table>`;
+            
+            summaryTableContainer.innerHTML = tableHTML;
+        }
+        
+        function renderRoundTabs() {
+            roundTabsContainer.innerHTML = '';
+            for (let i = 1; i <= 5; i++) {
+                const vueltaId = `vuelta-${i}`;
+                const tab = document.createElement('button');
+                tab.textContent = `V${i}`;
+                const colorClass = ROUND_COLORS.text[i-1] || 'text-gray-500';
+                tab.className = `px-3 py-2 text-sm font-medium border-b-2 -mb-px ${state.currentVuelta === vueltaId ? 'border-indigo-500 text-indigo-600' : `border-transparent ${colorClass.replace('text-', 'hover:text-')} hover:border-gray-300`}`;
+                tab.onclick = () => {
+                    state.currentVuelta = vueltaId;
+                    renderRoundTabs();
+                    renderTopicSourceList();
+                };
+                roundTabsContainer.appendChild(tab);
+            }
+        }
+
+        function renderSubBlockFilter() {
+            subBlockFilterContainer.innerHTML = '';
+            const select = document.createElement('select');
+            select.className = 'w-full p-2 border border-gray-300 rounded-lg text-sm';
+            select.innerHTML = `<option value="todos">Todos los Bloques</option>`;
+            state.subBlocks.forEach(block => {
+                const displayName = SHORT_NAMES[block] || block;
+                select.innerHTML += `<option value="${block}">${displayName}</option>`;
+            });
+            select.value = state.currentSubBlock;
+            select.onchange = (e) => {
+                state.currentSubBlock = e.target.value;
+                renderTopicSourceList();
+            };
+            subBlockFilterContainer.appendChild(select);
+        }
+
+        function renderTopicSourceList() {
+            const currentRoundState = state.topicState[state.currentVuelta];
+            if (!currentRoundState) return;
+            topicSourceList.innerHTML = '';
+            const searchTerm = topicSearchInput.value.toLowerCase();
+            
+            let filteredTopics = currentRoundState.unassigned
+                .map(topicId => state.flatTopics.find(t => t.fullId === topicId))
+                .filter(Boolean);
+
+            if (state.currentSubBlock !== 'todos') {
+                filteredTopics = filteredTopics.filter(topic => topic.block === state.currentSubBlock);
+            }
+
+            if (searchTerm) {
+                filteredTopics = filteredTopics.filter(topic => topic.text.toLowerCase().includes(searchTerm) || topic.block.toLowerCase().includes(searchTerm));
+            }
+
+            filteredTopics.sort((a, b) => a.block.localeCompare(b.block) || a.id - b.id);
+
+            filteredTopics.forEach(topic => {
+                const el = document.createElement('div');
+                el.className = 'topic-card bg-gray-100 p-2 rounded-lg mb-2 flex items-center gap-2';
+                el.draggable = true;
+                el.dataset.topicId = topic.fullId;
+                const color = BLOCKS_CONFIG[topic.block]?.color || '#6b7280';
+                const displayName = SHORT_NAMES[topic.block] || topic.block;
+                el.innerHTML = `<div class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${color};"></div><span class="text-sm font-medium">${displayName} - T${topic.id}</span>`;
+                el.addEventListener('dragstart', handleDragStartFromSource);
+                topicSourceList.appendChild(el);
             });
         }
+
+        function renderCalendar() {
+            calendarContainer.innerHTML = '';
+            const year = state.displayDate.getUTCFullYear();
+            const month = state.displayDate.getUTCMonth();
+            
+            calendarTitle.textContent = `${(new Date(Date.UTC(year, month))).toLocaleString('es-ES', {month: 'long', year: 'numeric', timeZone: 'UTC'})}`;
+
+            const monthGridElement = createMonthGrid(year, month);
+            calendarContainer.appendChild(monthGridElement);
+            updateAllCalendarDaysForMonth(monthGridElement, year, month);
+        }
+
+        function createMonthGrid(year, month) {
+            const monthContainer = document.createElement('div');
+            const firstDayOfMonth = new Date(Date.UTC(year, month, 1));
+            const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-7 gap-1';
+            
+            ['L', 'M', 'X', 'J', 'V', 'S', 'D'].forEach(day => {
+                grid.innerHTML += `<div class="text-center font-semibold text-sm text-gray-500 pb-2">${day}</div>`;
+            });
+
+            const dayOffset = (firstDayOfMonth.getUTCDay() + 6) % 7;
+            for (let i = 0; i < dayOffset; i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dayDate = new Date(Date.UTC(year, month, i));
+                const dateStr = dayDate.toISOString().split('T')[0];
+                const dayCell = document.createElement('div');
+                dayCell.className = 'calendar-day border bg-gray-50 border-gray-200 rounded-lg p-1.5 flex flex-col';
+                dayCell.dataset.date = dateStr;
+
+                let cellHeader = `<div class="text-sm font-semibold text-right pr-1">${i}</div>`;
+                const round = state.rounds.find(r => dayDate >= r.startDate && dayDate <= r.endDate);
+                if (round) {
+                    dayCell.classList.remove('bg-gray-50');
+                    dayCell.classList.add(ROUND_COLORS.bg[round.roundNumber - 1]);
+                    cellHeader += `<div class="text-xs font-bold ${ROUND_COLORS.text[round.roundNumber - 1]} px-1">Vuelta ${round.roundNumber}</div>`;
+                }
+                
+                const topicsContainer = document.createElement('div');
+                topicsContainer.className = 'calendar-day-topics flex-grow mt-1 space-y-1 overflow-y-auto p-1';
+                topicsContainer.id = `topics-${dateStr}`;
+
+                dayCell.innerHTML = cellHeader;
+                dayCell.appendChild(topicsContainer);
+                
+                dayCell.addEventListener('dragover', handleDragOver);
+                dayCell.addEventListener('dragleave', handleDragLeave);
+                dayCell.addEventListener('drop', handleDropOnCalendar);
+                dayCell.addEventListener('click', (e) => {
+                    if (!e.target.closest('.calendar-topic-item')) {
+                        showExpandedDayView(dateStr);
+                    }
+                });
+                
+                grid.appendChild(dayCell);
+            }
+            monthContainer.appendChild(grid);
+            return monthContainer;
+        }
+        
+        function updateAllCalendarDaysForMonth(container, year, month) {
+             for (let i = 1; i <= 31; i++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                const topicsContainer = container.querySelector(`#topics-${dateStr}`);
+                if (topicsContainer) {
+                    updateSingleDay(dateStr);
+                }
+            }
+        }
+
+        function updateSingleDay(dateStr) {
+            const topicsContainer = document.getElementById(`topics-${dateStr}`);
+            if (!topicsContainer) return;
+            
+            topicsContainer.innerHTML = '';
+            const dayDate = new Date(dateStr + 'T00:00:00Z');
+            const allTopicsForDay = [];
+
+            // Get unstudied, relative topics
+            for (const round of state.rounds) {
+                if (dayDate >= round.startDate && dayDate <= round.endDate) {
+                    const dayIndex = Math.round((dayDate - round.startDate) / (1000 * 60 * 60 * 24));
+                    const roundState = state.topicState[round.vueltaId];
+                    const dayTopics = roundState.assigned[dayIndex];
+                    if (dayTopics) {
+                        dayTopics.forEach(topicData => {
+                            const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
+                            if (topicInfo) {
+                                allTopicsForDay.push({ type: 'relative', topicData, topicInfo, vueltaId: round.vueltaId, dayIndex });
+                            }
+                        });
+                    }
+                }
+            }
+
+            // Get studied, fixed topics
+            const studiedTopics = state.topicState.studiedTopics[dateStr];
+            if (studiedTopics) {
+                studiedTopics.forEach(topicData => {
+                    const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
+                    if (topicInfo) {
+                        allTopicsForDay.push({ type: 'fixed', topicData, topicInfo, originalVuelta: topicData.originalVuelta });
+                    }
+                });
+            }
+
+            const topicCount = allTopicsForDay.length;
+
+            if (topicCount > 3) {
+                topicsContainer.className = 'calendar-day-topics flex-grow mt-1 overflow-y-auto p-1';
+                const gridDiv = document.createElement('div');
+                gridDiv.className = 'topics-grid';
+                const col1 = document.createElement('div');
+                col1.className = 'topics-column';
+                const col2 = document.createElement('div');
+                col2.className = 'topics-column';
+                gridDiv.append(col1, col2);
+
+                allTopicsForDay.forEach((topic, loopIndex) => {
+                    const el = createCalendarTopicElement(topic, dateStr, true);
+                    if (topicCount > 8 && loopIndex % 2 !== 0) {
+                        col2.appendChild(el);
+                    } else if (topicCount <= 8 && loopIndex >= Math.ceil(topicCount / 2)) {
+                        col2.appendChild(el);
+                    } else {
+                        col1.appendChild(el);
+                    }
+                });
+                topicsContainer.appendChild(gridDiv);
+
+            } else {
+                topicsContainer.className = 'calendar-day-topics flex-grow mt-1 space-y-1 overflow-y-auto p-1';
+                allTopicsForDay.forEach((topic) => {
+                    const el = createCalendarTopicElement(topic, dateStr, false);
+                    topicsContainer.appendChild(el);
+                });
+            }
+        }
+        
+        function createCalendarTopicElement(topic, dateStr, inGrid = false) {
+            const { type, topicData, topicInfo } = topic;
+            const vueltaId = type === 'relative' ? topic.vueltaId : topic.originalVuelta;
+            
+            const el = document.createElement('div');
+            el.className = `calendar-topic-item p-1 rounded bg-white/80 shadow-sm flex items-center ${inGrid ? 'in-grid' : ''}`;
+            el.draggable = true;
+            el.dataset.topicId = topicInfo.fullId;
+            el.dataset.isStudied = topicData.studied;
+            
+            if (type === 'relative') {
+                el.dataset.sourceVuelta = topic.vueltaId;
+                el.dataset.sourceDayIndex = topic.dayIndex;
+            } else { // fixed
+                el.dataset.sourceDate = dateStr;
+                el.dataset.originalVuelta = topic.originalVuelta;
+            }
+            
+            el.addEventListener('dragstart', handleDragStartFromCalendar);
+
+            const color = BLOCKS_CONFIG[topicInfo.block]?.color || '#6b7280';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'form-checkbox';
+            checkbox.checked = topicData.studied;
+            checkbox.onclick = (e) => e.stopPropagation();
+            checkbox.onchange = () => handleTopicStudiedChange(checkbox.checked, topic, dateStr);
+
+            const label = document.createElement('span');
+            label.className = `flex-grow ${topicData.studied ? 'line-through text-gray-400' : ''}`;
+            
+            if (inGrid) {
+                const displayName = SHORT_NAMES[topicInfo.block] || topicInfo.block;
+                const abbreviation = displayName.substring(0, 2).toUpperCase();
+                label.textContent = `V${vueltaId.slice(-1)}:${abbreviation}T${topicInfo.id}`;
+            } else {
+                const displayName = SHORT_NAMES[topicInfo.block] || topicInfo.block;
+                label.textContent = `V${vueltaId.slice(-1)}: ${displayName} T${topicInfo.id}`;
+            }
+
+            const colorDot = document.createElement('div');
+            colorDot.className = 'color-dot w-2 h-2 rounded-full flex-shrink-0';
+            colorDot.style.backgroundColor = color;
+
+            el.appendChild(colorDot);
+            el.appendChild(checkbox);
+            el.appendChild(label);
+            return el;
+        }
+        
+        function createExpandedCalendarTopicElement(topic, dateStr) {
+            const { type, topicData, topicInfo } = topic;
+            const vueltaId = type === 'relative' ? topic.vueltaId : topic.originalVuelta;
+
+            const el = document.createElement('div');
+            el.className = 'p-3 rounded-lg bg-gray-100 shadow-sm flex items-center gap-4';
+            
+            const color = BLOCKS_CONFIG[topicInfo.block]?.color || '#6b7280';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'form-checkbox';
+            checkbox.checked = topicData.studied;
+            
+            checkbox.addEventListener('click', (e) => e.stopPropagation());
+
+            checkbox.addEventListener('change', () => {
+                handleTopicStudiedChange(checkbox.checked, topic, dateStr);
+                el.querySelector('.topic-text-container').classList.toggle('line-through', checkbox.checked);
+                el.querySelector('.topic-text-container').classList.toggle('text-gray-400', checkbox.checked);
+            });
+
+            const textContainer = document.createElement('div');
+            textContainer.className = `topic-text-container flex-grow ${topicData.studied ? 'line-through text-gray-400' : ''}`;
+            
+            const mainLabel = document.createElement('div');
+            mainLabel.className = 'font-semibold';
+            mainLabel.textContent = topicInfo.text;
+            
+            const subLabel = document.createElement('div');
+            subLabel.className = 'text-sm text-gray-600';
+            const displayName = SHORT_NAMES[topicInfo.block] || topicInfo.block;
+            subLabel.textContent = `Vuelta ${vueltaId.slice(-1)} | ${displayName}`;
+
+            textContainer.append(mainLabel, subLabel);
+
+            const colorDot = document.createElement('div');
+            colorDot.className = 'w-3 h-3 rounded-full flex-shrink-0';
+            colorDot.style.backgroundColor = color;
+
+            el.appendChild(colorDot);
+            el.appendChild(checkbox);
+            el.appendChild(textContainer);
+            return el;
+        }
+
+        function handleTopicStudiedChange(isStudied, topic, dateStr) {
+            const { type, topicData, topicInfo } = topic;
+
+            if (isStudied) {
+                // Move from relative to fixed
+                const roundState = state.topicState[topic.vueltaId];
+                const dayTopics = roundState.assigned[topic.dayIndex];
+                const topicIndex = dayTopics.findIndex(t => t.id === topicInfo.fullId);
+                if (topicIndex > -1) {
+                    dayTopics.splice(topicIndex, 1);
+                    if (dayTopics.length === 0) delete roundState.assigned[topic.dayIndex];
+                }
+
+                if (!state.topicState.studiedTopics[dateStr]) {
+                    state.topicState.studiedTopics[dateStr] = [];
+                }
+                state.topicState.studiedTopics[dateStr].push({
+                    id: topicInfo.fullId,
+                    studied: true,
+                    originalVuelta: topic.vueltaId
+                });
+            } else {
+                // Move from fixed to relative on the same day
+                const dayTopics = state.topicState.studiedTopics[dateStr];
+                const topicIndex = dayTopics.findIndex(t => t.id === topicInfo.fullId);
+                if (topicIndex > -1) {
+                    const [unstudiedTopic] = dayTopics.splice(topicIndex, 1);
+                    if (dayTopics.length === 0) delete state.topicState.studiedTopics[dateStr];
+
+                    const dropDate = new Date(dateStr + 'T00:00:00Z');
+                    const targetRound = state.rounds.find(r => dropDate >= r.startDate && dropDate <= r.endDate);
+
+                    if (targetRound) {
+                        const targetDayIndex = Math.round((dropDate - targetRound.startDate) / (1000 * 60 * 60 * 24));
+                        const targetRoundState = state.topicState[targetRound.vueltaId];
+                        if (!targetRoundState.assigned[targetDayIndex]) {
+                            targetRoundState.assigned[targetDayIndex] = [];
+                        }
+                        targetRoundState.assigned[targetDayIndex].push({ id: unstudiedTopic.id, studied: false });
+                    } else {
+                        const originalRoundState = state.topicState[unstudiedTopic.originalVuelta];
+                        originalRoundState.unassigned.push(unstudiedTopic.id);
+                        renderTopicSourceList();
+                    }
+                }
+            }
+            updateSingleDay(dateStr);
+            renderSummaryTable();
+        }
+
+        function showExpandedDayView(dateStr) {
+            const date = new Date(dateStr + 'T00:00:00Z');
+            dayModalTitle.textContent = date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+            
+            dayModalContent.innerHTML = '';
+
+            const allTopicsForDay = [];
+            // Get unstudied, relative topics
+            for (const round of state.rounds) {
+                if (date >= round.startDate && date <= round.endDate) {
+                    const dayIndex = Math.round((date - round.startDate) / (1000 * 60 * 60 * 24));
+                    const roundState = state.topicState[round.vueltaId];
+                    const dayTopics = roundState.assigned[dayIndex];
+                    if (dayTopics) {
+                        dayTopics.forEach(topicData => {
+                            const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
+                            if (topicInfo) {
+                                allTopicsForDay.push({ type: 'relative', topicData, topicInfo, vueltaId: round.vueltaId, dayIndex });
+                            }
+                        });
+                    }
+                }
+            }
+            // Get studied, fixed topics
+            const studiedTopics = state.topicState.studiedTopics[dateStr];
+            if (studiedTopics) {
+                studiedTopics.forEach(topicData => {
+                    const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
+                    if (topicInfo) {
+                        allTopicsForDay.push({ type: 'fixed', topicData, topicInfo, originalVuelta: topicData.originalVuelta });
+                    }
+                });
+            }
+
+
+            if (allTopicsForDay.length > 0) {
+                allTopicsForDay.forEach((topic) => {
+                    const el = createExpandedCalendarTopicElement(topic, dateStr);
+                    dayModalContent.appendChild(el);
+                });
+            } else {
+                dayModalContent.innerHTML = '<p class="text-gray-500 text-center">No hay temas asignados para este día.</p>';
+            }
+
+            dayModalBackdrop.classList.remove('hidden');
+            dayModalContainer.classList.remove('hidden');
+        }
+
+        function hideExpandedDayView() {
+            dayModalBackdrop.classList.add('hidden');
+            dayModalContainer.classList.add('hidden');
+        }
+
+
+        function changeMonth(direction) {
+            state.displayDate.setUTCMonth(state.displayDate.getUTCMonth() + direction);
+            renderCalendar();
+        }
+
+        function handleDragStartFromSource(e) {
+            e.target.classList.add('dragging');
+            state.draggedTopic = {
+                id: e.target.dataset.topicId,
+                from: 'source',
+                vuelta: state.currentVuelta
+            };
+        }
+        
+        function handleDragStartFromCalendar(e) {
+            e.stopPropagation();
+            e.target.classList.add('dragging');
+            
+            const isStudied = e.target.dataset.isStudied === 'true';
+            const topicId = e.target.dataset.topicId;
+
+            if (isStudied) {
+                 state.draggedTopic = {
+                    id: topicId,
+                    from: 'calendar_fixed',
+                    sourceDate: e.target.closest('.calendar-day').dataset.date,
+                    originalVuelta: e.target.dataset.originalVuelta
+                };
+            } else {
+                state.draggedTopic = {
+                    id: topicId,
+                    from: 'calendar_relative',
+                    sourceVuelta: e.target.dataset.sourceVuelta,
+                    sourceDayIndex: parseInt(e.target.dataset.sourceDayIndex, 10)
+                };
+            }
+        }
+        
+        function handleDragEnd(e) {
+            if (state.draggedTopic) {
+                const draggingElement = document.querySelector('.dragging');
+                if (draggingElement) {
+                    draggingElement.classList.remove('dragging');
+                }
+                state.draggedTopic = null;
+            }
+        }
+
+        function handleDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+        function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+
+        function handleDropOnCalendar(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            if (!state.draggedTopic) return;
+
+            const dateStr = e.currentTarget.dataset.date;
+            const topicId = state.draggedTopic.id;
+            const dropDate = new Date(dateStr + 'T00:00:00Z');
+            const targetRound = state.rounds.find(r => dropDate >= r.startDate && dropDate <= r.endDate);
+
+            if (!targetRound) return; 
+            
+            const targetDayIndex = Math.round((dropDate - targetRound.startDate) / (1000 * 60 * 60 * 24));
+
+            // Logic for moving from source list
+            if (state.draggedTopic.from === 'source') {
+                if (targetRound.vueltaId !== state.currentVuelta) {
+                    e.currentTarget.classList.add('drop-invalid');
+                    setTimeout(() => e.currentTarget.classList.remove('drop-invalid'), 500);
+                    return;
+                }
+
+                const roundState = state.topicState[state.currentVuelta];
+                const topicIndex = roundState.unassigned.indexOf(topicId);
+                if (topicIndex > -1) {
+                    roundState.unassigned.splice(topicIndex, 1);
+                    if (!roundState.assigned[targetDayIndex]) roundState.assigned[targetDayIndex] = [];
+                    roundState.assigned[targetDayIndex].push({ id: topicId, studied: false });
+                    
+                    renderTopicSourceList();
+                    updateSingleDay(dateStr);
+                    renderSummaryTable();
+                }
+            } 
+            // Logic for moving a relative (unstudied) topic
+            else if (state.draggedTopic.from === 'calendar_relative') {
+                const { sourceVuelta, sourceDayIndex } = state.draggedTopic;
+                
+                if (sourceVuelta === targetRound.vueltaId && sourceDayIndex === targetDayIndex) return;
+
+                const sourceRoundState = state.topicState[sourceVuelta];
+                const sourceDayTopics = sourceRoundState.assigned[sourceDayIndex];
+                const topicIndex = sourceDayTopics.findIndex(t => t.id === topicId);
+                
+                if (topicIndex > -1) {
+                    const [movedTopic] = sourceDayTopics.splice(topicIndex, 1);
+                    if(sourceDayTopics.length === 0) delete sourceRoundState.assigned[sourceDayIndex];
+
+                    const targetRoundState = state.topicState[targetRound.vueltaId];
+                    if (!targetRoundState.assigned[targetDayIndex]) targetRoundState.assigned[targetDayIndex] = [];
+                    targetRoundState.assigned[targetDayIndex].push(movedTopic);
+
+                    const sourceRoundInfo = state.rounds.find(r => r.vueltaId === sourceVuelta);
+                    const sourceDate = new Date(sourceRoundInfo.startDate);
+                    sourceDate.setUTCDate(sourceDate.getUTCDate() + sourceDayIndex);
+                    
+                    updateSingleDay(sourceDate.toISOString().split('T')[0]);
+                    updateSingleDay(dateStr);
+                    renderSummaryTable();
+                }
+            }
+            // Cannot drag-and-drop studied (fixed) topics. They must be un-studied first.
+
+            state.draggedTopic = null;
+            document.querySelector('.dragging')?.classList.remove('dragging');
+        }
+
+        function handleDropOnSourceList(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            if (!state.draggedTopic || !state.draggedTopic.from.startsWith('calendar')) return;
+
+            const { id } = state.draggedTopic;
+            
+            if (state.draggedTopic.from === 'calendar_relative') {
+                const { sourceVuelta, sourceDayIndex } = state.draggedTopic;
+                const roundState = state.topicState[sourceVuelta];
+                const dayTopics = roundState.assigned[sourceDayIndex];
+                const topicIndex = dayTopics.findIndex(t => t.id === id);
+                if (topicIndex > -1) {
+                    dayTopics.splice(topicIndex, 1);
+                    if(dayTopics.length === 0) delete roundState.assigned[sourceDayIndex];
+                    roundState.unassigned.push(id);
+                }
+                 const sourceRoundInfo = state.rounds.find(r => r.vueltaId === sourceVuelta);
+                 const sourceDate = new Date(sourceRoundInfo.startDate);
+                 sourceDate.setUTCDate(sourceDate.getUTCDate() + sourceDayIndex);
+                 updateSingleDay(sourceDate.toISOString().split('T')[0]);
+            }
+            else if (state.draggedTopic.from === 'calendar_fixed') {
+                const { sourceDate, originalVuelta } = state.draggedTopic;
+                const dayTopics = state.topicState.studiedTopics[sourceDate];
+                const topicIndex = dayTopics.findIndex(t => t.id === id);
+                if (topicIndex > -1) {
+                    dayTopics.splice(topicIndex, 1);
+                    if(dayTopics.length === 0) delete state.topicState.studiedTopics[sourceDate];
+                    state.topicState[originalVuelta].unassigned.push(id);
+                }
+                updateSingleDay(sourceDate);
+            }
+
+            renderTopicSourceList();
+            renderSummaryTable();
+            state.draggedTopic = null;
+            document.querySelector('.dragging')?.classList.remove('dragging');
+        }
+
+        function exportToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,tipo,vuelta,dia,id_tema,bloque,estudiado\r\n";
+            // Studied topics
+            for(const dateStr in state.topicState.studiedTopics) {
+                state.topicState.studiedTopics[dateStr].forEach(topicData => {
+                    const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
+                    if (topicInfo) {
+                        const row = ['fijo', topicData.originalVuelta, dateStr, `"${topicData.id}"`, `"${topicInfo.block}"`, topicData.studied].join(",");
+                        csvContent += row + "\r\n";
+                    }
+                });
+            }
+            // Relative topics
+            for (const vueltaId in state.topicState) {
+                if(vueltaId === 'studiedTopics') continue;
+                const roundData = state.topicState[vueltaId];
+                for (const dayIndex in roundData.assigned) {
+                    roundData.assigned[dayIndex].forEach(topicData => {
+                        const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
+                        if (topicInfo) {
+                            const row = ['relativo', vueltaId, dayIndex, `"${topicData.id}"`, `"${topicInfo.block}"`, topicData.studied].join(",");
+                            csvContent += row + "\r\n";
+                        }
+                    });
+                }
+            }
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `plan_estudio_${sessionId}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } 
+
+        function importFromCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const rows = text.split('\n').slice(1);
+                
+                resetTopicState();
+
+                rows.forEach(row => {
+                    if (!row) return;
+                    const columns = row.split(',').map(c => c.replace(/"/g, ''));
+                    const [tipo, vueltaId, dia, topicId, block, studiedStr] = columns;
+                    
+                    if (!tipo || !vueltaId || !dia || !topicId) return;
+
+                    const studied = studiedStr.trim() === 'true';
+
+                    if (tipo === 'fijo') {
+                        const dateStr = dia;
+                         if (!state.topicState.studiedTopics[dateStr]) {
+                            state.topicState.studiedTopics[dateStr] = [];
+                        }
+                        state.topicState.studiedTopics[dateStr].push({ id: topicId, studied: studied, originalVuelta: vueltaId });
+                    } else { // relativo
+                        const dayIndex = parseInt(dia, 10);
+                        if (isNaN(dayIndex) || !state.topicState[vueltaId]) return;
+                        const roundState = state.topicState[vueltaId];
+                         if (!roundState.assigned[dayIndex]) {
+                            roundState.assigned[dayIndex] = [];
+                        }
+                        roundState.assigned[dayIndex].push({ id: topicId, studied: studied });
+                    }
+                    
+                    // Remove from unassigned
+                    for(const vId in state.topicState){
+                        if(vId === 'studiedTopics') continue;
+                        const unassignedIndex = state.topicState[vId].unassigned.indexOf(topicId);
+                        if (unassignedIndex > -1) {
+                            state.topicState[vId].unassigned.splice(unassignedIndex, 1);
+                        }
+                    }
+                });
+                alert('¡Plan importado con éxito!');
+                renderAll();
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        initialize();
     </script>
 </body>
 </html>
