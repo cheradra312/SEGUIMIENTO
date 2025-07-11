@@ -204,9 +204,14 @@
 
     <div id="main-content" class="p-4 md:p-6 hidden">
         <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
-            <header class="text-center mb-4">
-                <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Planificador de Estudio Interactivo</h1>
-                <p class="text-md text-gray-600 mt-2">Arrastra los temas al calendario para organizar tu estudio por vueltas.</p>
+            <header class="mb-4">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Planificador de Estudio Interactivo</h1>
+                    <div id="countdown-container" class="text-right">
+                        <!-- Countdown will be injected here by JS -->
+                    </div>
+                </div>
+                <p class="text-md text-gray-600 mt-2 text-center">Arrastra los temas al calendario para organizar tu estudio por vueltas.</p>
             </header>
             
             <div class="flex flex-wrap items-center justify-center gap-4">
@@ -394,6 +399,7 @@
         const toggleConfigBtn = document.getElementById('toggle-config-btn');
         const configPanel = document.getElementById('config-panel');
         const viewRoundsBtn = document.getElementById('view-rounds-btn');
+        const countdownContainer = document.getElementById('countdown-container');
 
         let state = {
             flatTopics: [],
@@ -444,6 +450,7 @@
             topicSearchInput.addEventListener('input', () => renderTopicSourceList());
             prevMonthBtn.addEventListener('click', () => changeMonth(-1));
             nextMonthBtn.addEventListener('click', () => changeMonth(1));
+            endDateInput.addEventListener('change', updateCountdown);
             
             topicSourceList.addEventListener('dragover', handleDragOver);
             topicSourceList.addEventListener('dragleave', handleDragLeave);
@@ -610,12 +617,49 @@
                  const planStartDate = state.rounds[0].startDate;
                  state.displayDate = new Date(Date.UTC(planStartDate.getUTCFullYear(), planStartDate.getUTCMonth(), 1));
             }
+            updateCountdown();
             renderSummaryRoundSelect();
             renderSummaryTable();
             renderRoundTabs();
             renderSubBlockFilter();
             renderTopicSourceList();
             renderCalendar();
+        }
+
+        function updateCountdown() {
+            if (!countdownContainer) return;
+
+            const endDateStr = endDateInput.value;
+            const endDate = parseDateString(endDateStr);
+
+            if (!endDate) {
+                countdownContainer.innerHTML = '';
+                return;
+            }
+
+            const today = new Date();
+            const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+            const timeDiff = endDate.getTime() - todayUTC.getTime();
+            const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+            if (daysRemaining < 0) {
+                countdownContainer.innerHTML = `
+                    <div class="text-sm font-semibold text-red-600">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        Fecha Límite Pasada
+                    </div>`;
+            } else if (daysRemaining === 0) {
+                 countdownContainer.innerHTML = `
+                    <div class="text-lg font-bold text-blue-600 animate-pulse">
+                        <i class="fas fa-flag-checkered mr-2"></i>
+                        ¡Es Hoy!
+                    </div>`;
+            } else {
+                countdownContainer.innerHTML = `
+                    <div class="text-sm text-gray-500">Días Restantes</div>
+                    <div class="text-2xl font-bold text-gray-800">${daysRemaining}</div>
+                `;
+            }
         }
 
         function resetTopicState() {
