@@ -601,14 +601,13 @@
             if (loadedTopicState.studiedTopics) {
                 for (const dateStr in loadedTopicState.studiedTopics) {
                     loadedTopicState.studiedTopics[dateStr].forEach(topic => {
-                        // Use completionDate if available, otherwise use the key (dateStr)
-                        const displayDate = topic.completionDate ? new Date(topic.completionDate + 'T00:00:00Z') : new Date(dateStr + 'T00:00:00Z');
+                        const displayDate = new Date(dateStr + 'T00:00:00Z');
                         progressByTopic[topic.id] = progressByTopic[topic.id] || {};
                         progressByTopic[topic.id][topic.originalVuelta] = { 
                             status: 'studied', 
                             date: `${String(displayDate.getUTCDate()).padStart(2,'0')}/${String(displayDate.getUTCMonth()+1).padStart(2,'0')}`,
                             securityLevel: topic.securityLevel || 100,
-                            dateObj: dateStr // The key in the database remains the original planned date
+                            dateObj: dateStr
                         };
                     });
                 }
@@ -758,8 +757,8 @@
             const topicProgress = progressByTopic[topicId]?.[vueltaId];
             if (!topicProgress || topicProgress.status !== 'studied') return;
 
-            const originalPlannedDate = topicProgress.dateObj;
-            const studiedDay = plannerState.topicState.studiedTopics[originalPlannedDate];
+            const studiedDateStr = topicProgress.dateObj;
+            const studiedDay = plannerState.topicState.studiedTopics[studiedDateStr];
             
             if (studiedDay) {
                 let unstudiedTopicData;
@@ -774,14 +773,14 @@
                 if (!unstudiedTopicData) return;
 
                 if (newStudiedDay.length === 0) {
-                    delete plannerState.topicState.studiedTopics[originalPlannedDate];
+                    delete plannerState.topicState.studiedTopics[studiedDateStr];
                 } else {
-                    plannerState.topicState.studiedTopics[originalPlannedDate] = newStudiedDay;
+                    plannerState.topicState.studiedTopics[studiedDateStr] = newStudiedDay;
                 }
 
                 const roundInfo = state.rounds.find(r => r.vueltaId === vueltaId);
                 if (roundInfo) {
-                    const dropDate = new Date(originalPlannedDate + 'T00:00:00Z');
+                    const dropDate = new Date(studiedDateStr + 'T00:00:00Z');
                     const dayIndex = Math.round((dropDate - roundInfo.startDate) / (1000 * 60 * 60 * 24));
 
                     if (dayIndex >= 0 && dayIndex < roundInfo.duration) {
@@ -801,20 +800,13 @@
             const topicProgress = progressByTopic[topicId]?.[vueltaId];
             
             if (topicProgress && topicProgress.status === 'studied') {
-                const originalPlannedDate = topicProgress.dateObj;
-                const studiedDay = plannerState.topicState.studiedTopics[originalPlannedDate];
+                const studiedDate = topicProgress.dateObj;
+                const studiedDay = plannerState.topicState.studiedTopics[studiedDate];
                 const topicData = studiedDay?.find(t => t.id === topicId && t.originalVuelta === vueltaId);
                 if (topicData) {
                     topicData.securityLevel = newLevel;
-                    topicData.completionDate = new Date().toISOString().slice(0, 10);
                 }
             } else if (topicProgress && topicProgress.status === 'assigned') {
-                const originalPlannedDate = topicProgress.dateObj;
-                if (!originalPlannedDate) {
-                    console.error(`Fecha original no encontrada para ${topicId}. No se puede marcar como estudiado.`);
-                    return;
-                }
-
                 const roundState = plannerState.topicState[vueltaId];
                 if (roundState && roundState.assigned) {
                     for (const dayIndex in roundState.assigned) {
@@ -822,22 +814,24 @@
                         if (topicIndex !== -1) {
                             roundState.assigned[dayIndex].splice(topicIndex, 1);
                             if (roundState.assigned[dayIndex].length === 0) delete roundState.assigned[dayIndex];
-                            break;
+                            break; 
                         }
                     }
                 }
 
-                if (!plannerState.topicState.studiedTopics) plannerState.topicState.studiedTopics = {};
-                if (!plannerState.topicState.studiedTopics[originalPlannedDate]) {
-                    plannerState.topicState.studiedTopics[originalPlannedDate] = [];
+                const todayDateStr = new Date().toISOString().slice(0, 10);
+                if (!plannerState.topicState.studiedTopics) {
+                    plannerState.topicState.studiedTopics = {};
+                }
+                if (!plannerState.topicState.studiedTopics[todayDateStr]) {
+                    plannerState.topicState.studiedTopics[todayDateStr] = [];
                 }
                 
-                plannerState.topicState.studiedTopics[originalPlannedDate].push({
+                plannerState.topicState.studiedTopics[todayDateStr].push({
                     id: topicId,
                     originalVuelta: vueltaId,
                     securityLevel: newLevel,
-                    studied: true,
-                    completionDate: new Date().toISOString().slice(0, 10)
+                    studied: true
                 });
             }
 
