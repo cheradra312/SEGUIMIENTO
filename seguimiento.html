@@ -392,7 +392,6 @@
                 }
             }
         };
-
         window.onload = async () => {
             try {
                 initializeApp(firebaseConfig);
@@ -914,16 +913,9 @@
                     plannerState.topicState.studiedTopics[studiedDateStr] = newStudiedDay;
                 }
 
-                const roundInfo = state.rounds.find(r => r.vueltaId === vueltaId);
-                if (roundInfo) {
-                    const dropDate = new Date(studiedDateStr + 'T00:00:00Z');
-                    const dayIndex = Math.round((dropDate - roundInfo.startDate) / (1000 * 60 * 60 * 24));
-
-                    if (dayIndex >= 0 && dayIndex < roundInfo.duration) {
-                        const roundState = plannerState.topicState[vueltaId];
-                        if (!roundState.assigned[dayIndex]) roundState.assigned[dayIndex] = [];
-                        roundState.assigned[dayIndex].push({ id: topicId, studied: false });
-                    }
+                const roundState = plannerState.topicState[vueltaId];
+                if(roundState && roundState.unassigned && !roundState.unassigned.includes(topicId)) {
+                    roundState.unassigned.push(topicId);
                 }
                 
                 savePlannerState();
