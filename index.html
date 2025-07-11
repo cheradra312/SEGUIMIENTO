@@ -3,186 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planificador de Estudio Interactivo</title>
+    <title>Seguimiento de Estudio para Oposición</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { 
+        body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
+            background-color: #f8fafc; /* slate-50 */
         }
-        .topic-source-list::-webkit-scrollbar, .calendar-day-topics::-webkit-scrollbar, #day-modal-content::-webkit-scrollbar { width: 6px; }
-        .topic-source-list::-webkit-scrollbar-track, .calendar-day-topics::-webkit-scrollbar-track, #day-modal-content::-webkit-scrollbar-track { background: #e5e7eb; border-radius: 10px; }
-        .topic-source-list::-webkit-scrollbar-thumb, .calendar-day-topics::-webkit-scrollbar-thumb, #day-modal-content::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; }
-        .topic-source-list::-webkit-scrollbar-thumb:hover, .calendar-day-topics::-webkit-scrollbar-thumb:hover, #day-modal-content::-webkit-scrollbar-thumb:hover { background: #6b7280; }
-        
-        .calendar-day {
-            min-height: 160px;
-            transition: background-color 0.2s ease-in-out;
-            cursor: pointer;
-        }
-        .drag-over {
-            background-color: #c7d2fe !important; /* indigo-200 */
-            border: 2px dashed #6366f1; /* indigo-500 */
-        }
-        .topic-card, .calendar-topic-item {
-            cursor: grab;
-            transition: all 0.2s ease;
-        }
-        .topic-card:active, .calendar-topic-item:active {
-            cursor: grabbing;
-            opacity: 0.8;
-            transform: scale(1.05);
-        }
-        .dragging {
-            opacity: 0.5;
-            background: #e0e7ff;
-        }
-
-        .form-checkbox {
-            -webkit-appearance: none; appearance: none;
-            background-color: #fff; margin: 0; font: inherit; color: currentColor;
-            width: 1.1em; height: 1.1em; border: 0.1em solid #9ca3af;
-            border-radius: 0.25em; transform: translateY(-0.075em);
-            display: grid; place-content: center; cursor: pointer;
-            flex-shrink: 0;
-        }
-        .form-checkbox::before {
-            content: ""; width: 0.65em; height: 0.65em; transform: scale(0);
-            transition: 120ms transform ease-in-out;
-            box-shadow: inset 1em 1em #4f46e5;
-            transform-origin: bottom left;
-            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
-        }
-        .form-checkbox:checked { border-color: #4f46e5; }
-        .form-checkbox:checked::before { transform: scale(1); }
-
-        .calendar-topic-item {
-            padding: 4px;
-            font-size: 0.75rem;
-            gap: 6px;
-        }
-        
-        .topics-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2px;
-        }
-
-        .topics-column {
+        .tick-container {
             display: flex;
             flex-direction: column;
-            gap: 2px;
-            min-width: 0; /* Fix for grid layout issues */
+            align-items: center;
+            width: 40px; /* Ancho para el tick y la fecha */
         }
-
-        .calendar-topic-item.in-grid {
-            font-size: 0.7rem; /* Adjusted font-size for better fit */
-            padding: 2px 4px;
-            gap: 4px;
+        .tick-box {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #d1d5db;
+            border-radius: 6px;
+            transition: all 0.2s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
-        .calendar-topic-item.in-grid .form-checkbox {
-             width: 0.8em; height: 0.8em;
-        }
-         .calendar-topic-item.in-grid .color-dot {
-             width: 0.4rem; height: 0.4rem;
-        }
-        .calendar-topic-item.in-grid span {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .drop-invalid {
-            border: 2px dashed #ef4444 !important; /* red-500 */
-        }
-        .content-panel.hidden {
+        .tick-box.green { background-color: #22c55e; border-color: #22c55e; }
+        .tick-box.orange { background-color: #f97316; border-color: #f97316; }
+        .tick-box .tick-mark {
             display: none;
+            width: 8px;
+            height: 14px;
+            border: solid white;
+            border-width: 0 3px 3px 0;
+            transform: rotate(45deg);
+        }
+        .tick-box.green .tick-mark, .tick-box.orange .tick-mark { display: block; }
+        .tick-box.orange .tick-mark {
+             width: 10px;
+             height: 10px;
+             border: 2px solid white;
+             border-radius: 50%;
+             transform: none;
+        }
+        .tick-date {
+            font-size: 0.65rem; /* 10.4px */
+            color: #6b7280; /* gray-500 */
+            margin-top: 2px;
+            height: 1em; /* Altura para evitar saltos de layout */
+        }
+        .topic-card:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
+        .topic-full-name { display: none; margin-left: 8px; font-size: 0.875rem; }
+        body.show-full-names .topic-full-name { display: inline; }
+
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .header-container.is-collapsible {
+            cursor: pointer;
+        }
+        .header-title-wrapper {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+            min-width: 0;
+        }
+        .topic-text-container {
+            flex-grow: 1;
+        }
+        #login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .collapsible-content {
+            max-height: 5000px; /* A large value to allow for content */
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .collapsible.collapsed > .collapsible-content {
+            max-height: 0;
+            margin-top: 0;
+            margin-bottom: 0;
+            padding-top: 0;
+            padding-bottom: 0;
         }
         .toggle-icon {
             transition: transform 0.3s ease;
+            flex-shrink: 0;
+            margin-right: 0.75rem;
+            color: #6b7280;
         }
-        .collapsed .toggle-icon {
+        .collapsible.collapsed .toggle-icon {
             transform: rotate(-90deg);
         }
-        aside.collapsed {
-            width: 50px !important;
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
-            overflow: hidden;
-        }
-        aside.collapsed > #topics-content {
-            display: none;
-        }
-        aside.collapsed #topics-header h2 {
-            display: none;
-        }
-        aside {
-            transition: width 0.3s ease, padding 0.3s ease;
-        }
-        
-        #day-modal-backdrop {
-            transition: opacity 0.3s ease-in-out;
-        }
-        #day-modal-container {
-            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
-        }
-        #day-modal-backdrop.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-        #day-modal-container.hidden {
-            opacity: 0;
-            transform: scale(0.95);
-            pointer-events: none;
-        }
 
-        #config-panel {
-            display: grid;
-            grid-template-rows: 0fr;
-            transition: grid-template-rows 0.4s ease-in-out;
-        }
-        #config-panel.expanded {
-            grid-template-rows: 1fr;
-        }
-        .config-panel-inner {
-            overflow: hidden;
-        }
-
-        /* New styles for unavailable topics */
-        .unassign-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 0 4px;
-            color: #9ca3af; /* gray-400 */
-            transition: color 0.2s;
-            pointer-events: auto;
-        }
-        .unassign-btn:hover {
-            color: #ef4444; /* red-500 */
-        }
-        .topic-card.unavailable {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        /* Block Colors */
+        /* Color Theming */
         .color-adm { color: #b45309; }
         .color-aguas { color: #0369a1; }
         .color-costas { color: #0e7490; }
         .color-infra { color: #4b5563; }
         .color-trans { color: #059669; }
         .color-ma { color: #15803d; }
+
+        /* Compact Layout for Hidden Names */
+        body:not(.show-full-names) .compact-layout-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        body:not(.show-full-names) .sub-block-header {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            grid-column: 1 / -1; /* Header spans both columns */
+        }
+
     </style>
 </head>
-<body class="text-gray-800">
+<body class="bg-slate-50 text-gray-800">
 
-    <div id="login-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+    <div id="login-modal">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-sm">
             <h2 class="text-2xl font-bold mb-4 text-center">Bienvenido</h2>
-            <p class="text-gray-600 mb-6 text-center">Introduce un nombre de usuario o ID para guardar y cargar tu progreso.</p>
+            <p class="text-gray-600 mb-6 text-center">Introduce un nombre de usuario o ID para cargar tu progreso.</p>
             <form id="login-form">
                 <input type="text" id="username-input" placeholder="Tu nombre de usuario" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4" required>
                 <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold">Empezar</button>
@@ -190,1407 +145,504 @@
         </div>
     </div>
 
-    <div id="main-content" class="p-4 md:p-6 hidden">
-        <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
-            <header class="text-center mb-4">
-                <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Planificador de Estudio Interactivo</h1>
-                <p class="text-md text-gray-600 mt-2">Arrastra los temas al calendario para organizar tu estudio por vueltas.</p>
-            </header>
-            
-            <div class="flex flex-wrap items-center justify-center gap-4">
-                 <div>
-                    <button id="view-rounds-btn" class="bg-cyan-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-cyan-700 transition-colors shadow-md">
-                        <i class="fas fa-tasks mr-2"></i>Ver Vueltas
-                    </button>
-                    <button id="generate-btn" class="bg-indigo-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors shadow-md">
-                        <i class="fas fa-sync-alt mr-2"></i>Actualizar Plan
-                    </button>
-                    <button id="save-btn" class="bg-green-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-green-700 transition-colors shadow-md">
-                        <i class="fas fa-save mr-2"></i>Guardar Progreso
-                    </button>
-                </div>
-                <div class="ml-auto flex items-center gap-2">
-                    <button id="export-csv-btn" title="Exportar a CSV" class="bg-gray-200 text-gray-600 font-semibold w-10 h-10 text-sm rounded-lg hover:bg-gray-300 transition-colors shadow-md flex items-center justify-center">
-                        <i class="fas fa-download"></i>
-                    </button>
-                    <label for="import-csv-input" title="Importar desde CSV" class="bg-gray-200 text-gray-600 font-semibold w-10 h-10 text-sm rounded-lg hover:bg-gray-300 transition-colors shadow-md cursor-pointer flex items-center justify-center">
-                        <i class="fas fa-upload"></i>
-                    </label>
-                    <input type="file" id="import-csv-input" class="hidden" accept=".csv">
-                     <button id="toggle-config-btn" class="bg-gray-700 text-white font-semibold w-10 h-10 rounded-lg hover:bg-gray-800 transition-colors shadow-md flex items-center justify-center">
-                        <i class="fas fa-cog"></i>
-                    </button>
+    <div id="main-content" class="container mx-auto p-4 md:p-8 hidden">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-800">Seguimiento de Estudio</h1>
+            <p class="text-lg text-slate-500 mt-2">Cuerpo de Ingenieros de Caminos, Canales y Puertos del Estado</p>
+            <div id="user-info" class="mt-4 text-sm text-gray-500"></div>
+            <div id="connection-status" class="mt-2 text-sm font-semibold h-5"></div>
+            <div class="mt-6 flex flex-wrap justify-center items-center gap-4">
+                <button id="toggle-names-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium">Mostrar Nombres</button>
+                <button id="calc-prob-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"><i class="fas fa-calculator mr-2"></i>Calcular Probabilidad</button>
+                <button id="collapse-all-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm font-medium">Plegar Todo</button>
+                <button id="expand-all-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm font-medium">Desplegar Todo</button>
+                 <!-- Selector de Vuelta -->
+                <div class="flex items-center gap-2">
+                    <label for="vuelta-selector" class="font-medium text-slate-700">Ver Vuelta:</label>
+                    <select id="vuelta-selector" class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <!-- Opciones se generarán con JS -->
+                    </select>
                 </div>
             </div>
-            <div id="config-panel">
-                <div class="config-panel-inner">
-                    <div class="pt-4 mt-4 border-t border-gray-200 flex flex-col md:flex-row items-center justify-center gap-4">
-                        <div>
-                            <label for="end-date" class="block text-sm font-medium text-gray-700 mb-1">Fecha Límite</label>
-                            <input type="text" id="end-date" value="15/09/2025" placeholder="DD/MM/YYYY" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm">
-                        </div>
-                        <div id="round-durations-container" class="flex flex-wrap items-end justify-center gap-3">
-                            <!-- Inputs for round durations will be generated by JS -->
-                        </div>
-                    </div>
-                </div>
-            </div>
+        </header>
+
+        <div class="bg-white rounded-lg shadow-md mb-8 overflow-x-auto">
+            <table id="top-summary-table" class="w-full text-sm text-left text-slate-600">
+                </table>
         </div>
 
-        <div id="save-status" class="text-center text-sm font-medium h-5 mb-2"></div>
-        
-        <div id="summary-panel" class="bg-white rounded-xl shadow-lg mb-4">
-            <div id="summary-header" class="p-4 cursor-pointer flex justify-between items-center border-b border-transparent">
-                <h3 class="font-bold text-lg">Resumen de Progreso</h3>
-                <div class="toggle-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>
-                </div>
-            </div>
-            <div id="summary-content" class="p-4 content-panel hidden">
-                <div class="mb-4">
-                    <label for="summary-round-select" class="block text-sm font-medium text-gray-700 mb-1">Seleccionar Vuelta para el Resumen:</label>
-                    <select id="summary-round-select" class="w-full md:w-1/3 p-2 border border-gray-300 rounded-lg"></select>
-                </div>
-                <div id="summary-table-container" class="overflow-x-auto"></div>
-            </div>
-        </div>
-
-        <div class="flex flex-row gap-6">
-            <aside id="topics-panel" class="lg:w-1/3 bg-white rounded-xl shadow-lg p-4 flex flex-col">
-                <div id="topics-header" class="flex justify-between items-center mb-2 cursor-pointer">
-                    <h2 class="text-xl font-bold">Temas por Asignar</h2>
-                    <div class="toggle-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>
-                    </div>
-                </div>
-                <div id="topics-content" class="content-panel">
-                    <div class="flex flex-wrap gap-2 items-center border-b border-gray-200 pb-2 mb-2">
-                        <div id="round-tabs" class="flex"></div>
-                        <div id="sub-block-filter-container" class="flex-grow"></div>
-                    </div>
-                    <input type="text" id="topic-search" placeholder="Buscar tema..." class="w-full p-2 border border-gray-300 rounded-lg mb-2">
-                    <div id="topic-source-list" class="overflow-y-auto h-96 lg:h-[45vh] p-1"></div>
-                </div>
-            </aside>
-
-            <main class="flex-grow bg-white rounded-xl shadow-lg p-4 flex flex-col">
-                <div class="flex justify-between items-center mb-4">
-                    <button id="prev-month-btn" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">&lt; Anterior</button>
-                    <h2 id="calendar-title" class="text-xl font-bold text-center"></h2>
-                    <button id="next-month-btn" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Siguiente &gt;</button> 
-                </div>
-                <div id="calendar-container" class="grid grid-cols-1 gap-8"></div>
+        <main id="syllabus-container">
             </main>
-        </div>
-    </div>
-    
-    <!-- Day Details Modal -->
-    <div id="day-modal-backdrop" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-40 hidden">
-        <div id="day-modal-container" class="fixed inset-0 flex items-center justify-center p-4 hidden">
-            <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col" style="max-height: 90vh;">
-                <div class="flex justify-between items-center p-4 border-b">
-                    <h3 id="day-modal-title" class="text-xl font-bold"></h3>
-                    <button id="day-modal-close-btn" class="text-gray-500 hover:text-gray-800">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
-                    </button>
-                </div>
-                <div id="day-modal-content" class="p-6 overflow-y-auto space-y-3">
-                    <!-- Topic details will be injected here -->
-                </div>
-            </div>
-        </div>
-    </div>
 
+        <footer class="text-center mt-12 py-4">
+            <p class="text-sm text-gray-500">Aplicación generada para el seguimiento de estudio.</p>
+        </footer>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
+            // Tu configuración de Firebase aquí...
             apiKey: "AIzaSyCKXzSmQ9F1M4W59Vyalu3CWdKFsh7dOmE",
             authDomain: "costas-304b9.firebaseapp.com",
             projectId: "costas-304b9",
             storageBucket: "costas-304b9.appspot.com",
-            messagingSenderId: "251850800414",
+            messagingSenderId: "251850800414", 
             appId: "1:251850800414:web:435e20e5305881732e5d0f",
             measurementId: "G-C2NTL72PZH"
         };
+
         let db, sessionId;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-planner-app';
-
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        
         const BLOCKS_CONFIG = {
-            "Organización y Funcionamiento de la Administración Pública": { color: "#b45309", icon: "fa-gavel", c: "color-adm" },
-            "A.1) Aguas y Obras Hidráulicas": { color: "#0369a1", icon: "fa-tint", c: "color-aguas" },
-            "A.2) Puertos y Costas": { color: "#0e7490", icon: "fa-water", c: "color-costas" },
-            "B.1) Carreteras": { color: "#4b5563", icon: "fa-road", c: "color-infra" },
-            "B.2) Ferrocarriles": { color: "#4b5563", icon: "fa-train", c: "color-infra" },
-            "C.1) Transportes y Movilidad": { color: "#059669", icon: "fa-bus", c: "color-trans" },
-            "C.2) Medio Ambiente": { color: "#15803d", icon: "fa-leaf", c: "color-ma" }
+            "Organización y Funcionamiento de la Administración Pública": { abbr: "ADM", icon: "fa-gavel", color: "color-adm", calcId: 'admin' },
+            "A.1) Aguas y Obras Hidráulicas": { abbr: "AGUAS", icon: "fa-tint", color: "color-aguas", calcId: 'aguas' },
+            "A.2) Puertos y Costas": { abbr: "COSTAS", icon: "fa-water", color: "color-costas", calcId: 'aguas' },
+            "B.1) Carreteras": { abbr: "CARR", icon: "fa-road", color: "color-infra", calcId: 'carreteras' },
+            "B.2) Ferrocarriles": { abbr: "FERR", icon: "fa-train", color: "color-infra", calcId: 'carreteras' },
+            "C.1) Transportes y Movilidad": { abbr: "TRANS", icon: "fa-bus", color: "color-trans", calcId: 'transportes' },
+            "C.2) Medio Ambiente": { abbr: "MA", icon: "fa-leaf", color: "color-ma", calcId: 'transportes' }
         };
-
-        const SHORT_NAMES = {
-            "Organización y Funcionamiento de la Administración Pública": "Administrativo",
-            "A.1) Aguas y Obras Hidráulicas": "Aguas",
-            "A.2) Puertos y Costas": "Costas",
-            "B.1) Carreteras": "Carreteras",
-            "B.2) Ferrocarriles": "Ferrocarriles",
-            "C.1) Transportes y Movilidad": "Transportes",
-            "C.2) Medio Ambiente": "MA"
-        };
-
-        const fullSyllabus = {
-            "Materias comunes": { "Organización y Funcionamiento de la Administración Pública": Array.from({length: 17}, (_, i) => ({id: i + 1, text: `Tema Común ${i+1}`}))},
+        
+        const syllabus = {
+            "Materias comunes": {
+                "Organización y Funcionamiento de la Administración Pública": Array.from({length: 17}, (_,i) => ({id: i+1, text: `Tema ${i+1}`}))
+            },
             "Materias específicas": {
-                "A) Aguas y Obras Hidráulicas, Puertos y Costas": { "A.1) Aguas y Obras Hidráulicas": Array.from({length: 28}, (_, i) => ({id: i + 1, text: `Tema A.1.${i+1}`})), "A.2) Puertos y Costas": Array.from({length: 20}, (_, i) => ({id: i + 1, text: `Tema A.2.${i+1}`}))},
-                "B) Infraestructuras de Transporte": { "B.1) Carreteras": Array.from({length: 24}, (_, i) => ({id: i + 1, text: `Tema B.1.${i+1}`})), "B.2) Ferrocarriles": Array.from({length: 22}, (_, i) => ({id: i + 1, text: `Tema B.2.${i+1}`}))},
-                "C) Transportes, Movilidad y Medio Ambiente": { "C.1) Transportes y Movilidad": Array.from({length: 21}, (_, i) => ({id: i + 1, text: `Tema C.1.${i+1}`})), "C.2) Medio Ambiente": Array.from({length: 15}, (_, i) => ({id: i + 1, text: `Tema C.2.${i+1}`}))}
+                "A) Aguas y Obras Hidráulicas, Puertos y Costas": {
+                    "A.1) Aguas y Obras Hidráulicas": Array.from({length: 28}, (_,i) => ({id: i+1, text: `Tema ${i+1}`})),
+                    "A.2) Puertos y Costas": Array.from({length: 20}, (_,i) => ({id: i+1, text: `Tema ${i+1}`}))
+                },
+                "B) Infraestructuras de Transporte": {
+                    "B.1) Carreteras": Array.from({length: 24}, (_,i) => ({id: i+1, text: `Tema ${i+1}`})),
+                    "B.2) Ferrocarriles": Array.from({length: 22}, (_,i) => ({id: i+1, text: `Tema ${i+1}`}))
+                },
+                "C) Transportes, Movilidad y Medio Ambiente": {
+                    "C.1) Transportes y Movilidad": Array.from({length: 21}, (_,i) => ({id: i+1, text: `Tema ${i+1}`})),
+                    "C.2) Medio Ambiente": Array.from({length: 15}, (_,i) => ({id: i+1, text: `Tema ${i+1}`}))
+                }
             }
         };
 
-        const ROUND_COLORS = {
-            bg: ['bg-red-100', 'bg-orange-100', 'bg-yellow-100', 'bg-blue-100', 'bg-green-100'],
-            text: ['text-red-800', 'text-orange-800', 'text-yellow-800', 'text-blue-800', 'text-green-800']
-        };
+        window.onload = async () => {
+            try {
+                initializeApp(firebaseConfig);
+                db = getFirestore();
 
-        const endDateInput = document.getElementById('end-date');
-        const generateBtn = document.getElementById('generate-btn');
-        const saveBtn = document.getElementById('save-btn');
-        const saveStatus = document.getElementById('save-status');
-        const calendarContainer = document.getElementById('calendar-container');
-        const topicSourceList = document.getElementById('topic-source-list');
-        const topicSearchInput = document.getElementById('topic-search');
-        const roundTabsContainer = document.getElementById('round-tabs');
-        const subBlockFilterContainer = document.getElementById('sub-block-filter-container');
-        const prevMonthBtn = document.getElementById('prev-month-btn');
-        const nextMonthBtn = document.getElementById('next-month-btn');
-        const calendarTitle = document.getElementById('calendar-title');
-        const summaryPanel = document.getElementById('summary-panel');
-        const summaryHeader = document.getElementById('summary-header');
-        const summaryContent = document.getElementById('summary-content');
-        const summaryRoundSelect = document.getElementById('summary-round-select');
-        const summaryTableContainer = document.getElementById('summary-table-container');
-        const exportCsvBtn = document.getElementById('export-csv-btn');
-        const importCsvInput = document.getElementById('import-csv-input');
-        const topicsPanel = document.getElementById('topics-panel');
-        const topicsHeader = document.getElementById('topics-header');
-        const topicsContent = document.getElementById('topics-content');
-        const dayModalBackdrop = document.getElementById('day-modal-backdrop');
-        const dayModalContainer = document.getElementById('day-modal-container');
-        const dayModalTitle = document.getElementById('day-modal-title');
-        const dayModalContent = document.getElementById('day-modal-content');
-        const dayModalCloseBtn = document.getElementById('day-modal-close-btn');
-        const toggleConfigBtn = document.getElementById('toggle-config-btn');
-        const configPanel = document.getElementById('config-panel');
-        const viewRoundsBtn = document.getElementById('view-rounds-btn');
+                const loginModal = document.getElementById('login-modal');
+                const loginForm = document.getElementById('login-form');
+                
+                let user = sessionStorage.getItem('username');
 
-        let state = {
-            flatTopics: [],
-            subBlocks: [],
-            mainBlocks: {},
-            rounds: [],
-            topicState: {},
-            currentVuelta: 'vuelta-1',
-            currentSubBlock: 'todos',
-            currentSummaryVuelta: 'vuelta-1',
-            displayDate: new Date(),
-            draggedTopic: null 
-        };
-
-        function initialize() {
-            if (Object.keys(firebaseConfig).length > 0) {
-                try {
-                    const app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                } catch (e) {
-                    console.error("Error initializing Firebase:", e);
-                    alert("No se pudo inicializar Firebase. Comprueba la configuración.");
+                if (!user) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const userFromUrl = urlParams.get('user');
+                    if (userFromUrl) {
+                        user = userFromUrl;
+                        sessionStorage.setItem('username', user);
+                    }
                 }
-            } else {
-                console.warn("Firebase config is empty. Persistence is disabled.");
+
+                if (user) {
+                    await startApp(user);
+                } else {
+                    loginModal.style.display = 'flex'; 
+
+                    if (loginForm) {
+                        loginForm.addEventListener('submit', async (e) => {
+                            e.preventDefault();
+                            const usernameInput = document.getElementById('username-input');
+                            const username = usernameInput.value.trim();
+                            if (username) {
+                                sessionStorage.setItem('username', username);
+                                await startApp(username);
+                            }
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("Error initializing:", error);
             }
-
-            document.getElementById('login-form').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const username = document.getElementById('username-input').value.trim();
-                if(username) {
-                    startApp(username);
-                }
-            });
-        }
+        };
 
         async function startApp(username) {
             sessionId = username;
             document.getElementById('login-modal').style.display = 'none';
             document.getElementById('main-content').classList.remove('hidden');
+
+            document.getElementById('user-info').innerHTML = `<p>Usuario: <span class="font-semibold">${sessionId}</span></p>`;
             
-            parseSyllabus();
-            setupRoundDurationInputs();
-            await loadStateFromFirebase();
+            setupVueltaSelector();
+            renderSyllabus(); 
+            await loadProgress(); 
 
-            generateBtn.addEventListener('click', generateNewPlan);
-            saveBtn.addEventListener('click', saveStateToFirebase);
-            topicSearchInput.addEventListener('input', () => renderTopicSourceList());
-            prevMonthBtn.addEventListener('click', () => changeMonth(-1));
-            nextMonthBtn.addEventListener('click', () => changeMonth(1));
-            
-            topicSourceList.addEventListener('dragover', handleDragOver);
-            topicSourceList.addEventListener('dragleave', handleDragLeave);
-            topicSourceList.addEventListener('drop', handleDropOnSourceList);
-            
-            document.addEventListener('dragend', handleDragEnd);
-            
-            summaryHeader.addEventListener('click', () => {
-                summaryContent.classList.toggle('hidden');
-                summaryPanel.classList.toggle('collapsed');
+            document.getElementById('toggle-names-btn').addEventListener('click', () => {
+                document.body.classList.toggle('show-full-names');
+                const btn = document.getElementById('toggle-names-btn');
+                btn.textContent = document.body.classList.contains('show-full-names') ? 'Ocultar Nombres' : 'Mostrar Nombres';
             });
-            topicsHeader.addEventListener('click', () => {
-                topicsPanel.classList.toggle('collapsed');
-            });
-            summaryRoundSelect.addEventListener('change', (e) => {
-                state.currentSummaryVuelta = e.target.value;
-                renderSummaryTable();
-            });
-
-            exportCsvBtn.addEventListener('click', exportToCSV);
-            importCsvInput.addEventListener('change', importFromCSV);
-            
-            dayModalCloseBtn.addEventListener('click', hideExpandedDayView);
-            dayModalBackdrop.addEventListener('click', (e) => {
-                if (e.target === dayModalBackdrop) {
-                    hideExpandedDayView();
-                }
-            });
-            toggleConfigBtn.addEventListener('click', () => {
-                configPanel.classList.toggle('expanded');
-            });
-            viewRoundsBtn.addEventListener('click', () => {
-                window.open(`seguimiento.html?user=${sessionId}`, '_blank');
-            });
-
-            renderAll();
-        }
-
-        function setupRoundDurationInputs() {
-            const roundDurationsContainer = document.getElementById('round-durations-container');
-            roundDurationsContainer.innerHTML = ''; // Clear previous
-            const defaultDurations = [48, 24, 12, 6, 3]; 
-            for (let i = 1; i <= 5; i++) {
-                const div = document.createElement('div');
-                div.className = 'flex-shrink-0';
-                const label = document.createElement('label');
-                label.htmlFor = `round-${i}-duration`;
-                label.className = 'block text-xs font-medium text-gray-600 mb-1 text-center';
-                label.textContent = `Vuelta ${i}`;
-                
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.id = `round-${i}-duration`;
-                input.min = '1';
-                input.value = defaultDurations[i-1];
-                input.className = 'w-20 p-2 border border-gray-300 rounded-lg shadow-sm text-center';
-                
-                div.appendChild(label);
-                div.appendChild(input);
-                roundDurationsContainer.appendChild(div);
-            }
-        }
-
-        async function saveStateToFirebase() {
-            if (!db || !sessionId) return;
-            saveStatus.textContent = "Guardando...";
-            saveStatus.className = "text-center text-sm font-medium text-blue-600";
-            try {
-                const docRef = doc(db, `artifacts/${appId}/public/data/${sessionId}/plannerState`);
-                const roundDurations = [];
-                for (let i = 1; i <= 5; i++) {
-                    roundDurations.push(document.getElementById(`round-${i}-duration`).value);
-                }
-                const dataToSave = {
-                    topicState: state.topicState,
-                    endDate: endDateInput.value,
-                    roundDurations: roundDurations
-                };
-                await setDoc(docRef, dataToSave);
-                saveStatus.textContent = "¡Progreso guardado!";
-                saveStatus.className = "text-center text-sm font-medium text-green-600";
-            } catch (error) {
-                console.error("Error saving to Firebase:", error);
-                saveStatus.textContent = "Error al guardar.";
-                saveStatus.className = "text-center text-sm font-medium text-red-600";
-            } finally {
-                setTimeout(() => saveStatus.textContent = "", 3000);
-            }
-        }
-
-        async function loadStateFromFirebase() {
-            if (!db || !sessionId) {
-                resetTopicState();
-                return;
-            };
-            const docRef = doc(db, `artifacts/${appId}/public/data/${sessionId}/plannerState`);
-            try {
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    if (data.endDate) {
-                        endDateInput.value = data.endDate;
-                    }
-                    if (data.roundDurations && data.roundDurations.length === 5) {
-                        for (let i = 1; i <= 5; i++) {
-                            const input = document.getElementById(`round-${i}-duration`);
-                            if(input) input.value = data.roundDurations[i-1];
-                        }
-                    }
-                    if (data.topicState) {
-                        state.topicState = data.topicState;
-                        if (!state.topicState.studiedTopics) {
-                            state.topicState.studiedTopics = {};
-                        }
-                        console.log("Previous state loaded.");
-                    } else {
-                         resetTopicState();
-                    }
-                } else {
-                    console.log("No previous state found, starting fresh.");
-                    resetTopicState();
-                }
-            } catch (error) {
-                console.error("Error loading from Firebase:", error);
-                resetTopicState();
-            }
-        }
-
-        function parseSyllabus() {
-            const subBlockSet = new Set();
-            state.flatTopics = [];
-            state.mainBlocks = {};
-
-            for (const topLevelTitle in fullSyllabus) {
-                const mainBlocks = fullSyllabus[topLevelTitle];
-                for (const mainBlockTitle in mainBlocks) {
-                    const subBlocksOrTopics = mainBlocks[mainBlockTitle];
-                    if (Array.isArray(subBlocksOrTopics)) {
-                        const blockName = mainBlockTitle;
-                        subBlockSet.add(blockName);
-                        state.mainBlocks[blockName] = topLevelTitle;
-                        subBlocksOrTopics.forEach(topic => state.flatTopics.push({ ...topic, fullId: `${blockName}-${topic.id}`, block: blockName }));
-                    } else {
-                        for (const subBlockTitle in subBlocksOrTopics) {
-                            const blockName = subBlockTitle;
-                            subBlockSet.add(blockName);
-                            state.mainBlocks[blockName] = mainBlockTitle;
-                            subBlocksOrTopics[subBlockTitle].forEach(topic => state.flatTopics.push({ ...topic, fullId: `${blockName}-${topic.id}`, block: blockName }));
-                        }
-                    }
-                }
-            }
-            state.subBlocks = Array.from(subBlockSet).sort();
+            document.getElementById('collapse-all-btn').addEventListener('click', () => toggleAll(true));
+            document.getElementById('expand-all-btn').addEventListener('click', () => toggleAll(false));
+            document.getElementById('calc-prob-btn').addEventListener('click', openCalculator);
         }
         
-        function generateNewPlan() {
-            renderAll();
-        }
-
-        function renderAll() {
-            calculateRounds();
-            reconcileAssignments();
-            if (state.rounds.length > 0 && !state.displayDate) {
-                 const planStartDate = state.rounds[0].startDate;
-                 state.displayDate = new Date(Date.UTC(planStartDate.getUTCFullYear(), planStartDate.getUTCMonth(), 1));
-            }
-            renderSummaryRoundSelect();
-            renderSummaryTable();
-            renderRoundTabs();
-            renderSubBlockFilter();
-            renderTopicSourceList();
-            renderCalendar();
-        }
-
-        function resetTopicState() {
-            state.topicState = {
-                studiedTopics: {}
-            };
-            const allTopicIds = state.flatTopics.map(t => t.fullId);
-            for (let i = 1; i <= 5; i++) {
-                state.topicState[`vuelta-${i}`] = {
-                    unassigned: [...allTopicIds],
-                    assigned: {} 
-                };
-            }
-        }
-        
-        function parseDateString(dateStr) {
-            const parts = dateStr.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
-            if (!parts) return null;
-            const day = parseInt(parts[1], 10);
-            const month = parseInt(parts[2], 10);
-            const year = parseInt(parts[3], 10);
-            if (day > 31 || month > 12 || year < 1970) return null;
-            return new Date(Date.UTC(year, month - 1, day));
-        }
-
-        function calculateRounds() {
-            const deadline = parseDateString(endDateInput.value);
-            const durations = [];
-            for (let i = 1; i <= 5; i++) {
-                const input = document.getElementById(`round-${i}-duration`);
-                const duration = parseInt(input.value, 10);
-                if (isNaN(duration) || duration < 1) {
-                    state.rounds = [];
-                    console.error(`Invalid duration for round ${i}`);
-                    return;
-                }
-                durations.push(duration);
-            }
-
-            if (!deadline) {
-                state.rounds = [];
-                return;
-            }
-
-            const totalDuration = durations.reduce((sum, d) => sum + d, 0);
-
-            let planStartDate = new Date(deadline.getTime());
-            planStartDate.setUTCDate(planStartDate.getUTCDate() - totalDuration + 1);
-
-            const newRounds = [];
-            let currentStartDate = new Date(planStartDate.getTime());
-
-            for (let i = 0; i < 5; i++) {
-                const duration = durations[i];
-                const roundEndDate = new Date(currentStartDate.getTime());
-                roundEndDate.setUTCDate(roundEndDate.getUTCDate() + duration - 1);
-                
-                newRounds.push({
-                    roundNumber: i + 1,
-                    vueltaId: `vuelta-${i + 1}`,
-                    startDate: new Date(currentStartDate.getTime()),
-                    endDate: roundEndDate,
-                    duration: duration
-                });
-                
-                currentStartDate = new Date(roundEndDate.getTime());
-                currentStartDate.setUTCDate(currentStartDate.getUTCDate() + 1);
-            }
-            state.rounds = newRounds;
-        }
-
-        function reconcileAssignments() {
-            if (!state.rounds || state.rounds.length === 0) return;
-
-            for (const round of state.rounds) {
-                const roundState = state.topicState[round.vueltaId];
-                if (!roundState || !roundState.assigned) continue;
-
-                const lastDayIndex = round.duration - 1;
-                const assignedIndices = Object.keys(roundState.assigned).map(Number);
-
-                for (const dayIndex of assignedIndices) {
-                    if (dayIndex > lastDayIndex) {
-                        const overflowedTopics = roundState.assigned[dayIndex];
-                        if (!roundState.assigned[lastDayIndex]) {
-                            roundState.assigned[lastDayIndex] = [];
-                        }
-                        roundState.assigned[lastDayIndex].push(...overflowedTopics);
-                        delete roundState.assigned[dayIndex];
-                        console.log(`Moved ${overflowedTopics.length} topics from overflowed day ${dayIndex} to last valid day ${lastDayIndex} in ${round.vueltaId}`);
-                    }
-                }
-            }
-        }
-        
-        function renderSummaryRoundSelect() {
-            summaryRoundSelect.innerHTML = '';
+        function setupVueltaSelector() {
+            const selector = document.getElementById('vuelta-selector');
+            selector.innerHTML = '';
             for (let i = 1; i <= 5; i++) {
                 const option = document.createElement('option');
-                option.value = `vuelta-${i}`;
+                option.value = i;
                 option.textContent = `Vuelta ${i}`;
-                summaryRoundSelect.appendChild(option);
+                selector.appendChild(option);
             }
-            summaryRoundSelect.value = state.currentSummaryVuelta;
+            selector.addEventListener('change', updateAllCounters);
+        }
+
+        function renderSyllabus() {
+            const container = document.getElementById('syllabus-container');
+            container.innerHTML = ''; 
+
+            for (const topLevelTitle in syllabus) {
+                const topLevelBlock = document.createElement('div');
+                topLevelBlock.className = 'mt-8';
+                topLevelBlock.appendChild(createHeader(2, topLevelTitle));
+                
+                const mainBlocks = syllabus[topLevelTitle];
+                for (const mainBlockTitle in mainBlocks) {
+                    const mainBlockEl = document.createElement('div');
+                    mainBlockEl.className = 'main-block mt-6 ml-4 collapsible collapsed';
+                    mainBlockEl.appendChild(createHeader(3, mainBlockTitle, true));
+
+                    const mainBlockContent = document.createElement('div');
+                    mainBlockContent.className = 'collapsible-content';
+                    
+                    const subBlocksOrTopics = mainBlocks[mainBlockTitle];
+                    if (Array.isArray(subBlocksOrTopics)) {
+                        subBlocksOrTopics.forEach(topic => mainBlockContent.appendChild(createTopicElement(topic, mainBlockTitle)));
+                    } else {
+                        const compactContainer = document.createElement('div');
+                        compactContainer.className = 'compact-layout-container';
+                        for (const subBlockKey in subBlocksOrTopics) {
+                            const subBlockWrapper = document.createElement('div');
+                            const subBlockHeader = document.createElement('h4');
+                            subBlockHeader.className = `sub-block-header text-base font-semibold mb-2 ${BLOCKS_CONFIG[subBlockKey]?.color || ''}`;
+                            subBlockHeader.textContent = subBlockKey;
+                            subBlockWrapper.appendChild(subBlockHeader);
+                            subBlocksOrTopics[subBlockKey].forEach(topic => subBlockWrapper.appendChild(createTopicElement(topic, subBlockKey)));
+                            compactContainer.appendChild(subBlockWrapper);
+                        }
+                        mainBlockContent.appendChild(compactContainer);
+                    }
+                    mainBlockEl.appendChild(mainBlockContent);
+                    topLevelBlock.appendChild(mainBlockEl);
+                }
+                container.appendChild(topLevelBlock); 
+            }
+        }
+
+        function createHeader(level, title, isCollapsible = false) {
+            const headerWrapper = document.createElement('div');
+            headerWrapper.className = 'header-container';
+             if (isCollapsible) {
+                headerWrapper.classList.add('is-collapsible');
+                headerWrapper.addEventListener('click', (e) => {
+                    if (e.target.closest('.header-counters')) return;
+                    headerWrapper.parentElement.classList.toggle('collapsed');
+                });
+            }
+            const titleWrapper = document.createElement('div');
+            titleWrapper.className = 'header-title-wrapper';
+            if (isCollapsible) {
+                const icon = document.createElement('div');
+                icon.className = 'toggle-icon';
+                icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>`;
+                titleWrapper.appendChild(icon);
+            }
+            const titleEl = document.createElement(`h${level}`);
+            const styles = {2: 'text-2xl font-bold text-slate-800 border-b-2 border-slate-300 pb-2', 3: 'text-xl font-semibold text-slate-700'};
+            titleEl.className = styles[level];
+            titleEl.textContent = title;
+            const config = BLOCKS_CONFIG[title];
+            if(config) titleEl.classList.add(config.c || config.color);
+            titleWrapper.appendChild(titleEl);
+            headerWrapper.appendChild(titleWrapper);
+            return headerWrapper;
+        }
+
+        function createTopicElement(topic, subBlockName) {
+            const topicId = `${subBlockName}-${topic.id}`;
+            const topicDiv = document.createElement('div');
+            topicDiv.className = 'topic-card bg-white p-3 rounded-lg shadow-sm mb-3 flex items-start justify-between gap-4';
+            topicDiv.dataset.topicId = topicId;
+            topicDiv.dataset.subBlockName = subBlockName;
+
+            const topicP = document.createElement('p');
+            topicP.className = 'topic-text-container pt-1'; // Padding top to align with tick-box
+            const config = BLOCKS_CONFIG[subBlockName];
+            if(config) topicP.classList.add(config.c || config.color);
+            topicP.innerHTML = `${topic.id}. <span class="topic-full-name">${topic.text}</span>`;
+
+            const ticksContainer = document.createElement('div');
+            ticksContainer.className = 'flex items-start space-x-2'; // Align items to the start
+            for (let i = 0; i < 5; i++) {
+                const tickContainer = document.createElement('div');
+                tickContainer.className = 'tick-container';
+
+                const tickBox = document.createElement('div');
+                tickBox.className = 'tick-box';
+                const tickMark = document.createElement('div');
+                tickMark.className = 'tick-mark';
+                tickBox.appendChild(tickMark);
+                
+                const dateSpan = document.createElement('span');
+                dateSpan.className = 'tick-date';
+
+                tickContainer.appendChild(tickBox);
+                tickContainer.appendChild(dateSpan);
+                ticksContainer.appendChild(tickContainer);
+            }
+            topicDiv.appendChild(topicP);
+            topicDiv.appendChild(ticksContainer);
+            return topicDiv;
+        }
+
+        function updateAllCounters() {
+            const selectedVuelta = document.getElementById('vuelta-selector').value;
+            renderTopSummaryTable(parseInt(selectedVuelta));
         }
         
-        function calculateSummary() {
-            const summary = {};
-            const roundState = state.topicState[state.currentSummaryVuelta];
-            if (!roundState) return {};
-
-            const assignedInRound = Object.values(roundState.assigned).flat();
-            const studiedInRound = Object.values(state.topicState.studiedTopics)
-                .flat()
-                .filter(t => t.originalVuelta === state.currentSummaryVuelta);
-            
-            const allAssignedTopics = [...assignedInRound, ...studiedInRound];
-
-            state.subBlocks.forEach(subBlock => {
-                const mainBlock = state.mainBlocks[subBlock];
-                if (!summary[mainBlock]) {
-                    summary[mainBlock] = {};
-                }
-                
-                const topicsInSubBlock = state.flatTopics.filter(t => t.block === subBlock);
-                const assignedInSubBlock = allAssignedTopics.filter(assignedTopic => topicsInSubBlock.some(t => t.fullId === assignedTopic.id));
-                const studiedInSubBlock = assignedInSubBlock.filter(t => t.studied).length;
-
-                summary[mainBlock][subBlock] = {
-                    total: topicsInSubBlock.length,
-                    asignados: assignedInSubBlock.length,
-                    estudiados: studiedInSubBlock,
-                    pendientes: assignedInSubBlock.length - studiedInSubBlock
-                };
-            });
-            return summary;
-        }
-
-        function renderSummaryTable() {
-            const summaryData = calculateSummary();
-            let tableHTML = `<table class="w-full text-sm text-left text-gray-700">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+        function renderTopSummaryTable(selectedVuelta) {
+            const summaryTable = document.getElementById('top-summary-table');
+            const tableHead = `
+                <thead class="bg-slate-200 text-xs text-slate-700 uppercase tracking-wider">
                     <tr>
-                        <th class="px-4 py-3">Bloque</th>
-                        <th class="px-4 py-3">Sub-bloque</th>
-                        <th class="px-4 py-3 text-center">Asignados</th>
-                        <th class="px-4 py-3 text-center">Estudiados</th>
-                        <th class="px-4 py-3 text-center">Pendientes</th>
-                        <th class="px-4 py-3 text-center">Total</th>
+                        <th class="px-6 py-3">Bloque</th>
+                        <th class="px-6 py-3">Sub-bloque</th>
+                        <th class="px-6 py-3 text-center">Pendientes</th>
+                        <th class="px-6 py-3 text-center">Estudiados</th>
+                        <th class="px-6 py-3 text-center">Asignados</th>
+                        <th class="px-6 py-3 text-center">Total Temas</th>
                     </tr>
-                </thead><tbody>`;
-            
-            let grandTotal = { total: 0, asignados: 0, estudiados: 0, pendientes: 0 };
+                </thead>`;
+            let tableBody = '<tbody>';
+            let grandTotal = { pending: 0, studied: 0, assigned: 0, total: 0 };
 
-            for (const mainBlock in summaryData) {
-                const subBlocks = summaryData[mainBlock];
-                const subBlockKeys = Object.keys(subBlocks);
-                let blockTotal = { total: 0, asignados: 0, estudiados: 0, pendientes: 0 };
+            const allBlocks = {...syllabus["Materias comunes"], ...syllabus["Materias específicas"]};
 
-                subBlockKeys.forEach((subBlock, index) => {
-                    const data = subBlocks[subBlock];
-                    const config = BLOCKS_CONFIG[subBlock] || {};
-                    blockTotal.total += data.total;
-                    blockTotal.asignados += data.asignados;
-                    blockTotal.estudiados += data.estudiados;
-                    blockTotal.pendientes += data.pendientes;
+            for (const mainBlockTitle in allBlocks) {
+                const subBlocksOrTopics = allBlocks[mainBlockTitle];
+                if (Array.isArray(subBlocksOrTopics)) {
+                    const blockName = mainBlockTitle;
+                    const pendingCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${blockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.orange`).length;
+                    const studiedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${blockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.green`).length;
+                    const totalAssigned = pendingCount + studiedCount;
+                    const totalTopics = subBlocksOrTopics.length;
+                    
+                    grandTotal.pending += pendingCount;
+                    grandTotal.studied += studiedCount;
+                    grandTotal.assigned += totalAssigned;
+                    grandTotal.total += totalTopics;
 
-                    tableHTML += `<tr class="border-b">
-                        ${index === 0 ? `<td class="px-4 py-4 font-semibold align-top" rowspan="${subBlockKeys.length}">${mainBlock}</td>` : ''}
-                        <td class="px-4 py-4 font-semibold ${config.c || ''}"><i class="fas ${config.icon || ''} fa-fw w-5"></i> ${SHORT_NAMES[subBlock] || subBlock}</td>
-                        <td class="px-4 py-4 text-center">${data.asignados}</td>
-                        <td class="px-4 py-4 text-center">${data.estudiados}</td>
-                        <td class="px-4 py-4 text-center">${data.pendientes}</td>
-                        <td class="px-4 py-4 text-center">${data.total}</td>
+                    const config = BLOCKS_CONFIG[blockName];
+                    tableBody += `<tr class="bg-slate-50 border-b-4 border-slate-300">
+                        <td colspan="2" class="px-6 py-4 font-semibold ${config.c || config.color}"><i class="fas ${config.icon} fa-fw w-5 text-center"></i>${blockName}</td>
+                        <td class="px-6 py-4 text-center font-mono text-orange-600">${pendingCount}</td>
+                        <td class="px-6 py-4 text-center font-mono text-green-600">${studiedCount}</td>
+                        <td class="px-6 py-4 text-center font-mono">${totalAssigned}</td>
+                        <td class="px-6 py-4 text-center font-mono">${totalTopics}</td>
                     </tr>`;
-                });
-                
-                grandTotal.total += blockTotal.total;
-                grandTotal.asignados += blockTotal.asignados;
-                grandTotal.estudiados += blockTotal.estudiados;
-                grandTotal.pendientes += blockTotal.pendientes;
+                } else {
+                    let blockTotals = { pending: 0, studied: 0, assigned: 0, total: 0 };
+                    let subRows = '';
+                    const subBlockKeys = Object.keys(subBlocksOrTopics);
 
-                tableHTML += `<tr class="bg-gray-50 font-semibold border-b-4 border-white">
-                    <td class="px-4 py-2 text-right" colspan="2">Total Bloque:</td>
-                    <td class="px-4 py-2 text-center">${blockTotal.asignados}</td>
-                    <td class="px-4 py-2 text-center">${blockTotal.estudiados}</td>
-                    <td class="px-4 py-2 text-center">${blockTotal.pendientes}</td>
-                    <td class="px-4 py-2 text-center">${blockTotal.total}</td>
-                </tr>`;
+                    subBlockKeys.forEach((subBlockName, index) => {
+                        const pendingCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${subBlockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.orange`).length;
+                        const studiedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${subBlockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.green`).length;
+                        const totalAssigned = pendingCount + studiedCount;
+                        const totalTopics = subBlocksOrTopics[subBlockName].length;
+                        
+                        blockTotals.pending += pendingCount;
+                        blockTotals.studied += studiedCount;
+                        blockTotals.assigned += totalAssigned;
+                        blockTotals.total += totalTopics;
+
+                        const config = BLOCKS_CONFIG[subBlockName];
+                        subRows += `<tr class="border-t border-slate-200">
+                            ${index === 0 ? `<td class="px-6 py-4 font-bold align-top" rowspan="${subBlockKeys.length}">${mainBlockTitle}</td>` : ''}
+                            <td class="px-6 py-4 flex items-center gap-3 ${config.c || config.color}"><i class="fas ${config.icon} fa-fw w-5 text-center"></i><span class="font-semibold">${subBlockName}</span></td>
+                            <td class="px-6 py-4 text-center font-mono text-orange-600">${pendingCount}</td>
+                            <td class="px-6 py-4 text-center font-mono text-green-600">${studiedCount}</td>
+                            <td class="px-6 py-4 text-center font-mono">${totalAssigned}</td>
+                            <td class="px-6 py-4 text-center font-mono">${totalTopics}</td>
+                        </tr>`;
+                    });
+
+                    grandTotal.pending += blockTotals.pending;
+                    grandTotal.studied += blockTotals.studied;
+                    grandTotal.assigned += blockTotals.assigned;
+                    grandTotal.total += blockTotals.total;
+
+                    tableBody += subRows;
+                    tableBody += `<tr class="bg-slate-100 font-semibold"><td class="px-6 py-2 text-right font-bold" colspan="2">Total Bloque:</td><td class="px-6 py-2 text-center font-mono text-orange-600">${blockTotals.pending}</td><td class="px-6 py-2 text-center font-mono text-green-600">${blockTotals.studied}</td><td class="px-6 py-2 text-center font-mono">${blockTotals.assigned}</td><td class="px-6 py-2 text-center font-mono">${blockTotals.total}</td></tr>`;
+                }
             }
             
-            tableHTML += `</tbody><tfoot class="bg-indigo-100 font-bold text-indigo-800">
+            tableBody += '</tbody>';
+            const tableFoot = `<tfoot class="bg-blue-100 font-bold text-blue-800 text-base">
                 <tr>
-                    <td class="px-4 py-3 text-right" colspan="2">TOTAL GENERAL:</td>
-                    <td class="px-4 py-3 text-center">${grandTotal.asignados}</td>
-                    <td class="px-4 py-3 text-center">${grandTotal.estudiados}</td>
-                    <td class="px-4 py-3 text-center">${grandTotal.pendientes}</td>
-                    <td class="px-4 py-3 text-center">${grandTotal.total}</td>
+                    <td colspan="2" class="px-6 py-4 text-right">TOTAL GENERAL (Vuelta ${selectedVuelta}):</td>
+                    <td class="px-6 py-4 text-center font-mono text-orange-600">${grandTotal.pending}</td>
+                    <td class="px-6 py-4 text-center font-mono text-green-600">${grandTotal.studied}</td>
+                    <td class="px-6 py-4 text-center font-mono">${grandTotal.assigned}</td>
+                    <td class="px-6 py-4 text-center font-mono">${grandTotal.total}</td>
                 </tr>
-            </tfoot></table>`;
-            
-            summaryTableContainer.innerHTML = tableHTML;
+            </tfoot>`;
+            summaryTable.innerHTML = tableHead + tableBody + tableFoot;
         }
-        
-        function renderRoundTabs() {
-            roundTabsContainer.innerHTML = '';
-            for (let i = 1; i <= 5; i++) {
-                const vueltaId = `vuelta-${i}`;
-                const tab = document.createElement('button');
-                tab.textContent = `V${i}`;
-                const colorClass = ROUND_COLORS.text[i-1] || 'text-gray-500';
-                tab.className = `px-3 py-2 text-sm font-medium border-b-2 -mb-px ${state.currentVuelta === vueltaId ? 'border-indigo-500 text-indigo-600' : `border-transparent ${colorClass.replace('text-', 'hover:text-')} hover:border-gray-300`}`;
-                tab.onclick = () => {
-                    state.currentVuelta = vueltaId;
-                    renderRoundTabs();
-                    renderTopicSourceList();
-                };
-                roundTabsContainer.appendChild(tab);
+
+        async function loadProgress() {
+            if (!db || !sessionId) {
+                updateAllCounters();
+                return;
             }
-        }
+            const docRef = doc(db, `artifacts/default-planner-app/public/data/${sessionId}/plannerState`);
 
-        function renderSubBlockFilter() {
-            subBlockFilterContainer.innerHTML = '';
-            const select = document.createElement('select');
-            select.className = 'w-full p-2 border border-gray-300 rounded-lg text-sm';
-            select.innerHTML = `<option value="todos">Todos los Bloques</option>`;
-            state.subBlocks.forEach(block => {
-                const displayName = SHORT_NAMES[block] || block;
-                select.innerHTML += `<option value="${block}">${displayName}</option>`;
-            });
-            select.value = state.currentSubBlock;
-            select.onchange = (e) => {
-                state.currentSubBlock = e.target.value;
-                renderTopicSourceList();
-            };
-            subBlockFilterContainer.appendChild(select);
-        }
-
-        function getTopicAssignmentStatus(topicId) {
-            // Check studied topics first
-            for (const dateStr in state.topicState.studiedTopics) {
-                const topic = state.topicState.studiedTopics[dateStr].find(t => t.id === topicId);
-                if (topic) {
-                    return { status: 'studied', date: dateStr, originalVuelta: topic.originalVuelta };
-                }
-            }
-            // Check assigned (not yet studied) topics
-            for (const vueltaId in state.topicState) {
-                if (vueltaId === 'studiedTopics' || !state.topicState[vueltaId].assigned) continue;
-                const roundState = state.topicState[vueltaId];
-                for (const dayIndex in roundState.assigned) {
-                    const topic = roundState.assigned[dayIndex].find(t => t.id === topicId);
-                    if (topic) {
-                        const roundInfo = state.rounds.find(r => r.vueltaId === vueltaId);
-                        if (roundInfo) {
-                            const date = new Date(roundInfo.startDate);
-                            date.setUTCDate(date.getUTCDate() + parseInt(dayIndex, 10));
-                            return { status: 'assigned', date: date.toISOString().split('T')[0], vueltaId: vueltaId };
-                        }
-                    }
-                }
-            }
-            return { status: 'unassigned' };
-        }
-
-        function unassignTopic(topicId, vueltaIdToReturnTo) {
-            const status = getTopicAssignmentStatus(topicId);
-
-            if (status.status === 'unassigned') return;
-
-            // Remove from studied list
-            if (status.status === 'studied') {
-                const dayTopics = state.topicState.studiedTopics[status.date];
-                // Defensive check
-                if (!dayTopics) {
-                    console.error(`Inconsistent state: Topic ${topicId} thought to be studied on ${status.date}, but no topics found for that date.`);
-                    if (!state.topicState[vueltaIdToReturnTo].unassigned.includes(topicId)) {
-                        state.topicState[vueltaIdToReturnTo].unassigned.push(topicId);
-                    }
-                    renderTopicSourceList();
-                    renderSummaryTable();
+            try {
+                const docSnap = await getDoc(docRef);
+                if (!docSnap.exists()) {
+                    console.log("No progress data found.");
+                    updateAllCounters();
                     return;
                 }
-                const topicIndex = dayTopics.findIndex(t => t.id === topicId);
-                if (topicIndex > -1) {
-                    dayTopics.splice(topicIndex, 1);
-                    if (dayTopics.length === 0) delete state.topicState.studiedTopics[status.date];
-                }
-            }
-            // Remove from assigned list
-            else if (status.status === 'assigned') {
-                const roundState = state.topicState[status.vueltaId];
-                const roundInfo = state.rounds.find(r => r.vueltaId === status.vueltaId);
-
-                if (!roundInfo) {
-                    console.error(`Inconsistent state: Could not find round info for ${status.vueltaId} for topic ${topicId}.`);
-                     if (!state.topicState[vueltaIdToReturnTo].unassigned.includes(topicId)) {
-                        state.topicState[vueltaIdToReturnTo].unassigned.push(topicId);
-                    }
-                    renderTopicSourceList();
-                    renderSummaryTable();
+                
+                const plannerData = docSnap.data();
+                if (!plannerData || !plannerData.topicState) {
+                    console.log("Planner data is empty or malformed.");
+                    updateAllCounters();
                     return;
                 }
 
-                const dayIndex = Math.round((new Date(status.date + 'T00:00:00Z') - roundInfo.startDate) / (1000 * 60 * 60 * 24));
-                const dayTopics = roundState.assigned[dayIndex];
-                
-                if (!dayTopics) {
-                    console.error(`Inconsistent state: Topic ${topicId} thought to be assigned on day ${dayIndex} of ${status.vueltaId}, but no topics found for that day.`);
-                    if (!state.topicState[vueltaIdToReturnTo].unassigned.includes(topicId)) {
-                        state.topicState[vueltaIdToReturnTo].unassigned.push(topicId);
+                const topicState = plannerData.topicState;
+                const progressByVuelta = {};
+                for (let i = 1; i <= 5; i++) {
+                    progressByVuelta[`vuelta-${i}`] = {};
+                }
+
+                // Helper to calculate round dates
+                const roundDates = {};
+                if (plannerData.endDate && plannerData.roundDurations) {
+                    const deadline = new Date(plannerData.endDate.split('/').reverse().join('-') + 'T00:00:00Z');
+                    const durations = plannerData.roundDurations.map(Number);
+                    const totalDuration = durations.reduce((sum, d) => sum + d, 0);
+                    let planStartDate = new Date(deadline.getTime());
+                    planStartDate.setUTCDate(planStartDate.getUTCDate() - totalDuration + 1);
+
+                    let currentStartDate = new Date(planStartDate.getTime());
+                    for (let i = 0; i < 5; i++) {
+                        roundDates[`vuelta-${i + 1}`] = new Date(currentStartDate.getTime());
+                        currentStartDate.setUTCDate(currentStartDate.getUTCDate() + durations[i]);
                     }
-                    renderTopicSourceList();
-                    renderSummaryTable();
-                    return;
-                }
-
-                const topicIndex = dayTopics.findIndex(t => t.id === topicId);
-                if (topicIndex > -1) {
-                    dayTopics.splice(topicIndex, 1);
-                    if (dayTopics.length === 0) delete roundState.assigned[dayIndex];
-                }
-            }
-
-            // Add back to the unassigned list of the specified vuelta
-            if (!state.topicState[vueltaIdToReturnTo].unassigned.includes(topicId)) {
-                state.topicState[vueltaIdToReturnTo].unassigned.push(topicId);
-            }
-
-            // Re-render
-            renderTopicSourceList();
-            if (status.date) {
-                updateSingleDay(status.date);
-            }
-            renderSummaryTable();
-        }
-
-        function renderTopicSourceList() {
-            if (!state.topicState[state.currentVuelta]) return;
-
-            topicSourceList.innerHTML = '';
-            const searchTerm = topicSearchInput.value.toLowerCase();
-            
-            let topicsToDisplay = [...state.flatTopics];
-
-            if (state.currentSubBlock !== 'todos') {
-                topicsToDisplay = topicsToDisplay.filter(topic => topic.block === state.currentSubBlock);
-            }
-
-            if (searchTerm) {
-                topicsToDisplay = topicsToDisplay.filter(topic => 
-                    topic.text.toLowerCase().includes(searchTerm) || 
-                    topic.block.toLowerCase().includes(searchTerm) ||
-                    (SHORT_NAMES[topic.block] && SHORT_NAMES[topic.block].toLowerCase().includes(searchTerm))
-                );
-            }
-
-            topicsToDisplay.sort((a, b) => a.block.localeCompare(b.block) || a.id - b.id);
-
-            topicsToDisplay.forEach(topic => {
-                const assignment = getTopicAssignmentStatus(topic.fullId);
-                const isUnassignedInCurrentVuelta = state.topicState[state.currentVuelta].unassigned.includes(topic.fullId);
-
-                const isAssignedFromCurrentVuelta = (assignment.status === 'assigned' && assignment.vueltaId === state.currentVuelta) || 
-                                                  (assignment.status === 'studied' && assignment.originalVuelta === state.currentVuelta);
-
-                if (isUnassignedInCurrentVuelta) {
-                    const el = document.createElement('div');
-                    el.className = 'topic-card bg-gray-100 p-2 rounded-lg mb-2 flex items-center gap-2';
-                    el.draggable = true;
-                    el.dataset.topicId = topic.fullId;
-                    const color = BLOCKS_CONFIG[topic.block]?.color || '#6b7280';
-                    const displayName = SHORT_NAMES[topic.block] || topic.block;
-                    el.innerHTML = `<div class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${color};"></div><span class="text-sm font-medium">${displayName} - T${topic.id}</span>`;
-                    el.addEventListener('dragstart', handleDragStartFromSource);
-                    topicSourceList.appendChild(el);
-                } else if (isAssignedFromCurrentVuelta) {
-                    const el = document.createElement('div');
-                    el.className = 'topic-card unavailable bg-gray-50 p-2 rounded-lg mb-2 flex items-center justify-between';
-                    
-                    const color = BLOCKS_CONFIG[topic.block]?.color || '#6b7280';
-                    const displayName = SHORT_NAMES[topic.block] || topic.block;
-                    
-                    let statusIcon;
-                    if (assignment.status === 'studied') {
-                        statusIcon = `<i class="fas fa-check-circle text-green-500 mr-2" title="Estudiado"></i>`;
-                    } else {
-                        statusIcon = `<i class="fas fa-check-circle text-orange-400 mr-2" title="Asignado"></i>`;
-                    }
-
-                    el.innerHTML = `
-                        <div class="flex items-center overflow-hidden">
-                            ${statusIcon}
-                            <div class="w-2 h-2 rounded-full flex-shrink-0 mr-2" style="background-color: ${color};"></div>
-                            <span class="text-sm font-medium truncate">${displayName} - T${topic.id}</span>
-                        </div>
-                        <button title="Desasignar Tema" class="unassign-btn flex-shrink-0 ml-2">
-                            <i class="fas fa-times-circle"></i>
-                        </button>
-                    `;
-                    
-                    el.querySelector('.unassign-btn').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        unassignTopic(topic.fullId, state.currentVuelta);
-                    });
-
-                    topicSourceList.appendChild(el);
-                }
-            });
-        }
-
-        function renderCalendar() {
-            calendarContainer.innerHTML = '';
-            const year = state.displayDate.getUTCFullYear();
-            const month = state.displayDate.getUTCMonth();
-            
-            calendarTitle.textContent = `${(new Date(Date.UTC(year, month))).toLocaleString('es-ES', {month: 'long', year: 'numeric', timeZone: 'UTC'})}`;
-
-            const monthGridElement = createMonthGrid(year, month);
-            calendarContainer.appendChild(monthGridElement);
-            updateAllCalendarDaysForMonth(monthGridElement, year, month);
-        }
-
-        function createMonthGrid(year, month) {
-            const monthContainer = document.createElement('div');
-            const firstDayOfMonth = new Date(Date.UTC(year, month, 1));
-            const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-
-            const grid = document.createElement('div');
-            grid.className = 'grid grid-cols-7 gap-1';
-            
-            ['L', 'M', 'X', 'J', 'V', 'S', 'D'].forEach(day => {
-                grid.innerHTML += `<div class="text-center font-semibold text-sm text-gray-500 pb-2">${day}</div>`;
-            });
-
-            const dayOffset = (firstDayOfMonth.getUTCDay() + 6) % 7;
-            for (let i = 0; i < dayOffset; i++) {
-                grid.appendChild(document.createElement('div'));
-            }
-
-            for (let i = 1; i <= daysInMonth; i++) {
-                const dayDate = new Date(Date.UTC(year, month, i));
-                const dateStr = dayDate.toISOString().split('T')[0];
-                const dayCell = document.createElement('div');
-                dayCell.className = 'calendar-day border bg-gray-50 border-gray-200 rounded-lg p-1.5 flex flex-col';
-                dayCell.dataset.date = dateStr;
-
-                let cellHeader = `<div class="text-sm font-semibold text-right pr-1">${i}</div>`;
-                const round = state.rounds.find(r => dayDate >= r.startDate && dayDate <= r.endDate);
-                if (round) {
-                    dayCell.classList.remove('bg-gray-50');
-                    dayCell.classList.add(ROUND_COLORS.bg[round.roundNumber - 1]);
-                    cellHeader += `<div class="text-xs font-bold ${ROUND_COLORS.text[round.roundNumber - 1]} px-1">Vuelta ${round.roundNumber}</div>`;
                 }
                 
-                const topicsContainer = document.createElement('div');
-                topicsContainer.className = 'calendar-day-topics flex-grow mt-1 space-y-1 overflow-y-auto p-1';
-                topicsContainer.id = `topics-${dateStr}`;
-
-                dayCell.innerHTML = cellHeader;
-                dayCell.appendChild(topicsContainer);
-                
-                dayCell.addEventListener('dragover', handleDragOver);
-                dayCell.addEventListener('dragleave', handleDragLeave);
-                dayCell.addEventListener('drop', handleDropOnCalendar);
-                dayCell.addEventListener('click', (e) => {
-                    if (!e.target.closest('.calendar-topic-item')) {
-                        showExpandedDayView(dateStr);
-                    }
-                });
-                
-                grid.appendChild(dayCell);
-            }
-            monthContainer.appendChild(grid);
-            return monthContainer;
-        }
-        
-        function updateAllCalendarDaysForMonth(container, year, month) {
-             for (let i = 1; i <= 31; i++) {
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                const topicsContainer = container.querySelector(`#topics-${dateStr}`);
-                if (topicsContainer) {
-                    updateSingleDay(dateStr);
-                }
-            }
-        }
-
-        function updateSingleDay(dateStr) {
-            const topicsContainer = document.getElementById(`topics-${dateStr}`);
-            if (!topicsContainer) return;
-            
-            topicsContainer.innerHTML = '';
-            const dayDate = new Date(dateStr + 'T00:00:00Z');
-            const allTopicsForDay = [];
-
-            // Get unstudied, relative topics
-            for (const round of state.rounds) {
-                if (dayDate >= round.startDate && dayDate <= round.endDate) {
-                    const dayIndex = Math.round((dayDate - round.startDate) / (1000 * 60 * 60 * 24));
-                    const roundState = state.topicState[round.vueltaId];
-                    if (roundState && roundState.assigned[dayIndex]) {
-                        const dayTopics = roundState.assigned[dayIndex];
-                        dayTopics.forEach(topicData => {
-                            const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
-                            if (topicInfo) {
-                                allTopicsForDay.push({ type: 'relative', topicData, topicInfo, vueltaId: round.vueltaId, dayIndex });
+                // 1. Process studied topics (fixed dates)
+                if (topicState.studiedTopics) {
+                    for (const dateStr in topicState.studiedTopics) {
+                        topicState.studiedTopics[dateStr].forEach(topic => {
+                            if (progressByVuelta[topic.originalVuelta]) {
+                                const topicDate = new Date(dateStr + 'T00:00:00Z');
+                                const formattedDate = `${String(topicDate.getUTCDate()).padStart(2,'0')}/${String(topicDate.getUTCMonth()+1).padStart(2,'0')}`;
+                                progressByVuelta[topic.originalVuelta][topic.id] = { status: 'studied', date: formattedDate };
                             }
                         });
                     }
                 }
-            }
 
-            // Get studied, fixed topics
-            const studiedTopics = state.topicState.studiedTopics[dateStr];
-            if (studiedTopics) {
-                studiedTopics.forEach(topicData => {
-                    const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
-                    if (topicInfo) {
-                        allTopicsForDay.push({ type: 'fixed', topicData, topicInfo, originalVuelta: topicData.originalVuelta });
+                // 2. Process assigned (unstudied) topics from all vueltas
+                for (let i = 1; i <= 5; i++) {
+                    const vueltaId = `vuelta-${i}`;
+                    const roundState = topicState[vueltaId];
+                    if (roundState && roundState.assigned && roundDates[vueltaId]) {
+                        const vueltaStartDate = roundDates[vueltaId];
+                        for (const dayIndex in roundState.assigned) {
+                            roundState.assigned[dayIndex].forEach(topic => {
+                                 if (progressByVuelta[vueltaId] && !progressByVuelta[vueltaId][topic.id]) { // Don't overwrite studied
+                                    const assignedDate = new Date(vueltaStartDate.getTime());
+                                    assignedDate.setUTCDate(assignedDate.getUTCDate() + parseInt(dayIndex));
+                                    const formattedDate = `${String(assignedDate.getUTCDate()).padStart(2,'0')}/${String(assignedDate.getUTCMonth()+1).padStart(2,'0')}`;
+                                    progressByVuelta[vueltaId][topic.id] = { status: 'assigned', date: formattedDate };
+                                 }
+                            });
+                        }
                     }
+                }
+                
+                // 3. Update the UI based on the gathered progress
+                document.querySelectorAll('.topic-card').forEach(card => {
+                    const topicId = card.dataset.topicId;
+                    const tickContainers = card.querySelectorAll('.tick-container');
+                    
+                    tickContainers.forEach((container, index) => {
+                        const tickBox = container.querySelector('.tick-box');
+                        const dateSpan = container.querySelector('.tick-date');
+                        const vueltaId = `vuelta-${index + 1}`;
+                        
+                        tickBox.classList.remove('green', 'orange');
+                        dateSpan.textContent = '';
+
+                        const progress = progressByVuelta[vueltaId]?.[topicId];
+                        if (progress) {
+                            if (progress.status === 'studied') {
+                                tickBox.classList.add('green');
+                            } else if (progress.status === 'assigned') {
+                                tickBox.classList.add('orange');
+                            }
+                            dateSpan.textContent = progress.date;
+                        }
+                    });
                 });
-            }
 
-            const topicCount = allTopicsForDay.length;
-
-            if (topicCount > 3) {
-                topicsContainer.className = 'calendar-day-topics flex-grow mt-1 overflow-y-auto p-1';
-                const gridDiv = document.createElement('div');
-                gridDiv.className = 'topics-grid';
-                const col1 = document.createElement('div');
-                col1.className = 'topics-column';
-                const col2 = document.createElement('div');
-                col2.className = 'topics-column';
-                gridDiv.append(col1, col2);
-
-                allTopicsForDay.forEach((topic, loopIndex) => {
-                    const el = createCalendarTopicElement(topic, dateStr, true);
-                    if (topicCount > 8 && loopIndex % 2 !== 0) {
-                        col2.appendChild(el);
-                    } else if (topicCount <= 8 && loopIndex >= Math.ceil(topicCount / 2)) {
-                        col2.appendChild(el);
-                    } else {
-                        col1.appendChild(el);
-                    }
-                });
-                topicsContainer.appendChild(gridDiv);
-
-            } else {
-                topicsContainer.className = 'calendar-day-topics flex-grow mt-1 space-y-1 overflow-y-auto p-1';
-                allTopicsForDay.forEach((topic) => {
-                    const el = createCalendarTopicElement(topic, dateStr, false);
-                    topicsContainer.appendChild(el);
-                });
+                updateAllCounters();
+            } catch (error) {
+                console.error("Error loading progress from Firestore:", error);
+                alert(`No se pudo cargar el progreso. Revisa la consola para ver los errores. Error: ${error.message}`);
+                updateAllCounters();
             }
         }
         
-        function createCalendarTopicElement(topic, dateStr, inGrid = false) {
-            const { type, topicData, topicInfo } = topic;
-            const vueltaId = type === 'relative' ? topic.vueltaId : topic.originalVuelta;
-            
-            const el = document.createElement('div');
-            el.className = `calendar-topic-item p-1 rounded bg-white/80 shadow-sm flex items-center ${inGrid ? 'in-grid' : ''}`;
-            el.draggable = true;
-            el.dataset.topicId = topicInfo.fullId;
-            el.dataset.isStudied = topicData.studied;
-            
-            if (type === 'relative') {
-                el.dataset.sourceVuelta = topic.vueltaId;
-                el.dataset.sourceDayIndex = topic.dayIndex;
-            } else { // fixed
-                el.dataset.sourceDate = dateStr;
-                el.dataset.originalVuelta = topic.originalVuelta;
-            }
-            
-            el.addEventListener('dragstart', handleDragStartFromCalendar);
+        function openCalculator() {
+            const selectedVuelta = document.getElementById('vuelta-selector').value;
+            const vueltaIndex = parseInt(selectedVuelta, 10);
 
-            const color = BLOCKS_CONFIG[topicInfo.block]?.color || '#6b7280';
+            const calculatorUrl = 'https://cheradra312.github.io/CAL_PROB/';
+            const params = new URLSearchParams();
+            const calcData = { admin: 0, aguas: 0, carreteras: 0, transportes: 0 };
             
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.className = 'form-checkbox';
-            checkbox.checked = topicData.studied;
-            checkbox.onclick = (e) => e.stopPropagation();
-            checkbox.onchange = () => handleTopicStudiedChange(checkbox.checked, topic, dateStr);
-
-            const label = document.createElement('span');
-            label.className = `flex-grow ${topicData.studied ? 'line-through text-gray-400' : ''}`;
-            
-            if (inGrid) {
-                const displayName = SHORT_NAMES[topicInfo.block] || topicInfo.block;
-                const abbreviation = displayName.substring(0, 2).toUpperCase();
-                label.textContent = `V${vueltaId.slice(-1)}:${abbreviation}T${topicInfo.id}`;
-            } else {
-                const displayName = SHORT_NAMES[topicInfo.block] || topicInfo.block;
-                label.textContent = `V${vueltaId.slice(-1)}: ${displayName} T${topicInfo.id}`;
-            }
-
-            const colorDot = document.createElement('div');
-            colorDot.className = 'color-dot w-2 h-2 rounded-full flex-shrink-0';
-            colorDot.style.backgroundColor = color;
-
-            el.appendChild(colorDot);
-            el.appendChild(checkbox);
-            el.appendChild(label);
-            return el;
-        }
-        
-        function createExpandedCalendarTopicElement(topic, dateStr) {
-            const { type, topicData, topicInfo } = topic;
-            const vueltaId = type === 'relative' ? topic.vueltaId : topic.originalVuelta;
-
-            const el = document.createElement('div');
-            el.className = 'p-3 rounded-lg bg-gray-100 shadow-sm flex items-center gap-4';
-            
-            const color = BLOCKS_CONFIG[topicInfo.block]?.color || '#6b7280';
-            
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.className = 'form-checkbox';
-            checkbox.checked = topicData.studied;
-            
-            checkbox.addEventListener('click', (e) => e.stopPropagation());
-
-            checkbox.addEventListener('change', () => {
-                handleTopicStudiedChange(checkbox.checked, topic, dateStr);
-                el.querySelector('.topic-text-container').classList.toggle('line-through', checkbox.checked);
-                el.querySelector('.topic-text-container').classList.toggle('text-gray-400', checkbox.checked);
+            document.querySelectorAll('.topic-card').forEach(card => {
+                const tickBox = card.querySelector(`.tick-container:nth-child(${vueltaIndex}) .tick-box`);
+                if (tickBox && tickBox.classList.contains('green')) {
+                    const subBlockName = card.dataset.subBlockName;
+                    const config = BLOCKS_CONFIG[subBlockName];
+                    if (config && calcData.hasOwnProperty(config.calcId)) {
+                        calcData[config.calcId]++;
+                    }
+                }
             });
 
-            const textContainer = document.createElement('div');
-            textContainer.className = `topic-text-container flex-grow ${topicData.studied ? 'line-through text-gray-400' : ''}`;
-            
-            const mainLabel = document.createElement('div');
-            mainLabel.className = 'font-semibold';
-            mainLabel.textContent = topicInfo.text;
-            
-            const subLabel = document.createElement('div');
-            subLabel.className = 'text-sm text-gray-600';
-            const displayName = SHORT_NAMES[topicInfo.block] || topicInfo.block;
-            subLabel.textContent = `Vuelta ${vueltaId.slice(-1)} | ${displayName}`;
-
-            textContainer.append(mainLabel, subLabel);
-
-            const colorDot = document.createElement('div');
-            colorDot.className = 'w-3 h-3 rounded-full flex-shrink-0';
-            colorDot.style.backgroundColor = color;
-
-            el.appendChild(colorDot);
-            el.appendChild(checkbox);
-            el.appendChild(textContainer);
-            return el;
-        }
-
-        function handleTopicStudiedChange(isStudied, topic, dateStr) {
-            const { type, topicData, topicInfo } = topic;
-
-            if (isStudied) {
-                // Move from relative to fixed
-                if (type === 'relative') {
-                    const roundState = state.topicState[topic.vueltaId];
-                    const dayTopics = roundState.assigned[topic.dayIndex];
-                    const topicIndex = dayTopics.findIndex(t => t.id === topicInfo.fullId);
-                    if (topicIndex > -1) {
-                        dayTopics.splice(topicIndex, 1);
-                        if (dayTopics.length === 0) delete roundState.assigned[topic.dayIndex];
-                    }
-
-                    if (!state.topicState.studiedTopics[dateStr]) {
-                        state.topicState.studiedTopics[dateStr] = [];
-                    }
-                    state.topicState.studiedTopics[dateStr].push({
-                        id: topicInfo.fullId,
-                        studied: true,
-                        originalVuelta: topic.vueltaId
-                    });
-                }
-            } else {
-                // Move from fixed to relative on the same day
-                if (type === 'fixed') {
-                    const dayTopics = state.topicState.studiedTopics[dateStr];
-                    const topicIndex = dayTopics.findIndex(t => t.id === topicInfo.fullId);
-                    if (topicIndex > -1) {
-                        const [unstudiedTopic] = dayTopics.splice(topicIndex, 1);
-                        if (dayTopics.length === 0) delete state.topicState.studiedTopics[dateStr];
-
-                        const dropDate = new Date(dateStr + 'T00:00:00Z');
-                        const targetRound = state.rounds.find(r => dropDate >= r.startDate && dropDate <= r.endDate);
-
-                        if (targetRound) {
-                            const targetDayIndex = Math.round((dropDate - targetRound.startDate) / (1000 * 60 * 60 * 24));
-                            const targetRoundState = state.topicState[targetRound.vueltaId];
-                            if (!targetRoundState.assigned[targetDayIndex]) {
-                                targetRoundState.assigned[targetDayIndex] = [];
-                            }
-                            targetRoundState.assigned[targetDayIndex].push({ id: unstudiedTopic.id, studied: false });
-                        } else {
-                            const originalRoundState = state.topicState[unstudiedTopic.originalVuelta];
-                            if (!originalRoundState.unassigned.includes(unstudiedTopic.id)) {
-                                originalRoundState.unassigned.push(unstudiedTopic.id);
-                            }
-                        }
-                    }
-                }
+            for (const key in calcData) {
+                params.append(key, calcData[key]);
             }
-            updateSingleDay(dateStr);
-            renderTopicSourceList();
-            renderSummaryTable();
+            window.open(`${calculatorUrl}?${params.toString()}`, '_blank');
         }
 
-        function showExpandedDayView(dateStr) {
-            const date = new Date(dateStr + 'T00:00:00Z');
-            dayModalTitle.textContent = date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
-            
-            dayModalContent.innerHTML = '';
-
-            const allTopicsForDay = [];
-            // Get unstudied, relative topics
-            for (const round of state.rounds) {
-                if (date >= round.startDate && date <= round.endDate) {
-                    const dayIndex = Math.round((date - round.startDate) / (1000 * 60 * 60 * 24));
-                    const roundState = state.topicState[round.vueltaId];
-                     if (roundState && roundState.assigned[dayIndex]) {
-                        const dayTopics = roundState.assigned[dayIndex];
-                        dayTopics.forEach(topicData => {
-                            const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
-                            if (topicInfo) {
-                                allTopicsForDay.push({ type: 'relative', topicData, topicInfo, vueltaId: round.vueltaId, dayIndex });
-                            }
-                        });
-                    }
-                }
-            }
-            // Get studied, fixed topics
-            const studiedTopics = state.topicState.studiedTopics[dateStr];
-            if (studiedTopics) {
-                studiedTopics.forEach(topicData => {
-                    const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
-                    if (topicInfo) {
-                        allTopicsForDay.push({ type: 'fixed', topicData, topicInfo, originalVuelta: topicData.originalVuelta });
-                    }
-                });
-            }
-
-
-            if (allTopicsForDay.length > 0) {
-                allTopicsForDay.forEach((topic) => {
-                    const el = createExpandedCalendarTopicElement(topic, dateStr);
-                    dayModalContent.appendChild(el);
-                });
-            } else {
-                dayModalContent.innerHTML = '<p class="text-gray-500 text-center">No hay temas asignados para este día.</p>';
-            }
-
-            dayModalBackdrop.classList.remove('hidden');
-            dayModalContainer.classList.remove('hidden');
+        function toggleAll(collapse) {
+            document.querySelectorAll('.collapsible').forEach(el => {
+                el.classList.toggle('collapsed', collapse);
+            });
         }
-
-        function hideExpandedDayView() {
-            dayModalBackdrop.classList.add('hidden');
-            dayModalContainer.classList.add('hidden');
-        }
-
-
-        function changeMonth(direction) {
-            state.displayDate.setUTCMonth(state.displayDate.getUTCMonth() + direction);
-            renderCalendar();
-        }
-
-        function handleDragStartFromSource(e) {
-            e.target.classList.add('dragging');
-            state.draggedTopic = {
-                id: e.target.dataset.topicId,
-                from: 'source',
-                vuelta: state.currentVuelta
-            };
-        }
-        
-        function handleDragStartFromCalendar(e) {
-            e.stopPropagation();
-            e.target.classList.add('dragging');
-            
-            const isStudied = e.target.dataset.isStudied === 'true';
-            const topicId = e.target.dataset.topicId;
-
-            if (isStudied) {
-                 state.draggedTopic = {
-                    id: topicId,
-                    from: 'calendar_fixed',
-                    sourceDate: e.target.closest('.calendar-day').dataset.date,
-                    originalVuelta: e.target.dataset.originalVuelta
-                };
-            } else {
-                state.draggedTopic = {
-                    id: topicId,
-                    from: 'calendar_relative',
-                    sourceVuelta: e.target.dataset.sourceVuelta,
-                    sourceDayIndex: parseInt(e.target.dataset.sourceDayIndex, 10)
-                };
-            }
-        }
-        
-        function handleDragEnd(e) {
-            if (state.draggedTopic) {
-                const draggingElement = document.querySelector('.dragging');
-                if (draggingElement) {
-                    draggingElement.classList.remove('dragging');
-                }
-                state.draggedTopic = null;
-            }
-        }
-
-        function handleDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
-        function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
-
-        function handleDropOnCalendar(e) {
-            e.preventDefault();
-            e.currentTarget.classList.remove('drag-over');
-            if (!state.draggedTopic) return;
-
-            const dateStr = e.currentTarget.dataset.date;
-            const topicId = state.draggedTopic.id;
-            const dropDate = new Date(dateStr + 'T00:00:00Z');
-            const targetRound = state.rounds.find(r => dropDate >= r.startDate && dropDate <= r.endDate);
-
-            if (!targetRound) return; 
-            
-            const targetDayIndex = Math.round((dropDate - targetRound.startDate) / (1000 * 60 * 60 * 24));
-
-            // Logic for moving from source list
-            if (state.draggedTopic.from === 'source') {
-                if (targetRound.vueltaId !== state.currentVuelta) {
-                    e.currentTarget.classList.add('drop-invalid');
-                    setTimeout(() => e.currentTarget.classList.remove('drop-invalid'), 500);
-                    return;
-                }
-
-                const roundState = state.topicState[state.currentVuelta];
-                const topicIndex = roundState.unassigned.indexOf(topicId);
-                if (topicIndex > -1) {
-                    roundState.unassigned.splice(topicIndex, 1);
-                    if (!roundState.assigned[targetDayIndex]) roundState.assigned[targetDayIndex] = [];
-                    roundState.assigned[targetDayIndex].push({ id: topicId, studied: false });
-                    
-                    renderTopicSourceList();
-                    updateSingleDay(dateStr);
-                    renderSummaryTable();
-                }
-            } 
-            // Logic for moving a relative (unstudied) topic
-            else if (state.draggedTopic.from === 'calendar_relative') {
-                const { sourceVuelta, sourceDayIndex } = state.draggedTopic;
-                
-                if (sourceVuelta === targetRound.vueltaId && sourceDayIndex === targetDayIndex) return;
-
-                const sourceRoundState = state.topicState[sourceVuelta];
-                const sourceDayTopics = sourceRoundState.assigned[sourceDayIndex];
-                const topicIndex = sourceDayTopics.findIndex(t => t.id === topicId);
-                
-                if (topicIndex > -1) {
-                    const [movedTopic] = sourceDayTopics.splice(topicIndex, 1);
-                    if(sourceDayTopics.length === 0) delete sourceRoundState.assigned[sourceDayIndex];
-
-                    const targetRoundState = state.topicState[targetRound.vueltaId];
-                    if (!targetRoundState.assigned[targetDayIndex]) targetRoundState.assigned[targetDayIndex] = [];
-                    targetRoundState.assigned[targetDayIndex].push(movedTopic);
-
-                    const sourceRoundInfo = state.rounds.find(r => r.vueltaId === sourceVuelta);
-                    const sourceDate = new Date(sourceRoundInfo.startDate);
-                    sourceDate.setUTCDate(sourceDate.getUTCDate() + sourceDayIndex);
-                    
-                    updateSingleDay(sourceDate.toISOString().split('T')[0]);
-                    updateSingleDay(dateStr);
-                    renderSummaryTable();
-                }
-            }
-            // Cannot drag-and-drop studied (fixed) topics. They must be un-studied first.
-
-            state.draggedTopic = null;
-            document.querySelector('.dragging')?.classList.remove('dragging');
-        }
-
-        function handleDropOnSourceList(e) {
-            e.preventDefault();
-            e.currentTarget.classList.remove('drag-over');
-            if (!state.draggedTopic || !state.draggedTopic.from.startsWith('calendar')) return;
-
-            const { id } = state.draggedTopic;
-            
-            const vueltaToReturnTo = state.draggedTopic.from === 'calendar_fixed' 
-                ? state.draggedTopic.originalVuelta 
-                : state.draggedTopic.sourceVuelta;
-            
-            unassignTopic(id, vueltaToReturnTo);
-
-            state.draggedTopic = null;
-            document.querySelector('.dragging')?.classList.remove('dragging');
-        }
-
-        function exportToCSV() {
-            let csvContent = "data:text/csv;charset=utf-8,tipo,vuelta,dia,id_tema,bloque,estudiado\r\n";
-            // Studied topics
-            for(const dateStr in state.topicState.studiedTopics) {
-                state.topicState.studiedTopics[dateStr].forEach(topicData => {
-                    const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
-                    if (topicInfo) {
-                        const row = ['fijo', topicData.originalVuelta, dateStr, `"${topicData.id}"`, `"${topicInfo.block}"`, topicData.studied].join(",");
-                        csvContent += row + "\r\n";
-                    }
-                });
-            }
-            // Relative topics
-            for (const vueltaId in state.topicState) {
-                if(vueltaId === 'studiedTopics' || !state.topicState[vueltaId].assigned) continue;
-                const roundData = state.topicState[vueltaId];
-                for (const dayIndex in roundData.assigned) {
-                    roundData.assigned[dayIndex].forEach(topicData => {
-                        const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
-                        if (topicInfo) {
-                            const row = ['relativo', vueltaId, dayIndex, `"${topicData.id}"`, `"${topicInfo.block}"`, topicData.studied].join(",");
-                            csvContent += row + "\r\n";
-                        }
-                    });
-                }
-            }
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `plan_estudio_${sessionId}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        } 
-
-        function importFromCSV(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const text = e.target.result;
-                const rows = text.split('\n').slice(1);
-                
-                resetTopicState();
-
-                rows.forEach(row => {
-                    if (!row) return;
-                    const columns = row.split(',').map(c => c.replace(/"/g, ''));
-                    const [tipo, vueltaId, dia, topicId, block, studiedStr] = columns;
-                    
-                    if (!tipo || !vueltaId || !dia || !topicId) return;
-
-                    const studied = studiedStr.trim() === 'true';
-
-                    if (tipo === 'fijo') {
-                        const dateStr = dia;
-                         if (!state.topicState.studiedTopics[dateStr]) {
-                            state.topicState.studiedTopics[dateStr] = [];
-                        }
-                        state.topicState.studiedTopics[dateStr].push({ id: topicId, studied: studied, originalVuelta: vueltaId });
-                    } else { // relativo
-                        const dayIndex = parseInt(dia, 10);
-                        if (isNaN(dayIndex) || !state.topicState[vueltaId]) return;
-                        const roundState = state.topicState[vueltaId];
-                         if (!roundState.assigned[dayIndex]) {
-                            roundState.assigned[dayIndex] = [];
-                        }
-                        roundState.assigned[dayIndex].push({ id: topicId, studied: studied });
-                    }
-                    
-                    // Remove from unassigned
-                    for(const vId in state.topicState){
-                        if(vId === 'studiedTopics' || !state.topicState[vId].unassigned) continue;
-                        const unassignedIndex = state.topicState[vId].unassigned.indexOf(topicId);
-                        if (unassignedIndex > -1) {
-                            state.topicState[vId].unassigned.splice(unassignedIndex, 1);
-                        }
-                    }
-                });
-                alert('¡Plan importado con éxito!');
-                renderAll();
-            };
-            reader.readAsText(file);
-            event.target.value = '';
-        }
-
-        initialize();
     </script>
 </body>
 </html>
