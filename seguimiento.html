@@ -3,919 +3,1954 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seguimiento de Estudio para Oposición</title>
+    <title>Planificador de Estudio Interactivo</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        body {
+        body { 
             font-family: 'Inter', sans-serif;
-            background-color: #f8fafc; /* slate-50 */
+            background-color: #f3f4f6;
         }
-        .tick-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 40px; /* Ancho para el tick y la fecha */
-        }
-        .tick-box {
-            width: 24px;
-            height: 24px;
-            border: 2px solid #d1d5db;
-            border-radius: 6px;
-            transition: all 0.2s ease-in-out;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            position: relative;
+        .topic-source-list::-webkit-scrollbar, .calendar-day-topics::-webkit-scrollbar, #day-modal-content::-webkit-scrollbar { width: 6px; }
+        .topic-source-list::-webkit-scrollbar-track, .calendar-day-topics::-webkit-scrollbar-track, #day-modal-content::-webkit-scrollbar-track { background: #e5e7eb; border-radius: 10px; }
+        .topic-source-list::-webkit-scrollbar-thumb, .calendar-day-topics::-webkit-scrollbar-thumb, #day-modal-content::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; }
+        .topic-source-list::-webkit-scrollbar-thumb:hover, .calendar-day-topics::-webkit-scrollbar-thumb:hover, #day-modal-content::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        
+        .calendar-day {
+            min-height: 160px;
+            transition: all 0.3s ease-in-out;
             cursor: pointer;
+            position: relative;
+        }
+        .drag-over {
+            background-color: #c7d2fe !important; /* indigo-200 */
+            border: 2px dashed #6366f1; /* indigo-500 */
+        }
+        .topic-card, .calendar-topic-item {
+            cursor: grab;
+            transition: all 0.2s ease;
+        }
+        .topic-card:active, .calendar-topic-item:active {
+            cursor: grabbing;
+            opacity: 0.8;
+            transform: scale(1.05);
+        }
+        .dragging {
+            opacity: 0.5;
+            background: #e0e7ff;
+        }
+
+        .form-checkbox {
+            -webkit-appearance: none; appearance: none;
+            background-color: #fff; margin: 0; font: inherit; color: currentColor;
+            width: 1.1em; height: 1.1em; border: 0.1em solid #9ca3af;
+            border-radius: 0.25em; transform: translateY(-0.075em);
+            display: grid; place-content: center; cursor: pointer;
+            flex-shrink: 0;
+        }
+        .form-checkbox::before {
+            content: ""; width: 0.65em; height: 0.65em; transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em #4f46e5;
+            transform-origin: bottom left;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        }
+        .form-checkbox:checked { border-color: #4f46e5; }
+        .form-checkbox:checked::before { transform: scale(1); }
+
+        .calendar-topic-item {
+            padding: 4px;
+            font-size: 0.75rem;
+            gap: 6px;
         }
         
-        /* --- TICK BOX COLORS (RESTORED) --- */
-        /* Assigned (not studied) color */
-        .tick-box.assigned { background-color: #f1f5f9; border-color: #9ca3af; } /* gray-100 bg, gray-400 border */
-
-        /* Security Level Colors for Studied topics */
-        .tick-box.studied.security-20 { background-color: #fecaca; border-color: #ef4444; } /* red-200 bg, red-500 border */
-        .tick-box.studied.security-40 { background-color: #fed7aa; border-color: #f97316; } /* orange-200 bg, orange-500 border */
-        .tick-box.studied.security-60 { background-color: #fef08a; border-color: #eab308; } /* yellow-200 bg, yellow-500 border */
-        .tick-box.studied.security-80 { background-color: #d9f99d; border-color: #84cc16; } /* lime-200 bg, lime-500 border */
-        .tick-box.studied.security-100 { background-color: #bbf7d0; border-color: #22c55e; } /* green-200 bg, green-500 border */
-
-        /* --- TOPIC CARD BACKGROUND COLORS (NEW) --- */
-        .topic-card.status-not-studied { background-color: #ffffff; } /* white */
-        .topic-card.status-vuelta-1 { background-color: #fefce8; }    /* yellow-50 */
-        .topic-card.status-vuelta-2 { background-color: #fef9c3; }    /* yellow-100 */
-        .topic-card.status-vuelta-3 { background-color: #ecfccb; }    /* lime-100 */
-        .topic-card.status-vuelta-4 { background-color: #dcfce7; }    /* green-100 */
-        .topic-card.status-vuelta-5 { background-color: #ccfbf1; }    /* teal-100 */
-
-
-        .tick-box .tick-mark { display: none; }
-
-        .tick-box.studied .tick-mark {
-            display: block; width: 8px; height: 14px;
-            border: solid white; border-width: 0 3px 3px 0;
-            transform: rotate(45deg);
-        }
-        .tick-box.assigned .tick-mark {
-            display: block; width: 10px; height: 10px;
-            border: 2px solid white; border-radius: 50%;
-            transform: none; background-color: transparent;
-        }
-
-        .tick-date {
-            font-size: 0.65rem; color: #6b7280;
-            margin-top: 2px; height: 1em;
-        }
-        .topic-card:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
-        .topic-full-name { display: none; margin-left: 8px; font-size: 0.875rem; }
-        body.show-full-names .topic-full-name { display: inline; }
-
-        .header-container { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; }
-        .header-container.is-collapsible { cursor: pointer; }
-        .header-title-wrapper { display: flex; align-items: center; flex-grow: 1; min-width: 0; }
-        .topic-text-container { flex-grow: 1; }
-        
-        #login-modal, #notes-modal-backdrop {
-            position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.6);
-            display: flex; align-items: center; justify-content: center;
-            z-index: 1000; transition: opacity 0.3s;
-        }
-        #login-modal.hidden, #notes-modal-backdrop.hidden { opacity: 0; pointer-events: none; }
-
-        .collapsible-content { max-height: 5000px; overflow: hidden; transition: max-height 0.5s ease-in-out; }
-        .collapsible.collapsed > .collapsible-content { max-height: 0; margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
-        .toggle-icon { transition: transform 0.3s ease; flex-shrink: 0; margin-right: 0.75rem; color: #6b7280; }
-        .collapsible.collapsed .toggle-icon { transform: rotate(-90deg); }
-
-        .notes-icon { cursor: pointer; color: #cbd5e1; transition: color 0.2s; }
-        .notes-icon:hover { color: #64748b; }
-        .notes-icon.has-notes { color: #facc15; }
-        .notes-icon.has-notes:hover { color: #eab308; }
-
-        .security-selector {
-            position: absolute; background: white; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
-            z-index: 10; padding: 4px; display: flex; flex-direction: column; gap: 2px;
-            top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4px;
-        }
-        .security-option {
-            padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;
-            font-weight: 500; text-align: center;
-        }
-        .security-option:hover { background-color: #f1f5f9; }
-
-        /* Color Theming */
-        .color-adm { color: #b45309; } .color-aguas { color: #0369a1; } .color-costas { color: #0e7490; }
-        .color-infra { color: #4b5563; } .color-trans { color: #059669; } .color-ma { color: #15803d; }
-
-        /* --- STYLES FOR SUB-BLOCKS LAYOUT --- */
-        .sub-blocks-container {
-            display: block;
-        }
-
-        body:not(.show-full-names) .sub-blocks-container {
+        .topics-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 1rem;
+            gap: 2px;
         }
 
-        body:not(.show-full-names) .sub-block.collapsible.collapsed > .collapsible-content {
-            max-height: 5000px; /* Show content in compact view */
+        .topics-column {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0; /* Fix for grid layout issues */
+        }
+
+        .calendar-topic-item.in-grid {
+            font-size: 0.7rem; /* Adjusted font-size for better fit */
+            padding: 2px 4px;
+            gap: 4px;
+        }
+        .calendar-topic-item.in-grid .form-checkbox {
+             width: 0.8em; height: 0.8em;
+        }
+         .calendar-topic-item.in-grid .color-dot {
+             width: 0.4rem; height: 0.4rem;
+        }
+        .calendar-topic-item.in-grid span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .drop-invalid {
+            border: 2px dashed #ef4444 !important; /* red-500 */
+        }
+        .content-panel.hidden {
+            display: none;
+        }
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+        .collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+        aside.collapsed {
+            width: 50px !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            overflow: hidden;
+        }
+        aside.collapsed > #topics-content {
+            display: none;
+        }
+        aside.collapsed #topics-header h2 {
+            display: none;
+        }
+        aside {
+            transition: width 0.3s ease, padding 0.3s ease;
         }
         
-        body:not(.show-full-names) .sub-block .is-collapsible {
-            cursor: default; /* Not clickable in compact view */
+        #day-modal-backdrop {
+            transition: opacity 0.3s ease-in-out;
+        }
+        #day-modal-container {
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+        #day-modal-backdrop.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #day-modal-container.hidden {
+            opacity: 0;
+            transform: scale(0.95);
+            pointer-events: none;
         }
 
-        body:not(.show-full-names) .sub-block .toggle-icon {
-            display: none; /* Hide collapse icon in compact view */
+        #config-panel {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.4s ease-in-out;
+        }
+        #config-panel.expanded {
+            grid-template-rows: 1fr;
+        }
+        .config-panel-inner {
+            overflow: hidden;
+        }
+
+        /* New styles for unavailable topics */
+        .unassign-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0 4px;
+            color: #9ca3af; /* gray-400 */
+            transition: color 0.2s;
+            pointer-events: auto;
+        }
+        .unassign-btn:hover {
+            color: #ef4444; /* red-500 */
+        }
+        .topic-card.unavailable {
+            opacity: 0.6;
+            /* cursor is managed with JS now */
+        }
+        .topic-card.needs-review {
+            background-color: #fefce8; /* yellow-50 */
+            border: 1px solid #fde047; /* yellow-400 */
+        }
+
+        /* Style for multi-selection */
+        .topic-card.selected {
+            background-color: #c7d2fe; /* indigo-200 */
+            border: 1px solid #6366f1; /* indigo-500 */
+        }
+
+        /* Security Level Colors */
+        .security-20 { background-color: #fecaca; } /* red-200 */
+        .security-40 { background-color: #fed7aa; } /* orange-200 */
+        .security-60 { background-color: #fef08a; } /* yellow-200 */
+        .security-80 { background-color: #d9f99d; } /* lime-200 */
+        .security-100 { background-color: #bbf7d0; } /* green-200 */
+
+
+        /* Block Colors */
+        .color-adm { color: #b45309; }
+        .color-aguas { color: #0369a1; }
+        .color-costas { color: #0e7490; }
+        .color-infra { color: #4b5563; }
+        .color-trans { color: #059669; }
+        .color-ma { color: #15803d; }
+
+        /* Style for highlighting a day on the calendar */
+        .highlight-day {
+            transform: scale(1.08);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.5s ease;
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(79, 70, 229, 0.7); /* indigo-600 glow */
+            border-color: #4f46e5 !important; /* indigo-600 */
         }
     </style>
 </head>
-<body class="bg-slate-50 text-gray-800">
+<body class="text-gray-800">
 
-    <div id="login-modal">
+    <div id="login-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-sm">
             <h2 class="text-2xl font-bold mb-4 text-center">Bienvenido</h2>
-            <p class="text-gray-600 mb-6 text-center">Introduce un nombre de usuario o ID para cargar tu progreso.</p>
+            <p class="text-gray-600 mb-6 text-center">Introduce un nombre de usuario o ID para guardar y cargar tu progreso.</p>
             <form id="login-form">
                 <input type="text" id="username-input" placeholder="Tu nombre de usuario" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4" required>
                 <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold">Empezar</button>
             </form>
         </div>
     </div>
-    
-    <div id="notes-modal-backdrop" class="hidden">
-        <div id="notes-modal-container" class="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl">
-            <h3 id="notes-modal-title" class="text-xl font-bold mb-4"></h3>
-            <textarea id="notes-modal-textarea" class="w-full h-48 p-2 border border-gray-300 rounded-lg" placeholder="Escribe tus notas aquí..."></textarea>
-            <div class="mt-4 flex justify-end gap-3">
-                <button id="notes-modal-cancel" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Cancelar</button>
-                <button id="notes-modal-save" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar</button>
-            </div>
-        </div>
-    </div>
 
-    <div id="main-content" class="container mx-auto p-4 md:p-8 hidden">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl md:text-5xl font-bold text-slate-800">Seguimiento de Estudio</h1>
-            <p class="text-lg text-slate-500 mt-2">Cuerpo de Ingenieros de Caminos, Canales y Puertos del Estado</p>
-            <div id="user-info" class="mt-4 text-sm text-gray-500"></div>
-            <div id="connection-status" class="mt-2 text-sm font-semibold h-5"></div>
-            <div class="mt-6 flex flex-wrap justify-center items-center gap-4">
-                <button id="toggle-names-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium">Mostrar Nombres</button>
-                <button id="calc-prob-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"><i class="fas fa-calculator mr-2"></i>Calcular Probabilidad</button>
-                <button id="collapse-all-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm font-medium">Plegar Todo</button>
-                <button id="expand-all-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm font-medium">Desplegar Todo</button>
-                <div class="flex items-center gap-2">
-                    <label for="vuelta-selector" class="font-medium text-slate-700">Ver Vuelta:</label>
-                    <select id="vuelta-selector" class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+    <div id="main-content" class="p-4 md:p-6 hidden">
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-6">
+            <header class="mb-4">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Planificador de Estudio Interactivo</h1>
+                    <div id="countdown-container" class="text-right">
+                        <!-- Countdown will be injected here by JS -->
+                    </div>
+                </div>
+                <p class="text-md text-gray-600 mt-2 text-center">Arrastra los temas al calendario para organizar tu estudio por vueltas.</p>
+            </header>
+            
+            <div class="flex flex-wrap items-center justify-center gap-4">
+                 <div>
+                    <button id="view-rounds-btn" class="bg-cyan-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-cyan-700 transition-colors shadow-md">
+                        <i class="fas fa-tasks mr-2"></i>Ver Vueltas
+                    </button>
+                    <button id="generate-btn" class="bg-indigo-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors shadow-md">
+                        <i class="fas fa-sync-alt mr-2"></i>Actualizar Plan
+                    </button>
+                    <button id="save-btn" class="bg-green-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-green-700 transition-colors shadow-md">
+                        <i class="fas fa-save mr-2"></i>Guardar Progreso
+                    </button>
+                </div>
+                <div class="ml-auto flex items-center gap-2">
+                    <button id="export-csv-btn" title="Exportar a CSV" class="bg-gray-200 text-gray-600 font-semibold w-10 h-10 text-sm rounded-lg hover:bg-gray-300 transition-colors shadow-md flex items-center justify-center">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <label for="import-csv-input" title="Importar desde CSV" class="bg-gray-200 text-gray-600 font-semibold w-10 h-10 text-sm rounded-lg hover:bg-gray-300 transition-colors shadow-md cursor-pointer flex items-center justify-center">
+                        <i class="fas fa-upload"></i>
+                    </label>
+                    <input type="file" id="import-csv-input" class="hidden" accept=".csv">
+                     <button id="toggle-config-btn" class="bg-gray-700 text-white font-semibold w-10 h-10 rounded-lg hover:bg-gray-800 transition-colors shadow-md flex items-center justify-center">
+                        <i class="fas fa-cog"></i>
+                    </button>
                 </div>
             </div>
-        </header>
-
-        <div class="bg-white rounded-lg shadow-md mb-8 overflow-x-auto">
-            <table id="top-summary-table" class="w-full text-sm text-left text-slate-600"></table>
+            <div id="config-panel">
+                <div class="config-panel-inner">
+                    <div class="pt-4 mt-4 border-t border-gray-200 flex flex-col md:flex-row items-center justify-center gap-4">
+                        <div>
+                            <label for="end-date" class="block text-sm font-medium text-gray-700 mb-1">Fecha Límite</label>
+                            <input type="text" id="end-date" value="15/09/2025" placeholder="DD/MM/YYYY" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm">
+                        </div>
+                        <div id="round-durations-container" class="flex flex-wrap items-end justify-center gap-3">
+                            <!-- Inputs for round durations will be generated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <main id="syllabus-container"></main>
+        <div id="save-status" class="text-center text-sm font-medium h-5 mb-2"></div>
+        
+        <div id="summary-panel" class="bg-white rounded-xl shadow-lg mb-4">
+            <div id="summary-header" class="p-4 cursor-pointer flex justify-between items-center border-b border-transparent">
+                <h3 class="font-bold text-lg">Resumen de Progreso</h3>
+                <div class="toggle-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>
+                </div>
+            </div>
+            <div id="summary-content" class="p-4 content-panel hidden">
+                <div class="mb-4">
+                    <label for="summary-round-select" class="block text-sm font-medium text-gray-700 mb-1">Seleccionar Vuelta para el Resumen:</label>
+                    <select id="summary-round-select" class="w-full md:w-1/3 p-2 border border-gray-300 rounded-lg"></select>
+                </div>
+                <div id="summary-table-container" class="overflow-x-auto"></div>
+            </div>
+        </div>
 
-        <footer class="text-center mt-12 py-4">
-            <p class="text-sm text-gray-500">Aplicación generada para el seguimiento de estudio.</p>
-        </footer>
+        <div class="flex flex-row gap-6">
+            <aside id="topics-panel" class="lg:w-1/3 bg-white rounded-xl shadow-lg p-4 flex flex-col">
+                <div id="topics-header" class="flex justify-between items-center mb-2 cursor-pointer">
+                    <h2 class="text-xl font-bold">Temas por Asignar</h2>
+                    <div class="toggle-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>
+                    </div>
+                </div>
+                <div id="topics-content" class="content-panel">
+                    <div class="flex flex-wrap gap-2 items-center border-b border-gray-200 pb-2 mb-2">
+                        <div id="round-tabs" class="flex"></div>
+                        <div id="sub-block-filter-container" class="flex-grow"></div>
+                    </div>
+                    <input type="text" id="topic-search" placeholder="Buscar tema..." class="w-full p-2 border border-gray-300 rounded-lg mb-2">
+                    <div id="topic-source-list" class="overflow-y-auto h-96 lg:h-[45vh] p-1"></div>
+                </div>
+            </aside>
+
+            <main class="flex-grow bg-white rounded-xl shadow-lg p-4 flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <button id="prev-month-btn" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">&lt; Anterior</button>
+                    <h2 id="calendar-title" class="text-xl font-bold text-center"></h2>
+                    <button id="next-month-btn" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Siguiente &gt;</button> 
+                </div>
+                <div id="calendar-container" class="grid grid-cols-1 gap-8"></div>
+            </main>
+        </div>
     </div>
+    
+    <!-- Day Details Modal -->
+    <div id="day-modal-backdrop" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-40 hidden">
+        <div id="day-modal-container" class="fixed inset-0 flex items-center justify-center p-4 hidden">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col" style="max-height: 90vh;">
+                <div class="flex justify-between items-center p-4 border-b">
+                    <h3 id="day-modal-title" class="text-xl font-bold"></h3>
+                    <button id="day-modal-close-btn" class="text-gray-500 hover:text-gray-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
+                    </button>
+                </div>
+                <div id="day-modal-content" class="p-6 overflow-y-auto space-y-3">
+                    <!-- Topic details will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // NOTE: It's recommended to use environment variables for Firebase config in production.
         const firebaseConfig = {
             apiKey: "AIzaSyCKXzSmQ9F1M4W59Vyalu3CWdKFsh7dOmE",
             authDomain: "costas-304b9.firebaseapp.com",
             projectId: "costas-304b9",
             storageBucket: "costas-304b9.appspot.com",
-            messagingSenderId: "251850800414", 
+            messagingSenderId: "251850800414",
             appId: "1:251850800414:web:435e20e5305881732e5d0f",
             measurementId: "G-C2NTL72PZH"
         };
-
         let db, sessionId;
-        let plannerState = {};
-        let progressByTopic = {};
-        let state = { rounds: [] }; // Add state object to hold rounds info
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-planner-app';
-        
+
         const BLOCKS_CONFIG = {
-            "Organización y Funcionamiento de la Administración Pública": { abbr: "ADM", icon: "fa-gavel", color: "color-adm", calcId: 'admin' },
-            "A.1) Aguas y Obras Hidráulicas": { abbr: "AGUAS", icon: "fa-tint", color: "color-aguas", calcId: 'aguas' },
-            "A.2) Puertos y Costas": { abbr: "COSTAS", icon: "fa-water", color: "color-costas", calcId: 'aguas' },
-            "B.1) Carreteras": { abbr: "CARR", icon: "fa-road", color: "color-infra", calcId: 'carreteras' },
-            "B.2) Ferrocarriles": { abbr: "FERR", icon: "fa-train", color: "color-infra", calcId: 'carreteras' },
-            "C.1) Transportes y Movilidad": { abbr: "TRANS", icon: "fa-bus", color: "color-trans", calcId: 'transportes' },
-            "C.2) Medio Ambiente": { abbr: "MA", icon: "fa-leaf", color: "color-ma", calcId: 'transportes' }
+            "Organización y Funcionamiento de la Administración Pública": { color: "#b45309", icon: "fa-gavel", c: "color-adm" },
+            "A.1) Aguas y Obras Hidráulicas": { color: "#0369a1", icon: "fa-tint", c: "color-aguas" },
+            "A.2) Puertos y Costas": { color: "#0e7490", icon: "fa-water", c: "color-costas" },
+            "B.1) Carreteras": { color: "#4b5563", icon: "fa-road", c: "color-infra" },
+            "B.2) Ferrocarriles": { color: "#4b5563", icon: "fa-train", c: "color-infra" },
+            "C.1) Transportes y Movilidad": { color: "#059669", icon: "fa-bus", c: "color-trans" },
+            "C.2) Medio Ambiente": { color: "#15803d", icon: "fa-leaf", c: "color-ma" }
         };
-        
-        const syllabus = {
-            "Materias comunes": {
-                "Organización y Funcionamiento de la Administración Pública": [
-                    { id: 1, text: "La Constitución Española de 1978. Estructura, principios constitucionales y valores superiores. Los derechos y libertades fundamentales. La reforma constitucional." },
-                    { id: 2, text: "La estructura de poderes del Estado. Poder legislativo, poder ejecutivo y poder judicial. La Corona." },
-                    { id: 3, text: "Fuentes del ordenamiento jurídico administrativo. La Constitución. Los tratados internacionales. La ley. El reglamento. Otras fuentes del derecho administrativo." },
-                    { id: 4, text: "La Administración General del Estado. Órganos superiores y órganos directivos. La organización central. La organización periférica. Delegados y Subdelegados del Gobierno. Especial referencia al Ministerio de Transportes y Movilidad Sostenible." },
-                    { id: 5, text: "Las Comunidades Autónomas. El proceso autonómico y el sistema de distribución de competencias entre la Administración General del Estado y las Comunidades Autónomas. Los Estatutos de Autonomía y la organización institucional de las Comunidades Autónomas. La Administración Local: entidades que la integran." },
-                    { id: 6, text: "La Unión Europea y sus tratados constitutivos. Sistema institucional. Fuentes del Derecho de la Unión y su trasposición al ordenamiento jurídico español. Políticas comunes." },
-                    { id: 7, text: "El régimen jurídico de las Administraciones Públicas y su regulación. Principios que rigen las relaciones de las Administraciones Públicas. Actividad de las administraciones públicas: derechos y deberes de los ciudadanos." },
-                    { id: 8, text: "La Gobernanza Pública y el Gobierno Abierto. Concepto y principios informadores del Gobierno Abierto en España." },
-                    { id: 9, text: "El acto administrativo: concepto, elementos y clases. Requisitos. Motivación, notificación y publicación. Nulidad y anulabilidad de los actos. Disposiciones administrativas generales: jerarquía y competencia. Publicidad e inderogabilidad." },
-                    { id: 10, text: "El procedimiento administrativo común y sus fases. Concepto de persona interesada. Iniciación y ordenación del procedimiento, instrucción, finalización. El silencio administrativo. Ejecución." },
-                    { id: 11, text: "Revisión de los actos en vía administrativa. Recursos administrativos: concepto, naturaleza y clases. Revisión de oficio. La jurisdicción contencioso-administrativa. El recurso contencioso-administrativo." },
-                    { id: 12, text: "La responsabilidad patrimonial de la Administración. Regulación, Principios y procedimientos. La indemnización: concepto y naturaleza. La responsabilidad civil y penal de las autoridades y personal al servicio de las Administraciones Públicas. La potestad sancionadora. Regulación, naturaleza y principios rectores de la potestad sancionadora y del procedimiento sancionador." },
-                    { id: 13, text: "La expropiación forzosa. Actos administrativos previos de expropiación. Justiprecio. Jurado Provincial de Expropiación. Pago y ocupación de bienes. Inscripción registral." },
-                    { id: 14, text: "Los contratos del sector público (1): ámbito subjetivo y objetivo de aplicación de la legislación de contratación del sector público. Disposiciones comunes sobre la contratación del sector público. Los sujetos parte en el contrato. Tipología de contratos." },
-                    { id: 15, text: "Los contratos del sector público (II). Actuaciones administrativas. Preparación: consultas, expediente de contratación, pliegos. Adjudicación: normas generales y formas de adjudicación. Perfección, formalización y extinción de los contratos. Ejecución." },
-                    { id: 16, text: "El modelo de Función Pública del Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público. Características generales. El personal al servicio de las Administraciones Públicas: clasificación, derechos y deberes." },
-                    { id: 17, text: "Principios, políticas y medidas de igualdad de género y contra la violencia de género. Normativa vigente en el ordenamiento español y en el de la Unión Europea, con especial referencia al III Plan para la Igualdad de Género en la Administración General del Estado y en sus Organismos Autónomos vinculados o dependientes de ella. Políticas de igualdad de trato y no discriminación de las personas LGTBI. Políticas dirigidas a la atención a personas con discapacidad y a las personas en situación de dependencia." }
-                ]
-            },
+
+        const SHORT_NAMES = {
+            "Organización y Funcionamiento de la Administración Pública": "Administrativo",
+            "A.1) Aguas y Obras Hidráulicas": "Aguas",
+            "A.2) Puertos y Costas": "Costas",
+            "B.1) Carreteras": "Carreteras",
+            "B.2) Ferrocarriles": "Ferrocarriles",
+            "C.1) Transportes y Movilidad": "Transportes",
+            "C.2) Medio Ambiente": "MA"
+        };
+
+        const fullSyllabus = {
+            "Materias comunes": { "Organización y Funcionamiento de la Administración Pública": Array.from({length: 17}, (_, i) => ({id: i + 1, text: `Tema Común ${i+1}`}))},
             "Materias específicas": {
-                "A) Aguas y Obras Hidráulicas, Puertos y Costas": {
-                    "A.1) Aguas y Obras Hidráulicas": Array.from({length: 28}, (_,i) => ({id: i+1, text: `Tema A.1.${i+1}`})),
-                    "A.2) Puertos y Costas": Array.from({length: 20}, (_,i) => ({id: i+1, text: `Tema A.2.${i+1}`}))
-                },
-                "B) Infraestructuras de Transporte": {
-                    "B.1) Carreteras": Array.from({length: 24}, (_,i) => ({id: i+1, text: `Tema B.1.${i+1}`})),
-                    "B.2) Ferrocarriles": Array.from({length: 22}, (_,i) => ({id: i+1, text: `Tema B.2.${i+1}`}))
-                },
-                "C) Transportes, Movilidad y Medio Ambiente": { 
-                    "C.1) Transportes y Movilidad": Array.from({length: 21}, (_,i) => ({id: i+1, text: `Tema C.1.${i+1}`})),
-                    "C.2) Medio Ambiente": Array.from({length: 15}, (_,i) => ({id: i+1, text: `Tema C.2.${i+1}`}))
-                }
+                "A) Aguas y Obras Hidráulicas, Puertos y Costas": { "A.1) Aguas y Obras Hidráulicas": Array.from({length: 28}, (_, i) => ({id: i + 1, text: `Tema A.1.${i+1}`})), "A.2) Puertos y Costas": Array.from({length: 20}, (_, i) => ({id: i + 1, text: `Tema A.2.${i+1}`}))},
+                "B) Infraestructuras de Transporte": { "B.1) Carreteras": Array.from({length: 24}, (_, i) => ({id: i + 1, text: `Tema B.1.${i+1}`})), "B.2) Ferrocarriles": Array.from({length: 22}, (_, i) => ({id: i + 1, text: `Tema B.2.${i+1}`}))},
+                "C) Transportes, Movilidad y Medio Ambiente": { "C.1) Transportes y Movilidad": Array.from({length: 21}, (_, i) => ({id: i + 1, text: `Tema C.1.${i+1}`})), "C.2) Medio Ambiente": Array.from({length: 15}, (_, i) => ({id: i + 1, text: `Tema C.2.${i+1}`}))}
             }
         };
 
-        window.onload = async () => {
-            try {
-                initializeApp(firebaseConfig);
-                db = getFirestore();
-                const loginModal = document.getElementById('login-modal');
-                const loginForm = document.getElementById('login-form');
-                let user = sessionStorage.getItem('username');
-                if (!user) {
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const userFromUrl = urlParams.get('user');
-                    if (userFromUrl) {
-                        user = userFromUrl;
-                        sessionStorage.setItem('username', user);
-                    }
-                }
-                if (user) await startApp(user);
-                else {
-                    loginModal.style.display = 'flex'; 
-                    loginForm?.addEventListener('submit', async (e) => {
-                        e.preventDefault();
-                        const username = document.getElementById('username-input').value.trim();
-                        if (username) {
-                            sessionStorage.setItem('username', username);
-                            await startApp(username);
-                        }
-                    });
-                }
-            } catch (error) { console.error("Error initializing:", error); }
+        const ROUND_COLORS = {
+            bg: ['bg-red-100', 'bg-orange-100', 'bg-yellow-100', 'bg-blue-100', 'bg-green-100'],
+            text: ['text-red-800', 'text-orange-800', 'text-yellow-800', 'text-blue-800', 'text-green-800']
         };
+
+        const endDateInput = document.getElementById('end-date');
+        const generateBtn = document.getElementById('generate-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const saveStatus = document.getElementById('save-status');
+        const calendarContainer = document.getElementById('calendar-container');
+        const topicSourceList = document.getElementById('topic-source-list');
+        const topicSearchInput = document.getElementById('topic-search');
+        const roundTabsContainer = document.getElementById('round-tabs');
+        const subBlockFilterContainer = document.getElementById('sub-block-filter-container');
+        const prevMonthBtn = document.getElementById('prev-month-btn');
+        const nextMonthBtn = document.getElementById('next-month-btn');
+        const calendarTitle = document.getElementById('calendar-title');
+        const summaryPanel = document.getElementById('summary-panel');
+        const summaryHeader = document.getElementById('summary-header');
+        const summaryContent = document.getElementById('summary-content');
+        const summaryRoundSelect = document.getElementById('summary-round-select');
+        const summaryTableContainer = document.getElementById('summary-table-container');
+        const exportCsvBtn = document.getElementById('export-csv-btn');
+        const importCsvInput = document.getElementById('import-csv-input');
+        const topicsPanel = document.getElementById('topics-panel');
+        const topicsHeader = document.getElementById('topics-header');
+        const topicsContent = document.getElementById('topics-content');
+        const dayModalBackdrop = document.getElementById('day-modal-backdrop');
+        const dayModalContainer = document.getElementById('day-modal-container');
+        const dayModalTitle = document.getElementById('day-modal-title');
+        const dayModalContent = document.getElementById('day-modal-content');
+        const dayModalCloseBtn = document.getElementById('day-modal-close-btn');
+        const toggleConfigBtn = document.getElementById('toggle-config-btn');
+        const configPanel = document.getElementById('config-panel');
+        const viewRoundsBtn = document.getElementById('view-rounds-btn');
+        const countdownContainer = document.getElementById('countdown-container');
+
+        let state = {
+            flatTopics: [],
+            subBlocks: [],
+            mainBlocks: {},
+            rounds: [],
+            topicState: {},
+            dayTypes: {}, // NEW: Stores day types, e.g., { '2025-07-11': 'work' }
+            selectedTopics: [], // NEW: Stores selected topic IDs for multi-drag
+            currentVuelta: 'vuelta-1',
+            currentSubBlock: 'todos',
+            currentSummaryVuelta: 'vuelta-1',
+            displayDate: new Date(),
+            draggedTopic: null 
+        };
+
+        function initialize() {
+            if (Object.keys(firebaseConfig).length > 0) {
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                } catch (e) {
+                    console.error("Error initializing Firebase:", e);
+                    alert("No se pudo inicializar Firebase. Comprueba la configuración.");
+                }
+            } else {
+                console.warn("Firebase config is empty. Persistence is disabled.");
+            }
+
+            document.getElementById('login-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const username = document.getElementById('username-input').value.trim();
+                if(username) {
+                    startApp(username);
+                }
+            });
+        }
 
         async function startApp(username) {
             sessionId = username;
             document.getElementById('login-modal').style.display = 'none';
             document.getElementById('main-content').classList.remove('hidden');
             
-            setupVueltaSelector();
-            setupEventListeners();
-            renderSyllabus(); 
-            await loadProgress(); 
-        }
+            parseSyllabus();
+            setupRoundDurationInputs();
+            await loadStateFromFirebase();
 
-        function setupEventListeners() {
-            document.getElementById('vuelta-selector').addEventListener('change', updateAllCounters);
-            document.getElementById('toggle-names-btn').addEventListener('click', () => {
-                document.body.classList.toggle('show-full-names');
-                const btn = document.getElementById('toggle-names-btn');
-                btn.textContent = document.body.classList.contains('show-full-names') ? 'Ocultar Nombres' : 'Mostrar Nombres';
-            });
-            document.getElementById('collapse-all-btn').addEventListener('click', () => toggleAll(true));
-            document.getElementById('expand-all-btn').addEventListener('click', () => toggleAll(false));
-            document.getElementById('calc-prob-btn').addEventListener('click', openCalculator);
-            document.getElementById('notes-modal-cancel').addEventListener('click', hideNotesModal);
-            document.getElementById('notes-modal-backdrop').addEventListener('click', (e) => {
-                if (e.target === document.getElementById('notes-modal-backdrop')) hideNotesModal();
-            });
-        }
-        
-        function setupVueltaSelector() {
-            const selector = document.getElementById('vuelta-selector');
-            selector.innerHTML = '';
-            for (let i = 1; i <= 5; i++) {
-                const option = document.createElement('option');
-                option.value = i;
-                option.textContent = `Vuelta ${i}`;
-                selector.appendChild(option);
-            }
-        }
-
-        function renderSyllabus() {
-            const container = document.getElementById('syllabus-container');
-            container.innerHTML = ''; 
-            for (const topLevelTitle in syllabus) {
-                const topLevelBlock = document.createElement('div');
-                topLevelBlock.className = 'mt-8';
-                topLevelBlock.appendChild(createHeader(2, topLevelTitle));
-                const mainBlocks = syllabus[topLevelTitle];
-                for (const mainBlockTitle in mainBlocks) {
-                    const mainBlockEl = document.createElement('div');
-                    mainBlockEl.className = 'main-block mt-6 ml-4 collapsible collapsed';
-                    mainBlockEl.appendChild(createHeader(3, mainBlockTitle, true));
-                    const mainBlockContent = document.createElement('div');
-                    mainBlockContent.className = 'collapsible-content';
-                    const subBlocksOrTopics = mainBlocks[mainBlockTitle];
-                    if (Array.isArray(subBlocksOrTopics)) {
-                        subBlocksOrTopics.forEach(topic => mainBlockContent.appendChild(createTopicElement(topic, mainBlockTitle)));
-                    } else {
-                        const subBlocksContainer = document.createElement('div');
-                        subBlocksContainer.className = 'sub-blocks-container';
-                        for (const subBlockKey in subBlocksOrTopics) {
-                            const subBlockEl = document.createElement('div');
-                            subBlockEl.className = 'sub-block collapsible collapsed';
-                            
-                            const subBlockHeader = createHeader(4, subBlockKey, true);
-                            const subBlockTopics = document.createElement('div');
-                            subBlockTopics.className = 'collapsible-content';
-
-                            subBlocksOrTopics[subBlockKey].forEach(topic => subBlockTopics.appendChild(createTopicElement(topic, subBlockKey)));
-                            
-                            subBlockEl.appendChild(subBlockHeader);
-                            subBlockEl.appendChild(subBlockTopics);
-                            subBlocksContainer.appendChild(subBlockEl);
-                        }
-                        mainBlockContent.appendChild(subBlocksContainer);
-                    }
-                    mainBlockEl.appendChild(mainBlockContent);
-                    topLevelBlock.appendChild(mainBlockEl);
-                }
-                container.appendChild(topLevelBlock); 
-            }
-        }
-
-        function createHeader(level, title, isCollapsible = false) {
-            const headerWrapper = document.createElement('div');
-            headerWrapper.className = 'header-container';
-             if (isCollapsible) {
-                headerWrapper.classList.add('is-collapsible');
-                headerWrapper.addEventListener('click', (e) => {
-                    if (e.target.closest('.header-counters')) return;
-                    if (headerWrapper.closest('.sub-block') && !document.body.classList.contains('show-full-names')) {
-                        return;
-                    }
-                    headerWrapper.parentElement.classList.toggle('collapsed');
-                });
-            }
-            const titleWrapper = document.createElement('div');
-            titleWrapper.className = 'header-title-wrapper';
-            if (isCollapsible) {
-                const icon = document.createElement('div');
-                icon.className = 'toggle-icon';
-                icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>`;
-                titleWrapper.appendChild(icon);
-            }
-            const titleEl = document.createElement(`h${level}`);
-            const styles = {
-                2: 'text-2xl font-bold text-slate-800 border-b-2 border-slate-300 pb-2', 
-                3: 'text-xl font-semibold text-slate-700',
-                4: 'text-base font-semibold text-slate-600'
-            };
-            titleEl.className = styles[level];
-            titleEl.textContent = title;
-            const config = BLOCKS_CONFIG[title];
-            if(config) titleEl.classList.add(config.color);
-            titleWrapper.appendChild(titleEl);
-            headerWrapper.appendChild(titleWrapper);
-            return headerWrapper;
-        }
-
-        function createTopicElement(topic, subBlockName) {
-            const topicId = `${subBlockName}-${topic.id}`;
-            const topicDiv = document.createElement('div');
-            topicDiv.className = 'topic-card p-2 rounded-lg shadow-sm mb-2 flex items-center justify-between gap-4 transition-colors duration-300';
-            topicDiv.dataset.topicId = topicId;
-            topicDiv.dataset.subBlockName = subBlockName;
-
-            const notesIcon = document.createElement('i');
-            notesIcon.className = 'fas fa-note-sticky notes-icon text-lg';
-            notesIcon.title = 'Añadir/Ver notas';
-            notesIcon.addEventListener('click', () => showNotesModal(topicId, `${subBlockName} - Tema ${topic.id}`));
-
-            const topicP = document.createElement('p');
-            topicP.className = 'topic-text-container';
-            const config = BLOCKS_CONFIG[subBlockName];
-            if(config) topicP.classList.add(config.color);
-            topicP.innerHTML = `${topic.id}. <span class="topic-full-name">${topic.text}</span>`;
-
-            const ticksContainer = document.createElement('div');
-            ticksContainer.className = 'flex items-start space-x-2';
-            for (let i = 1; i <= 5; i++) {
-                const tickContainer = document.createElement('div');
-                tickContainer.className = 'tick-container';
-                const tickBox = document.createElement('div');
-                tickBox.className = 'tick-box';
-                tickBox.dataset.vuelta = `vuelta-${i}`;
-                tickBox.addEventListener('click', (e) => showSecuritySelector(e, topicId, `vuelta-${i}`));
-                const tickMark = document.createElement('div');
-                tickMark.className = 'tick-mark';
-                tickBox.appendChild(tickMark);
-                const dateSpan = document.createElement('span');
-                dateSpan.className = 'tick-date';
-                tickContainer.appendChild(tickBox);
-                tickContainer.appendChild(dateSpan);
-                ticksContainer.appendChild(tickContainer);
-            }
-            topicDiv.appendChild(notesIcon);
-            topicDiv.appendChild(topicP);
-            topicDiv.appendChild(ticksContainer);
-            return topicDiv;
-        }
-
-        function updateAllCounters() {
-            const selector = document.getElementById('vuelta-selector');
-            if (!selector || !selector.value) return;
-            const selectedVuelta = parseInt(selector.value, 10);
-            renderTopSummaryTable(selectedVuelta);
-        }
-        
-        function renderTopSummaryTable(selectedVuelta) {
-            if (isNaN(selectedVuelta)) return;
-            const summaryTable = document.getElementById('top-summary-table');
-            const tableHead = `
-                <thead class="bg-slate-200 text-xs text-slate-700 uppercase tracking-wider">
-                    <tr>
-                        <th class="px-6 py-3">Bloque</th>
-                        <th class="px-6 py-3">Sub-bloque</th>
-                        <th class="px-6 py-3 text-center">Asignados</th>
-                        <th class="px-6 py-3 text-center">Estudiados</th>
-                        <th class="px-6 py-3 text-center">Total Asignados</th>
-                        <th class="px-6 py-3 text-center">Total Temas</th>
-                    </tr>
-                </thead>`;
-            let tableBody = '<tbody>';
-            let grandTotal = { assigned: 0, studied: 0, totalAssigned: 0, total: 0 };
-
-            const allBlocks = {...syllabus["Materias comunes"], ...syllabus["Materias específicas"]};
-
-            for (const mainBlockTitle in allBlocks) {
-                const subBlocksOrTopics = allBlocks[mainBlockTitle];
-                if (Array.isArray(subBlocksOrTopics)) {
-                    const blockName = mainBlockTitle;
-                    const assignedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${blockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.assigned`).length;
-                    const studiedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${blockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.studied`).length;
-                    const totalAssigned = assignedCount + studiedCount;
-                    const totalTopics = subBlocksOrTopics.length;
-                    
-                    grandTotal.assigned += assignedCount;
-                    grandTotal.studied += studiedCount;
-                    grandTotal.totalAssigned += totalAssigned;
-                    grandTotal.total += totalTopics;
-
-                    const config = BLOCKS_CONFIG[blockName];
-                    tableBody += `<tr class="bg-slate-50 border-b-4 border-slate-300">
-                        <td colspan="2" class="px-6 py-4 font-semibold ${config.color}"><i class="fas ${config.icon} fa-fw w-5 text-center"></i>${blockName}</td>
-                        <td class="px-6 py-4 text-center font-mono text-gray-600">${assignedCount}</td>
-                        <td class="px-6 py-4 text-center font-mono text-green-600">${studiedCount}</td>
-                        <td class="px-6 py-4 text-center font-mono">${totalAssigned}</td>
-                        <td class="px-6 py-4 text-center font-mono">${totalTopics}</td>
-                    </tr>`;
-                } else {
-                    let blockTotals = { assigned: 0, studied: 0, totalAssigned: 0, total: 0 };
-                    let subRows = '';
-                    const subBlockKeys = Object.keys(subBlocksOrTopics);
-
-                    subBlockKeys.forEach((subBlockName, index) => {
-                        const assignedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${subBlockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.assigned`).length;
-                        const studiedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${subBlockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.studied`).length;
-                        const totalAssigned = assignedCount + studiedCount;
-                        const totalTopics = subBlocksOrTopics[subBlockName].length;
-                        
-                        blockTotals.assigned += assignedCount;
-                        blockTotals.studied += studiedCount;
-                        blockTotals.totalAssigned += totalAssigned;
-                        blockTotals.total += totalTopics;
-
-                        const config = BLOCKS_CONFIG[subBlockName];
-                        subRows += `<tr class="border-t border-slate-200">
-                            ${index === 0 ? `<td class="px-6 py-4 font-bold align-top" rowspan="${subBlockKeys.length}">${mainBlockTitle}</td>` : ''}
-                            <td class="px-6 py-4 flex items-center gap-3 ${config.color}"><i class="fas ${config.icon} fa-fw w-5 text-center"></i><span class="font-semibold">${subBlockName}</span></td>
-                            <td class="px-6 py-4 text-center font-mono text-gray-600">${assignedCount}</td>
-                            <td class="px-6 py-4 text-center font-mono text-green-600">${studiedCount}</td>
-                            <td class="px-6 py-4 text-center font-mono">${totalAssigned}</td>
-                            <td class="px-6 py-4 text-center font-mono">${totalTopics}</td>
-                        </tr>`;
-                    });
-
-                    grandTotal.assigned += blockTotals.assigned;
-                    grandTotal.studied += blockTotals.studied;
-                    grandTotal.totalAssigned += blockTotals.totalAssigned;
-                    grandTotal.total += blockTotals.total;
-
-                    tableBody += subRows;
-                    tableBody += `<tr class="bg-slate-100 font-semibold"><td class="px-6 py-2 text-right font-bold" colspan="2">Total Bloque:</td><td class="px-6 py-2 text-center font-mono text-gray-600">${blockTotals.assigned}</td><td class="px-6 py-2 text-center font-mono text-green-600">${blockTotals.studied}</td><td class="px-6 py-2 text-center font-mono">${blockTotals.totalAssigned}</td><td class="px-6 py-2 text-center font-mono">${blockTotals.total}</td></tr>`;
-                }
-            }
+            generateBtn.addEventListener('click', generateNewPlan);
+            saveBtn.addEventListener('click', saveStateToFirebase);
+            topicSearchInput.addEventListener('input', () => renderTopicSourceList());
+            prevMonthBtn.addEventListener('click', () => changeMonth(-1));
+            nextMonthBtn.addEventListener('click', () => changeMonth(1));
+            endDateInput.addEventListener('change', updateCountdown);
             
-            tableBody += '</tbody>';
-            const tableFoot = `<tfoot class="bg-blue-100 font-bold text-blue-800 text-base">
-                <tr>
-                    <td colspan="2" class="px-6 py-4 text-right">TOTAL GENERAL (Vuelta ${selectedVuelta}):</td>
-                    <td class="px-6 py-4 text-center font-mono text-gray-600">${grandTotal.assigned}</td>
-                    <td class="px-6 py-4 text-center font-mono text-green-600">${grandTotal.studied}</td>
-                    <td class="px-6 py-4 text-center font-mono">${grandTotal.totalAssigned}</td>
-                    <td class="px-6 py-4 text-center font-mono">${grandTotal.total}</td>
-                </tr>
-            </tfoot>`;
-            summaryTable.innerHTML = tableHead + tableBody + tableFoot;
+            topicSourceList.addEventListener('dragover', handleDragOver);
+            topicSourceList.addEventListener('dragleave', handleDragLeave);
+            topicSourceList.addEventListener('drop', handleDropOnSourceList);
+            
+            document.addEventListener('dragend', handleDragEnd);
+            
+            summaryHeader.addEventListener('click', () => {
+                summaryContent.classList.toggle('hidden');
+                summaryPanel.classList.toggle('collapsed');
+            });
+            topicsHeader.addEventListener('click', () => {
+                topicsPanel.classList.toggle('collapsed');
+            });
+            summaryRoundSelect.addEventListener('change', (e) => {
+                state.currentSummaryVuelta = e.target.value;
+                renderSummaryTable();
+            });
+
+            exportCsvBtn.addEventListener('click', exportToCSV);
+            importCsvInput.addEventListener('change', importFromCSV);
+            
+            dayModalCloseBtn.addEventListener('click', hideExpandedDayView);
+            dayModalBackdrop.addEventListener('click', (e) => {
+                if (e.target === dayModalBackdrop) {
+                    hideExpandedDayView();
+                }
+            });
+            toggleConfigBtn.addEventListener('click', () => {
+                configPanel.classList.toggle('expanded');
+            });
+            viewRoundsBtn.addEventListener('click', () => {
+                window.open(`seguimiento.html?user=${sessionId}`, '_blank');
+            });
+
+            renderAll();
         }
 
-        async function loadProgress() {
-            if (!db || !sessionId) { updateAllCounters(); return; }
+        function setupRoundDurationInputs() {
+            const roundDurationsContainer = document.getElementById('round-durations-container');
+            roundDurationsContainer.innerHTML = ''; // Clear previous
+            const defaultDurations = [48, 24, 12, 6, 3]; 
+            for (let i = 1; i <= 5; i++) {
+                const div = document.createElement('div');
+                div.className = 'flex-shrink-0';
+                const label = document.createElement('label');
+                label.htmlFor = `round-${i}-duration`;
+                label.className = 'block text-xs font-medium text-gray-600 mb-1 text-center';
+                label.textContent = `Vuelta ${i}`;
+                
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.id = `round-${i}-duration`;
+                input.min = '1';
+                input.value = defaultDurations[i-1];
+                input.className = 'w-20 p-2 border border-gray-300 rounded-lg shadow-sm text-center';
+                
+                div.appendChild(label);
+                div.appendChild(input);
+                roundDurationsContainer.appendChild(div);
+            }
+        }
+
+        async function saveStateToFirebase() {
+            if (!db || !sessionId) return;
+            saveStatus.textContent = "Guardando...";
+            saveStatus.className = "text-center text-sm font-medium text-blue-600";
+            try {
+                const docRef = doc(db, `artifacts/${appId}/public/data/${sessionId}/plannerState`);
+                const roundDurations = [];
+                for (let i = 1; i <= 5; i++) {
+                    roundDurations.push(document.getElementById(`round-${i}-duration`).value);
+                }
+                const dataToSave = {
+                    topicState: state.topicState,
+                    dayTypes: state.dayTypes,
+                    endDate: endDateInput.value,
+                    roundDurations: roundDurations
+                };
+                await setDoc(docRef, dataToSave);
+                saveStatus.textContent = "¡Progreso guardado!";
+                saveStatus.className = "text-center text-sm font-medium text-green-600";
+            } catch (error) {
+                console.error("Error saving to Firebase:", error);
+                saveStatus.textContent = "Error al guardar.";
+                saveStatus.className = "text-center text-sm font-medium text-red-600";
+            } finally {
+                setTimeout(() => saveStatus.textContent = "", 3000);
+            }
+        }
+
+        async function loadStateFromFirebase() {
+            if (!db || !sessionId) {
+                resetTopicState();
+                return;
+            };
             const docRef = doc(db, `artifacts/${appId}/public/data/${sessionId}/plannerState`);
             try {
                 const docSnap = await getDoc(docRef);
-                if (!docSnap.exists()) {
-                    console.log("No progress data found for this user. Initializing with empty state.");
-                    plannerState = { topicState: { studiedTopics: {}, notes: {} } };
-                    updateUIFromProgress();
-                    return;
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.endDate) {
+                        endDateInput.value = data.endDate;
+                    }
+                    if (data.roundDurations && data.roundDurations.length === 5) {
+                        for (let i = 1; i <= 5; i++) {
+                            const input = document.getElementById(`round-${i}-duration`);
+                            if(input) input.value = data.roundDurations[i-1];
+                        }
+                    }
+                    if (data.topicState) {
+                        state.topicState = data.topicState;
+                        if (!state.topicState.studiedTopics) {
+                            state.topicState.studiedTopics = {};
+                        }
+                    } else {
+                         resetTopicState();
+                    }
+                    state.dayTypes = data.dayTypes || {};
+                } else {
+                    console.log("No previous state found, starting fresh.");
+                    resetTopicState();
                 }
-                plannerState = docSnap.data();
-                if (!plannerState || !plannerState.topicState) {
-                    console.log("Planner data is empty or malformed.");
-                    plannerState = { topicState: { studiedTopics: {}, notes: {} } };
-                    updateUIFromProgress();
-                    return;
-                }
-                processPlannerData();
-                updateUIFromProgress();
             } catch (error) {
-                console.error("Error loading progress from Firestore:", error);
-                updateAllCounters();
+                console.error("Error loading from Firebase:", error);
+                resetTopicState();
             }
         }
 
-        function processPlannerData() {
-            progressByTopic = {};
-            const { topicState: loadedTopicState, endDate, roundDurations } = plannerState;
-            if (!loadedTopicState) return;
+        function parseSyllabus() {
+            const subBlockSet = new Set();
+            state.flatTopics = [];
+            state.mainBlocks = {};
 
-            const roundDates = {};
-            if (endDate && roundDurations) {
-                const deadline = new Date(endDate.split('/').reverse().join('-') + 'T00:00:00Z');
-                const durations = roundDurations.map(Number);
-                const totalDuration = durations.reduce((sum, d) => sum + d, 0);
-                let planStartDate = new Date(deadline.getTime());
-                planStartDate.setUTCDate(planStartDate.getUTCDate() - totalDuration + 1);
+            for (const topLevelTitle in fullSyllabus) {
+                const mainBlocks = fullSyllabus[topLevelTitle];
+                for (const mainBlockTitle in mainBlocks) {
+                    const subBlocksOrTopics = mainBlocks[mainBlockTitle];
+                    if (Array.isArray(subBlocksOrTopics)) {
+                        const blockName = mainBlockTitle;
+                        subBlockSet.add(blockName);
+                        state.mainBlocks[blockName] = topLevelTitle;
+                        subBlocksOrTopics.forEach(topic => state.flatTopics.push({ ...topic, fullId: `${blockName}-${topic.id}`, block: blockName }));
+                    } else {
+                        for (const subBlockTitle in subBlocksOrTopics) {
+                            const blockName = subBlockTitle;
+                            subBlockSet.add(blockName);
+                            state.mainBlocks[blockName] = mainBlockTitle;
+                            subBlocksOrTopics[subBlockTitle].forEach(topic => state.flatTopics.push({ ...topic, fullId: `${blockName}-${topic.id}`, block: blockName }));
+                        }
+                    }
+                }
+            }
+            state.subBlocks = Array.from(subBlockSet).sort();
+        }
+        
+        function generateNewPlan() {
+            renderAll();
+        }
+
+        function renderAll() {
+            calculateRounds();
+            reconcileAssignments();
+            if (state.rounds.length > 0 && !state.displayDate) {
+                 const planStartDate = state.rounds[0].startDate;
+                 state.displayDate = new Date(Date.UTC(planStartDate.getUTCFullYear(), planStartDate.getUTCMonth(), 1));
+            }
+            updateCountdown();
+            renderSummaryRoundSelect();
+            renderSummaryTable();
+            renderRoundTabs();
+            renderSubBlockFilter();
+            renderTopicSourceList();
+            renderCalendar();
+        }
+
+        function updateCountdown() {
+            if (!countdownContainer) return;
+
+            const endDateStr = endDateInput.value;
+            const endDate = parseDateString(endDateStr);
+
+            if (!endDate) {
+                countdownContainer.innerHTML = '';
+                return;
+            }
+
+            const today = new Date();
+            const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+            const timeDiff = endDate.getTime() - todayUTC.getTime();
+            const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+            if (daysRemaining < 0) {
+                countdownContainer.innerHTML = `
+                    <div class="text-sm font-semibold text-red-600">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        Fecha Límite Pasada
+                    </div>`;
+            } else if (daysRemaining === 0) {
+                 countdownContainer.innerHTML = `
+                    <div class="text-lg font-bold text-blue-600 animate-pulse">
+                        <i class="fas fa-flag-checkered mr-2"></i>
+                        ¡Es Hoy!
+                    </div>`;
+            } else {
+                countdownContainer.innerHTML = `
+                    <div class="text-sm text-gray-500">Días Restantes</div>
+                    <div class="text-2xl font-bold text-gray-800">${daysRemaining}</div>
+                `;
+            }
+        }
+
+        function resetTopicState() {
+            state.topicState = {
+                studiedTopics: {}
+            };
+            state.dayTypes = {};
+            const allTopicIds = state.flatTopics.map(t => t.fullId);
+            for (let i = 1; i <= 5; i++) {
+                state.topicState[`vuelta-${i}`] = {
+                    unassigned: [...allTopicIds],
+                    assigned: {} 
+                };
+            }
+        }
+        
+        function parseDateString(dateStr) {
+            const parts = dateStr.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+            if (!parts) return null;
+            const day = parseInt(parts[1], 10);
+            const month = parseInt(parts[2], 10);
+            const year = parseInt(parts[3], 10);
+            if (day > 31 || month > 12 || year < 1970) return null;
+            return new Date(Date.UTC(year, month - 1, day));
+        }
+
+        function calculateRounds() {
+            const deadline = parseDateString(endDateInput.value);
+            const durations = [];
+            for (let i = 1; i <= 5; i++) {
+                const input = document.getElementById(`round-${i}-duration`);
+                const duration = parseInt(input.value, 10);
+                if (isNaN(duration) || duration < 1) {
+                    state.rounds = [];
+                    console.error(`Invalid duration for round ${i}`);
+                    return;
+                }
+                durations.push(duration);
+            }
+
+            if (!deadline) {
+                state.rounds = [];
+                return;
+            }
+
+            const totalDuration = durations.reduce((sum, d) => sum + d, 0);
+
+            let planStartDate = new Date(deadline.getTime());
+            planStartDate.setUTCDate(planStartDate.getUTCDate() - totalDuration + 1);
+
+            const newRounds = [];
+            let currentStartDate = new Date(planStartDate.getTime());
+
+            for (let i = 0; i < 5; i++) {
+                const duration = durations[i];
+                const roundEndDate = new Date(currentStartDate.getTime());
+                roundEndDate.setUTCDate(roundEndDate.getUTCDate() + duration - 1);
                 
-                let currentStartDate = new Date(planStartDate.getTime());
-                for (let i = 0; i < 5; i++) {
-                    const roundEndDate = new Date(currentStartDate.getTime());
-                    roundEndDate.setUTCDate(roundEndDate.getUTCDate() + durations[i] - 1);
-                    state.rounds[i] = {
-                        vueltaId: `vuelta-${i + 1}`,
-                        startDate: new Date(currentStartDate.getTime()),
-                        endDate: roundEndDate,
-                        duration: durations[i]
-                    };
-                    roundDates[`vuelta-${i + 1}`] = new Date(currentStartDate.getTime());
-                    currentStartDate.setUTCDate(currentStartDate.getUTCDate() + durations[i]);
+                newRounds.push({
+                    roundNumber: i + 1,
+                    vueltaId: `vuelta-${i + 1}`,
+                    startDate: new Date(currentStartDate.getTime()),
+                    endDate: roundEndDate,
+                    duration: duration
+                });
+                
+                currentStartDate = new Date(roundEndDate.getTime());
+                currentStartDate.setUTCDate(currentStartDate.getUTCDate() + 1);
+            }
+            state.rounds = newRounds;
+        }
+
+        function reconcileAssignments() {
+            if (!state.rounds || state.rounds.length === 0) return;
+
+            for (const round of state.rounds) {
+                const roundState = state.topicState[round.vueltaId];
+                if (!roundState || !roundState.assigned) continue;
+
+                const lastDayIndex = round.duration - 1;
+                const assignedIndices = Object.keys(roundState.assigned).map(Number);
+
+                for (const dayIndex of assignedIndices) {
+                    if (dayIndex > lastDayIndex) {
+                        const overflowedTopics = roundState.assigned[dayIndex];
+                        if (!roundState.assigned[lastDayIndex]) {
+                            roundState.assigned[lastDayIndex] = [];
+                        }
+                        roundState.assigned[lastDayIndex].push(...overflowedTopics);
+                        delete roundState.assigned[dayIndex];
+                        console.log(`Moved ${overflowedTopics.length} topics from overflowed day ${dayIndex} to last valid day ${lastDayIndex} in ${round.vueltaId}`);
+                    }
                 }
             }
-
-            if (loadedTopicState.studiedTopics) {
-                for (const dateStr in loadedTopicState.studiedTopics) {
-                    loadedTopicState.studiedTopics[dateStr].forEach(topic => {
-                        const topicDate = new Date(dateStr + 'T00:00:00Z');
-                        progressByTopic[topic.id] = progressByTopic[topic.id] || {};
-                        progressByTopic[topic.id][topic.originalVuelta] = { 
-                            status: 'studied', 
-                            date: `${String(topicDate.getUTCDate()).padStart(2,'0')}/${String(topicDate.getUTCMonth()+1).padStart(2,'0')}`,
-                            securityLevel: topic.securityLevel || 100,
-                            dateObj: dateStr
-                        };
-                    });
-                }
+        }
+        
+        function renderSummaryRoundSelect() {
+            summaryRoundSelect.innerHTML = '';
+            for (let i = 1; i <= 5; i++) {
+                const option = document.createElement('option');
+                option.value = `vuelta-${i}`;
+                option.textContent = `Vuelta ${i}`;
+                summaryRoundSelect.appendChild(option);
             }
+            summaryRoundSelect.value = state.currentSummaryVuelta;
+        }
+        
+        function calculateSummary() {
+            const summary = {};
+            const roundState = state.topicState[state.currentSummaryVuelta];
+            if (!roundState) return {};
 
+            const assignedInRound = Object.values(roundState.assigned).flat();
+            const studiedInRound = Object.values(state.topicState.studiedTopics)
+                .flat()
+                .filter(t => t.originalVuelta === state.currentSummaryVuelta);
+            
+            const allAssignedTopics = [...assignedInRound, ...studiedInRound];
+
+            state.subBlocks.forEach(subBlock => {
+                const mainBlock = state.mainBlocks[subBlock];
+                if (!summary[mainBlock]) {
+                    summary[mainBlock] = {};
+                }
+                
+                const topicsInSubBlock = state.flatTopics.filter(t => t.block === subBlock);
+                const assignedInSubBlock = allAssignedTopics.filter(assignedTopic => topicsInSubBlock.some(t => t.fullId === assignedTopic.id));
+                const studiedInSubBlock = assignedInSubBlock.filter(t => t.studied).length;
+
+                summary[mainBlock][subBlock] = {
+                    total: topicsInSubBlock.length,
+                    asignados: assignedInSubBlock.length,
+                    estudiados: studiedInSubBlock,
+                    pendientes: assignedInSubBlock.length - studiedInSubBlock
+                };
+            });
+            return summary;
+        }
+
+        function renderSummaryTable() {
+            const summaryData = calculateSummary();
+            let tableHTML = `<table class="w-full text-sm text-left text-gray-700">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-3">Bloque</th>
+                        <th class="px-4 py-3">Sub-bloque</th>
+                        <th class="px-4 py-3 text-center">Asignados</th>
+                        <th class="px-4 py-3 text-center">Estudiados</th>
+                        <th class="px-4 py-3 text-center">Pendientes</th>
+                        <th class="px-4 py-3 text-center">Total</th>
+                    </tr>
+                </thead><tbody>`;
+            
+            let grandTotal = { total: 0, asignados: 0, estudiados: 0, pendientes: 0 };
+
+            for (const mainBlock in summaryData) {
+                const subBlocks = summaryData[mainBlock];
+                const subBlockKeys = Object.keys(subBlocks);
+                let blockTotal = { total: 0, asignados: 0, estudiados: 0, pendientes: 0 };
+
+                subBlockKeys.forEach((subBlock, index) => {
+                    const data = subBlocks[subBlock];
+                    const config = BLOCKS_CONFIG[subBlock] || {};
+                    blockTotal.total += data.total;
+                    blockTotal.asignados += data.asignados;
+                    blockTotal.estudiados += data.estudiados;
+                    blockTotal.pendientes += data.pendientes;
+
+                    tableHTML += `<tr class="border-b">
+                        ${index === 0 ? `<td class="px-4 py-4 font-semibold align-top" rowspan="${subBlockKeys.length}">${mainBlock}</td>` : ''}
+                        <td class="px-4 py-4 font-semibold ${config.c || ''}"><i class="fas ${config.icon || ''} fa-fw w-5"></i> ${SHORT_NAMES[subBlock] || subBlock}</td>
+                        <td class="px-4 py-4 text-center">${data.asignados}</td>
+                        <td class="px-4 py-4 text-center">${data.estudiados}</td>
+                        <td class="px-4 py-4 text-center">${data.pendientes}</td>
+                        <td class="px-4 py-4 text-center">${data.total}</td>
+                    </tr>`;
+                });
+                
+                grandTotal.total += blockTotal.total;
+                grandTotal.asignados += blockTotal.asignados;
+                grandTotal.estudiados += blockTotal.estudiados;
+                grandTotal.pendientes += blockTotal.pendientes;
+
+                tableHTML += `<tr class="bg-gray-50 font-semibold border-b-4 border-white">
+                    <td class="px-4 py-2 text-right" colspan="2">Total Bloque:</td>
+                    <td class="px-4 py-2 text-center">${blockTotal.asignados}</td>
+                    <td class="px-4 py-2 text-center">${blockTotal.estudiados}</td>
+                    <td class="px-4 py-2 text-center">${blockTotal.pendientes}</td>
+                    <td class="px-4 py-2 text-center">${blockTotal.total}</td>
+                </tr>`;
+            }
+            
+            tableHTML += `</tbody><tfoot class="bg-indigo-100 font-bold text-indigo-800">
+                <tr>
+                    <td class="px-4 py-3 text-right" colspan="2">TOTAL GENERAL:</td>
+                    <td class="px-4 py-3 text-center">${grandTotal.asignados}</td>
+                    <td class="px-4 py-3 text-center">${grandTotal.estudiados}</td>
+                    <td class="px-4 py-3 text-center">${grandTotal.pendientes}</td>
+                    <td class="px-4 py-3 text-center">${grandTotal.total}</td>
+                </tr>
+            </tfoot></table>`;
+            
+            summaryTableContainer.innerHTML = tableHTML;
+        }
+        
+        function renderRoundTabs() {
+            roundTabsContainer.innerHTML = '';
             for (let i = 1; i <= 5; i++) {
                 const vueltaId = `vuelta-${i}`;
-                const roundState = loadedTopicState[vueltaId];
-                if (roundState && roundState.assigned && roundDates[vueltaId]) {
-                    const vueltaStartDate = roundDates[vueltaId];
-                    for (const dayIndex in roundState.assigned) {
-                        roundState.assigned[dayIndex].forEach(topic => {
-                            progressByTopic[topic.id] = progressByTopic[topic.id] || {};
-                            if (!progressByTopic[topic.id][vueltaId]) {
-                                const assignedDate = new Date(vueltaStartDate.getTime());
-                                assignedDate.setUTCDate(assignedDate.getUTCDate() + parseInt(dayIndex));
-                                progressByTopic[topic.id][vueltaId] = {
-                                    status: 'assigned',
-                                    date: `${String(assignedDate.getUTCDate()).padStart(2,'0')}/${String(assignedDate.getUTCMonth()+1).padStart(2,'0')}`,
-                                    dateObj: assignedDate.toISOString().slice(0, 10)
-                                };
+                const tab = document.createElement('button');
+                tab.textContent = `V${i}`;
+                const colorClass = ROUND_COLORS.text[i-1] || 'text-gray-500';
+                tab.className = `px-3 py-2 text-sm font-medium border-b-2 -mb-px ${state.currentVuelta === vueltaId ? 'border-indigo-500 text-indigo-600' : `border-transparent ${colorClass.replace('text-', 'hover:text-')} hover:border-gray-300`}`;
+                tab.onclick = () => {
+                    state.currentVuelta = vueltaId;
+                    renderRoundTabs();
+                    renderTopicSourceList();
+                };
+                roundTabsContainer.appendChild(tab);
+            }
+        }
+
+        function renderSubBlockFilter() {
+            subBlockFilterContainer.innerHTML = '';
+            const select = document.createElement('select');
+            select.className = 'w-full p-2 border border-gray-300 rounded-lg text-sm';
+            select.innerHTML = `<option value="todos">Todos los Bloques</option>`;
+            state.subBlocks.forEach(block => {
+                const displayName = SHORT_NAMES[block] || block;
+                select.innerHTML += `<option value="${block}">${displayName}</option>`;
+            });
+            select.value = state.currentSubBlock;
+            select.onchange = (e) => {
+                state.currentSubBlock = e.target.value;
+                renderTopicSourceList();
+            };
+            subBlockFilterContainer.appendChild(select);
+        }
+
+        function findTopicGlobalAssignment(topicId) {
+            // Check studied topics first, as it's a more definitive state
+            for (const dateStr in state.topicState.studiedTopics) {
+                const topic = state.topicState.studiedTopics[dateStr].find(t => t.id === topicId);
+                if (topic) {
+                    return { status: 'studied', date: dateStr, originalVuelta: topic.originalVuelta };
+                }
+            }
+            // Check assigned (not yet studied) topics
+            for (const vueltaId in state.topicState) {
+                if (vueltaId === 'studiedTopics' || !state.topicState[vueltaId].assigned) continue;
+                const roundState = state.topicState[vueltaId];
+                for (const dayIndex in roundState.assigned) {
+                    const topic = roundState.assigned[dayIndex].find(t => t.id === topicId);
+                    if (topic) {
+                        const roundInfo = state.rounds.find(r => r.vueltaId === vueltaId);
+                        if (roundInfo) {
+                            const date = new Date(roundInfo.startDate);
+                            date.setUTCDate(date.getUTCDate() + parseInt(dayIndex, 10));
+                            return { status: 'assigned', date: date.toISOString().split('T')[0], vueltaId: vueltaId };
+                        }
+                    }
+                }
+            }
+            return { status: 'unassigned' };
+        }
+        
+        function getTopicStatusForVuelta(topicId, vueltaId) {
+            // Is it studied from this vuelta?
+            for (const dateStr in state.topicState.studiedTopics) {
+                const topic = state.topicState.studiedTopics[dateStr].find(t => t.id === topicId && t.originalVuelta === vueltaId);
+                if (topic) {
+                    return { status: 'studied' };
+                }
+            }
+
+            // Is it assigned in this vuelta?
+            const roundState = state.topicState[vueltaId];
+            if (roundState && roundState.assigned) {
+                for (const dayIndex in roundState.assigned) {
+                    const topic = roundState.assigned[dayIndex].find(t => t.id === topicId);
+                    if (topic) {
+                        return { status: 'assigned' };
+                    }
+                }
+            }
+
+            // Is it unassigned in this vuelta?
+            if(roundState && roundState.unassigned.includes(topicId)) {
+                return { status: 'unassigned' };
+            }
+            
+            return { status: 'other' }; 
+        }
+
+        function wasTopicStudiedInVuelta(topicId, vueltaId) {
+            if (!vueltaId) return false;
+            for (const dateStr in state.topicState.studiedTopics) {
+                const topic = state.topicState.studiedTopics[dateStr].find(t => t.id === topicId && t.originalVuelta === vueltaId);
+                if (topic) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function unassignTopic(topicId, vueltaIdToReturnTo) {
+            const status = findTopicGlobalAssignment(topicId);
+
+            if (status.status === 'unassigned') return;
+
+            // Remove from studied list
+            if (status.status === 'studied') {
+                const dayTopics = state.topicState.studiedTopics[status.date];
+                if (!dayTopics) {
+                    console.error(`Inconsistent state: Topic ${topicId} thought to be studied on ${status.date}, but no topics found for that date.`);
+                } else {
+                    const topicIndex = dayTopics.findIndex(t => t.id === topicId);
+                    if (topicIndex > -1) {
+                        dayTopics.splice(topicIndex, 1);
+                        if (dayTopics.length === 0) delete state.topicState.studiedTopics[status.date];
+                    }
+                }
+            }
+            // Remove from assigned list
+            else if (status.status === 'assigned') {
+                const roundState = state.topicState[status.vueltaId];
+                const roundInfo = state.rounds.find(r => r.vueltaId === status.vueltaId);
+
+                if (!roundInfo) {
+                    console.error(`Inconsistent state: Could not find round info for ${status.vueltaId} for topic ${topicId}.`);
+                } else {
+                    const dayIndex = Math.round((new Date(status.date + 'T00:00:00Z') - roundInfo.startDate) / (1000 * 60 * 60 * 24));
+                    const dayTopics = roundState.assigned[dayIndex];
+                    
+                    if (!dayTopics) {
+                        console.error(`Inconsistent state: Topic ${topicId} thought to be assigned on day ${dayIndex} of ${status.vueltaId}, but no topics found for that day.`);
+                    } else {
+                        const topicIndex = dayTopics.findIndex(t => t.id === topicId);
+                        if (topicIndex > -1) {
+                            dayTopics.splice(topicIndex, 1);
+                            if (dayTopics.length === 0) delete roundState.assigned[dayIndex];
+                        }
+                    }
+                }
+            }
+
+            // Add back to the unassigned list of the specified vuelta
+            if (!state.topicState[vueltaIdToReturnTo].unassigned.includes(topicId)) {
+                state.topicState[vueltaIdToReturnTo].unassigned.push(topicId);
+            }
+
+            // Re-render
+            renderTopicSourceList();
+            if (status.date) {
+                updateSingleDay(status.date);
+            }
+            renderSummaryTable();
+        }
+
+        function renderTopicSourceList() {
+            if (!state.topicState[state.currentVuelta]) return;
+
+            topicSourceList.innerHTML = '';
+            const searchTerm = topicSearchInput.value.toLowerCase();
+            
+            let topicsToDisplay = [...state.flatTopics];
+
+            if (state.currentSubBlock !== 'todos') {
+                topicsToDisplay = topicsToDisplay.filter(topic => topic.block === state.currentSubBlock);
+            }
+
+            if (searchTerm) {
+                topicsToDisplay = topicsToDisplay.filter(topic => 
+                    topic.text.toLowerCase().includes(searchTerm) || 
+                    topic.block.toLowerCase().includes(searchTerm) ||
+                    (SHORT_NAMES[topic.block] && SHORT_NAMES[topic.block].toLowerCase().includes(searchTerm))
+                );
+            }
+
+            topicsToDisplay.sort((a, b) => a.block.localeCompare(b.block) || a.id - b.id);
+
+            topicsToDisplay.forEach(topic => {
+                const topicId = topic.fullId;
+                const statusInCurrentVuelta = getTopicStatusForVuelta(topicId, state.currentVuelta);
+
+                if (statusInCurrentVuelta.status === 'assigned' || statusInCurrentVuelta.status === 'studied') {
+                    const el = document.createElement('div');
+                    el.className = 'topic-card unavailable bg-gray-50 p-2 rounded-lg mb-2 flex items-center justify-between';
+                    el.style.cursor = 'pointer';
+                    el.title = 'Haz clic para ver en el calendario';
+                    
+                    const color = BLOCKS_CONFIG[topic.block]?.color || '#6b7280';
+                    const displayName = SHORT_NAMES[topic.block] || topic.block;
+                    
+                    let statusIcon;
+                    if (statusInCurrentVuelta.status === 'studied') {
+                        statusIcon = `<i class="fas fa-check-circle text-green-500 mr-2" title="Estudiado en esta vuelta"></i>`;
+                    } else {
+                        statusIcon = `<i class="fas fa-check-circle text-orange-400 mr-2" title="Asignado en esta vuelta"></i>`;
+                    }
+
+                    el.innerHTML = `
+                        <div class="flex items-center overflow-hidden">
+                            ${statusIcon}
+                            <div class="w-2 h-2 rounded-full flex-shrink-0 mr-2" style="background-color: ${color};"></div>
+                            <span class="text-sm font-medium truncate">${displayName} - T${topic.id}</span>
+                        </div>
+                        <button title="Desasignar Tema" class="unassign-btn flex-shrink-0 ml-2">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    `;
+                    
+                    el.addEventListener('click', (e) => {
+                        if (!e.target.closest('.unassign-btn')) {
+                            navigateToTopicDate(topicId, state.currentVuelta);
+                        }
+                    });
+
+                    el.querySelector('.unassign-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        unassignTopic(topicId, state.currentVuelta);
+                    });
+                    topicSourceList.appendChild(el);
+
+                } else if (statusInCurrentVuelta.status === 'unassigned') {
+                    const el = document.createElement('div');
+                    el.className = 'topic-card bg-gray-100 p-2 rounded-lg mb-2 flex items-center justify-between';
+                    el.draggable = true;
+                    el.dataset.topicId = topicId;
+
+                    if (state.selectedTopics.includes(topicId)) {
+                        el.classList.add('selected');
+                    }
+
+                    el.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+                        
+                        if (!isCtrlOrMeta) {
+                            document.querySelectorAll('#topic-source-list .topic-card.selected').forEach(card => card.classList.remove('selected'));
+                            state.selectedTopics = [topicId];
+                            el.classList.add('selected');
+                        } else {
+                            if (state.selectedTopics.includes(topicId)) {
+                                state.selectedTopics = state.selectedTopics.filter(id => id !== topicId);
+                                el.classList.remove('selected');
+                            } else {
+                                state.selectedTopics.push(topicId);
+                                el.classList.add('selected');
+                            }
+                        }
+                    });
+
+                    const currentRoundNumber = parseInt(state.currentVuelta.split('-')[1], 10);
+                    let needsReview = false;
+                    if (currentRoundNumber > 1) {
+                        const previousVueltaId = `vuelta-${currentRoundNumber - 1}`;
+                        if (wasTopicStudiedInVuelta(topicId, previousVueltaId)) {
+                            needsReview = true;
+                        }
+                    }
+
+                    if (needsReview) {
+                        el.classList.add('needs-review');
+                    }
+
+                    const color = BLOCKS_CONFIG[topic.block]?.color || '#6b7280';
+                    const displayName = SHORT_NAMES[topic.block] || topic.block;
+                    let reviewIconHTML = '';
+                    if (needsReview) {
+                        reviewIconHTML = `<i class="fas fa-star text-yellow-500" title="Estudiado en la vuelta anterior"></i>`;
+                    }
+
+                    el.innerHTML = `
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            <div class="w-2 h-2 rounded-full flex-shrink-0" style="background-color: ${color};"></div>
+                            <span class="text-sm font-medium truncate">${displayName} - T${topic.id}</span>
+                        </div>
+                        <div class="flex-shrink-0">${reviewIconHTML}</div>
+                    `;
+                    el.addEventListener('dragstart', handleDragStartFromSource);
+                    topicSourceList.appendChild(el);
+                }
+            });
+        }
+
+        function renderCalendar() {
+            calendarContainer.innerHTML = '';
+            const year = state.displayDate.getUTCFullYear();
+            const month = state.displayDate.getUTCMonth();
+            
+            calendarTitle.textContent = `${(new Date(Date.UTC(year, month))).toLocaleString('es-ES', {month: 'long', year: 'numeric', timeZone: 'UTC'})}`;
+
+            const monthGridElement = createMonthGrid(year, month);
+            calendarContainer.appendChild(monthGridElement);
+            updateAllCalendarDaysForMonth(monthGridElement, year, month);
+        }
+
+        function getDayType(dateStr) {
+            if (state.dayTypes[dateStr]) {
+                return state.dayTypes[dateStr];
+            }
+            const day = new Date(dateStr + 'T00:00:00Z').getUTCDay();
+            // 0=Sun, 1=Mon, ..., 6=Sat
+            return (day === 0 || day === 6) ? 'vacation' : 'work';
+        }
+
+        function updateDayAppearance(dayCell) {
+            const dateStr = dayCell.dataset.date;
+            const dayDate = new Date(dateStr + 'T00:00:00Z');
+            const round = state.rounds.find(r => dayDate >= r.startDate && dayDate <= r.endDate);
+            const dayType = getDayType(dateStr);
+            const roundLabel = dayCell.querySelector('.day-round-label');
+
+            // Reset styles
+            dayCell.style.background = '';
+            if(roundLabel) roundLabel.innerHTML = '';
+            ROUND_COLORS.text.forEach(c => roundLabel?.classList.remove(c));
+
+            if (round) {
+                const roundBgClass = ROUND_COLORS.bg[round.roundNumber - 1];
+                const roundTextClass = ROUND_COLORS.text[round.roundNumber - 1];
+                const roundColorMap = { 'bg-red-100': '#fee2e2', 'bg-orange-100': '#ffedd5', 'bg-yellow-100': '#fef9c3', 'bg-blue-100': '#dbeafe', 'bg-green-100': '#dcfce7' };
+                const roundBgColor = roundColorMap[roundBgClass] || '#f9fafb';
+
+                if (dayType === 'work') {
+                    dayCell.style.background = `linear-gradient(to bottom, #fecaca 25%, ${roundBgColor} 25%)`;
+                } else {
+                    dayCell.style.background = roundBgColor;
+                }
+                
+                if (roundLabel) {
+                    roundLabel.className = `day-round-label text-xs font-bold px-1 ${roundTextClass}`;
+                    roundLabel.textContent = `Vuelta ${round.roundNumber}`;
+                }
+
+            } else {
+                dayCell.style.background = '#f9fafb'; // bg-gray-50
+            }
+        }
+
+        function createMonthGrid(year, month) {
+            const monthContainer = document.createElement('div');
+            const firstDayOfMonth = new Date(Date.UTC(year, month, 1));
+            const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-7 gap-1';
+            
+            ['L', 'M', 'X', 'J', 'V', 'S', 'D'].forEach(day => {
+                grid.innerHTML += `<div class="text-center font-semibold text-sm text-gray-500 pb-2">${day}</div>`;
+            });
+
+            const dayOffset = (firstDayOfMonth.getUTCDay() + 6) % 7;
+            for (let i = 0; i < dayOffset; i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dayDate = new Date(Date.UTC(year, month, i));
+                const dateStr = dayDate.toISOString().split('T')[0];
+                const dayCell = document.createElement('div');
+                dayCell.className = 'calendar-day border bg-gray-50 border-gray-200 rounded-lg p-1.5 flex flex-col';
+                dayCell.dataset.date = dateStr;
+
+                dayCell.innerHTML = `<div class="text-sm font-semibold text-right pr-1">${i}</div>
+                                     <div class="day-round-label"></div>
+                                     <div id="topics-${dateStr}" class="calendar-day-topics flex-grow mt-1 space-y-1 overflow-y-auto p-1"></div>`;
+                
+                updateDayAppearance(dayCell);
+                
+                dayCell.addEventListener('dragover', handleDragOver);
+                dayCell.addEventListener('dragleave', handleDragLeave);
+                dayCell.addEventListener('drop', handleDropOnCalendar);
+                dayCell.addEventListener('click', (e) => {
+                    if (!e.target.closest('.calendar-topic-item')) {
+                        showExpandedDayView(dateStr);
+                    }
+                });
+                
+                grid.appendChild(dayCell);
+            }
+            monthContainer.appendChild(grid);
+            return monthContainer;
+        }
+        
+        function updateAllCalendarDaysForMonth(container, year, month) {
+             for (let i = 1; i <= 31; i++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                const topicsContainer = container.querySelector(`#topics-${dateStr}`);
+                if (topicsContainer) {
+                    updateSingleDay(dateStr);
+                }
+            }
+        }
+
+        function updateSingleDay(dateStr) {
+            const topicsContainer = document.getElementById(`topics-${dateStr}`);
+            if (!topicsContainer) return;
+            
+            topicsContainer.innerHTML = '';
+            const dayDate = new Date(dateStr + 'T00:00:00Z');
+            const allTopicsForDay = [];
+
+            // Get unstudied, relative topics
+            for (const round of state.rounds) {
+                if (dayDate >= round.startDate && dayDate <= round.endDate) {
+                    const dayIndex = Math.round((dayDate - round.startDate) / (1000 * 60 * 60 * 24));
+                    const roundState = state.topicState[round.vueltaId];
+                    if (roundState && roundState.assigned[dayIndex]) {
+                        const dayTopics = roundState.assigned[dayIndex];
+                        dayTopics.forEach(topicData => {
+                            const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
+                            if (topicInfo) {
+                                allTopicsForDay.push({ type: 'relative', topicData, topicInfo, vueltaId: round.vueltaId, dayIndex });
                             }
                         });
                     }
                 }
             }
-        }
 
-        function updateUIFromProgress() {
-            document.querySelectorAll('.topic-card').forEach(card => {
-                const topicId = card.dataset.topicId;
-                const tickContainers = card.querySelectorAll('.tick-container');
-                const notesIcon = card.querySelector('.notes-icon');
-
-                if (plannerState.topicState?.notes?.[topicId]) {
-                    notesIcon.classList.add('has-notes');
-                } else {
-                    notesIcon.classList.remove('has-notes');
-                }
-
-                let studiedVueltasCount = 0;
-                if (progressByTopic[topicId]) {
-                    for (let i = 1; i <= 5; i++) {
-                        if (progressByTopic[topicId][`vuelta-${i}`]?.status === 'studied') {
-                            studiedVueltasCount++;
-                        }
-                    }
-                }
-                
-                card.className = 'topic-card p-2 rounded-lg shadow-sm mb-2 flex items-center justify-between gap-4 transition-colors duration-300';
-                if (studiedVueltasCount > 0) {
-                    card.classList.add(`status-vuelta-${studiedVueltasCount}`);
-                } else {
-                    card.classList.add('status-not-studied');
-                }
-                
-                tickContainers.forEach((container, index) => {
-                    const tickBox = container.querySelector('.tick-box');
-                    const dateSpan = container.querySelector('.tick-date');
-                    const vueltaId = `vuelta-${index + 1}`;
-                    
-                    tickBox.className = 'tick-box';
-                    dateSpan.textContent = '';
-
-                    const progress = progressByTopic[topicId]?.[vueltaId];
-                    if (progress) {
-                        if (progress.status === 'studied') {
-                            tickBox.classList.add('studied', `security-${progress.securityLevel}`);
-                        } else if (progress.status === 'assigned') {
-                            tickBox.classList.add('assigned');
-                        }
-                        dateSpan.textContent = progress.date;
+            // Get studied, fixed topics
+            const studiedTopics = state.topicState.studiedTopics[dateStr];
+            if (studiedTopics) {
+                studiedTopics.forEach(topicData => {
+                    const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
+                    if (topicInfo) {
+                        allTopicsForDay.push({ type: 'fixed', topicData, topicInfo, originalVuelta: topicData.originalVuelta });
                     }
                 });
-            });
-            updateAllCounters();
-        }
+            }
 
-        async function savePlannerState() {
-            const statusEl = document.getElementById('connection-status');
-            statusEl.textContent = 'Guardando...';
-            statusEl.className = 'mt-2 text-sm font-semibold text-blue-600';
-            try {
-                const docRef = doc(db, `artifacts/${appId}/public/data/${sessionId}/plannerState`);
-                await setDoc(docRef, plannerState);
-                statusEl.textContent = '¡Guardado!';
-                statusEl.className = 'mt-2 text-sm font-semibold text-green-600';
-            } catch (error) {
-                console.error("Error saving state:", error);
-                statusEl.textContent = 'Error al guardar';
-                statusEl.className = 'mt-2 text-sm font-semibold text-red-600';
-            } finally {
-                setTimeout(() => statusEl.textContent = '', 3000);
+            const topicCount = allTopicsForDay.length;
+
+            if (topicCount > 3) {
+                topicsContainer.className = 'calendar-day-topics flex-grow mt-1 overflow-y-auto p-1';
+                const gridDiv = document.createElement('div');
+                gridDiv.className = 'topics-grid';
+                const col1 = document.createElement('div');
+                col1.className = 'topics-column';
+                const col2 = document.createElement('div');
+                col2.className = 'topics-column';
+                gridDiv.append(col1, col2);
+
+                allTopicsForDay.forEach((topic, loopIndex) => {
+                    const el = createCalendarTopicElement(topic, dateStr, true);
+                    if (topicCount > 8 && loopIndex % 2 !== 0) {
+                        col2.appendChild(el);
+                    } else if (topicCount <= 8 && loopIndex >= Math.ceil(topicCount / 2)) {
+                        col2.appendChild(el);
+                    } else {
+                        col1.appendChild(el);
+                    }
+                });
+                topicsContainer.appendChild(gridDiv);
+
+            } else {
+                topicsContainer.className = 'calendar-day-topics flex-grow mt-1 space-y-1 overflow-y-auto p-1';
+                allTopicsForDay.forEach((topic) => {
+                    const el = createCalendarTopicElement(topic, dateStr, false);
+                    topicsContainer.appendChild(el);
+                });
             }
         }
         
-        function showSecuritySelector(event, topicId, vueltaId) {
-            event.stopPropagation();
-            const tickBox = event.currentTarget;
+        function createCalendarTopicElement(topic, dateStr, inGrid = false) {
+            const { type, topicData, topicInfo } = topic;
+            const vueltaId = type === 'relative' ? topic.vueltaId : topic.originalVuelta;
+            
+            const el = document.createElement('div');
+            el.className = `calendar-topic-item p-1 rounded bg-white/80 shadow-sm flex items-center ${inGrid ? 'in-grid' : ''}`;
+            el.draggable = true;
+            el.dataset.topicId = topicInfo.fullId;
+            el.dataset.isStudied = topicData.studied;
+            
+            if (type === 'relative') {
+                el.dataset.sourceVuelta = topic.vueltaId;
+                el.dataset.sourceDayIndex = topic.dayIndex;
+            } else { // fixed
+                el.dataset.sourceDate = dateStr;
+                el.dataset.originalVuelta = topic.originalVuelta;
+            }
+            
+            el.addEventListener('dragstart', handleDragStartFromCalendar);
 
-            if (!tickBox.classList.contains('studied') && !tickBox.classList.contains('assigned')) {
+            const color = BLOCKS_CONFIG[topicInfo.block]?.color || '#6b7280';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'form-checkbox';
+            checkbox.checked = topicData.studied;
+            checkbox.onclick = (e) => e.stopPropagation();
+            checkbox.onchange = () => handleTopicStudiedChange(checkbox.checked, topic, dateStr);
+
+            const label = document.createElement('span');
+            label.className = `flex-grow ${topicData.studied ? 'line-through text-gray-400' : ''}`;
+            
+            if (inGrid) {
+                const displayName = SHORT_NAMES[topicInfo.block] || topicInfo.block;
+                const abbreviation = displayName.substring(0, 2).toUpperCase();
+                label.textContent = `V${vueltaId.slice(-1)}:${abbreviation}T${topicInfo.id}`;
+            } else {
+                const displayName = SHORT_NAMES[topicInfo.block] || topicInfo.block;
+                label.textContent = `V${vueltaId.slice(-1)}: ${displayName} T${topicInfo.id}`;
+            }
+
+            const colorDot = document.createElement('div');
+            colorDot.className = 'color-dot w-2 h-2 rounded-full flex-shrink-0';
+            colorDot.style.backgroundColor = color;
+
+            el.appendChild(colorDot);
+            el.appendChild(checkbox);
+            el.appendChild(label);
+            return el;
+        }
+        
+        function handleSecurityLevelChange(topicId, dateStr, newLevel) {
+            const studiedDay = state.topicState.studiedTopics[dateStr];
+            if (studiedDay) {
+                const topic = studiedDay.find(t => t.id === topicId);
+                if (topic) {
+                    topic.securityLevel = newLevel;
+                }
+            }
+        }
+
+        function createExpandedCalendarTopicElement(topic, dateStr) {
+            const { type, topicData, topicInfo } = topic;
+            const vueltaId = type === 'relative' ? topic.vueltaId : topic.originalVuelta;
+
+            const el = document.createElement('div');
+            el.className = 'p-3 rounded-lg shadow-sm flex items-center gap-3'; // Base classes
+
+            // Apply background color based on security level
+            if (topicData.studied) {
+                const securityLevel = topicData.securityLevel || 100;
+                el.classList.add(`security-${securityLevel}`);
+            } else {
+                el.classList.add('bg-gray-100');
+            }
+
+            // Security level selector (if studied)
+            if (topicData.studied) {
+                const securitySelectContainer = document.createElement('div');
+                securitySelectContainer.className = 'flex flex-col items-center flex-shrink-0';
+                
+                const securityLabel = document.createElement('label');
+                securityLabel.className = 'text-xs font-bold text-gray-600 mb-1';
+                securityLabel.textContent = 'Seg.';
+
+                const securitySelect = document.createElement('select');
+                securitySelect.className = 'p-1 border border-gray-400 rounded-md text-xs shadow-sm w-16';
+                
+                const levels = [20, 40, 60, 80, 100];
+                levels.forEach(level => {
+                    const option = document.createElement('option');
+                    option.value = level;
+                    option.textContent = `${level}%`;
+                    securitySelect.appendChild(option);
+                });
+
+                securitySelect.value = topicData.securityLevel || 100;
+
+                securitySelect.addEventListener('click', e => e.stopPropagation());
+                securitySelect.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    handleSecurityLevelChange(topicInfo.fullId, dateStr, parseInt(e.target.value, 10));
+                    showExpandedDayView(dateStr);
+                });
+                
+                securitySelectContainer.appendChild(securityLabel);
+                securitySelectContainer.appendChild(securitySelect);
+                el.appendChild(securitySelectContainer);
+            }
+
+            const mainContentContainer = document.createElement('div');
+            mainContentContainer.className = 'flex items-center gap-3 flex-grow';
+
+            const colorDot = document.createElement('div');
+            colorDot.className = 'w-3 h-3 rounded-full flex-shrink-0';
+            colorDot.style.backgroundColor = BLOCKS_CONFIG[topicInfo.block]?.color || '#6b7280';
+            mainContentContainer.appendChild(colorDot);
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'form-checkbox';
+            checkbox.checked = topicData.studied;
+            checkbox.addEventListener('click', (e) => e.stopPropagation());
+            checkbox.addEventListener('change', () => {
+                handleTopicStudiedChange(checkbox.checked, topic, dateStr);
+                showExpandedDayView(dateStr);
+            });
+            mainContentContainer.appendChild(checkbox);
+
+            const textContainer = document.createElement('div');
+            textContainer.className = 'topic-text-container flex-grow';
+            
+            const mainLabel = document.createElement('div');
+            mainLabel.className = 'font-semibold';
+            mainLabel.textContent = topicInfo.text;
+            
+            const subLabel = document.createElement('div');
+            subLabel.className = 'text-sm text-gray-600';
+            const displayName = SHORT_NAMES[topicInfo.block] || topicInfo.block;
+            subLabel.textContent = `Vuelta ${vueltaId.slice(-1)} | ${displayName}`;
+
+            textContainer.append(mainLabel, subLabel);
+            mainContentContainer.appendChild(textContainer);
+            el.appendChild(mainContentContainer);
+
+            return el;
+        }
+
+
+        function handleTopicStudiedChange(isStudied, topic, dateStr) {
+            const { type, topicData, topicInfo } = topic;
+
+            if (isStudied) {
+                // Move from relative to fixed
+                if (type === 'relative') {
+                    const roundState = state.topicState[topic.vueltaId];
+                    const dayTopics = roundState.assigned[topic.dayIndex];
+                    const topicIndex = dayTopics.findIndex(t => t.id === topicInfo.fullId);
+                    if (topicIndex > -1) {
+                        dayTopics.splice(topicIndex, 1);
+                        if (dayTopics.length === 0) delete roundState.assigned[topic.dayIndex];
+                    }
+
+                    if (!state.topicState.studiedTopics[dateStr]) {
+                        state.topicState.studiedTopics[dateStr] = [];
+                    }
+                    state.topicState.studiedTopics[dateStr].push({
+                        id: topicInfo.fullId,
+                        studied: true,
+                        originalVuelta: topic.vueltaId,
+                        securityLevel: 100 // Default security level
+                    });
+                }
+            } else {
+                // Move from fixed to relative on the same day
+                if (type === 'fixed') {
+                    const dayTopics = state.topicState.studiedTopics[dateStr];
+                    const topicIndex = dayTopics.findIndex(t => t.id === topicInfo.fullId);
+                    if (topicIndex > -1) {
+                        const [unstudiedTopic] = dayTopics.splice(topicIndex, 1);
+                        if (dayTopics.length === 0) delete state.topicState.studiedTopics[dateStr];
+
+                        const dropDate = new Date(dateStr + 'T00:00:00Z');
+                        const targetRound = state.rounds.find(r => dropDate >= r.startDate && dropDate <= r.endDate);
+
+                        if (targetRound) {
+                            const targetDayIndex = Math.round((dropDate - targetRound.startDate) / (1000 * 60 * 60 * 24));
+                            const targetRoundState = state.topicState[targetRound.vueltaId];
+                            if (!targetRoundState.assigned[targetDayIndex]) {
+                                targetRoundState.assigned[targetDayIndex] = [];
+                            }
+                            targetRoundState.assigned[targetDayIndex].push({ id: unstudiedTopic.id, studied: false });
+                        } else {
+                            const originalRoundState = state.topicState[unstudiedTopic.originalVuelta];
+                            if (!originalRoundState.unassigned.includes(unstudiedTopic.id)) {
+                                originalRoundState.unassigned.push(unstudiedTopic.id);
+                            }
+                        }
+                    }
+                }
+            }
+            updateSingleDay(dateStr);
+            renderTopicSourceList();
+            renderSummaryTable();
+        }
+
+        function showExpandedDayView(dateStr) {
+            const date = new Date(dateStr + 'T00:00:00Z');
+            dayModalTitle.textContent = date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+            
+            dayModalContent.innerHTML = '';
+
+            const allTopicsForDay = [];
+            // Get unstudied, relative topics
+            for (const round of state.rounds) {
+                if (date >= round.startDate && date <= round.endDate) {
+                    const dayIndex = Math.round((date - round.startDate) / (1000 * 60 * 60 * 24));
+                    const roundState = state.topicState[round.vueltaId];
+                     if (roundState && roundState.assigned[dayIndex]) {
+                        const dayTopics = roundState.assigned[dayIndex];
+                        dayTopics.forEach(topicData => {
+                            const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
+                            if (topicInfo) {
+                                allTopicsForDay.push({ type: 'relative', topicData, topicInfo, vueltaId: round.vueltaId, dayIndex });
+                            }
+                        });
+                    }
+                }
+            }
+            // Get studied, fixed topics
+            const studiedTopics = state.topicState.studiedTopics[dateStr];
+            if (studiedTopics) {
+                studiedTopics.forEach(topicData => {
+                    const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
+                    if (topicInfo) {
+                        allTopicsForDay.push({ type: 'fixed', topicData, topicInfo, originalVuelta: topicData.originalVuelta });
+                    }
+                });
+            }
+
+
+            if (allTopicsForDay.length > 0) {
+                allTopicsForDay.forEach((topic) => {
+                    const el = createExpandedCalendarTopicElement(topic, dateStr);
+                    dayModalContent.appendChild(el);
+                });
+            } else {
+                dayModalContent.innerHTML = '<p class="text-gray-500 text-center">No hay temas asignados para este día.</p>';
+            }
+
+            const currentDayType = getDayType(dateStr);
+            const dayTypeSelectorHTML = `
+                <div class="mt-6 pt-4 border-t">
+                    <label for="day-type-select" class="block text-sm font-medium text-gray-700">Tipo de Día</label>
+                    <select id="day-type-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                        <option value="work" ${currentDayType === 'work' ? 'selected' : ''}>Laboral</option>
+                        <option value="vacation" ${currentDayType === 'vacation' ? 'selected' : ''}>Vacaciones / Festivo</option>
+                    </select>
+                </div>
+            `;
+            dayModalContent.insertAdjacentHTML('beforeend', dayTypeSelectorHTML);
+
+            const dayTypeSelect = document.getElementById('day-type-select');
+            dayTypeSelect.addEventListener('change', (e) => {
+                const newType = e.target.value;
+                state.dayTypes[dateStr] = newType;
+                const dayCell = document.querySelector(`.calendar-day[data-date="${dateStr}"]`);
+                if (dayCell) {
+                    updateDayAppearance(dayCell);
+                }
+            });
+
+            dayModalBackdrop.classList.remove('hidden');
+            dayModalContainer.classList.remove('hidden');
+        }
+
+        function hideExpandedDayView() {
+            dayModalBackdrop.classList.add('hidden');
+            dayModalContainer.classList.add('hidden');
+        }
+
+
+        function changeMonth(direction) {
+            state.displayDate.setUTCMonth(state.displayDate.getUTCMonth() + direction);
+            renderCalendar();
+        }
+
+        /**
+         * Finds a topic's assignment specifically within a given round.
+         * @param {string} topicId - The full ID of the topic.
+         * @param {string} vueltaId - The ID of the round to search within.
+         * @returns {object|null} An object with status and date, or null if not found.
+         */
+        function findTopicAssignmentInVuelta(topicId, vueltaId) {
+            if (!vueltaId) return null;
+
+            // First, check for topics studied that *originated* from this vueltaId
+            for (const dateStr in state.topicState.studiedTopics) {
+                const topic = state.topicState.studiedTopics[dateStr].find(t => t.id === topicId && t.originalVuelta === vueltaId);
+                if (topic) {
+                    return { status: 'studied', date: dateStr };
+                }
+            }
+
+            // Second, check for topics assigned (but not yet studied) in this vueltaId
+            const roundState = state.topicState[vueltaId];
+            const roundInfo = state.rounds.find(r => r.vueltaId === vueltaId);
+            if (roundState && roundState.assigned && roundInfo) {
+                for (const dayIndex in roundState.assigned) {
+                    const topic = roundState.assigned[dayIndex].find(t => t.id === topicId);
+                    if (topic) {
+                        const date = new Date(roundInfo.startDate);
+                        date.setUTCDate(date.getUTCDate() + parseInt(dayIndex, 10));
+                        return { status: 'assigned', date: date.toISOString().split('T')[0] };
+                    }
+                }
+            }
+
+            return null; // Not found in this specific round
+        }
+
+
+        /**
+         * Navigates the calendar to the month of the assigned topic and highlights the day.
+         * @param {string} topicId - The full ID of the topic to find.
+         * @param {string} vueltaId - The specific round context for the search.
+         */
+        function navigateToTopicDate(topicId, vueltaId) {
+            // Prioritize searching in the specific round context provided
+            let assignment = findTopicAssignmentInVuelta(topicId, vueltaId);
+
+            // As a fallback, if not found in the specific round (which would be an inconsistent state),
+            // search globally. This maintains robustness.
+            if (!assignment || !assignment.date) {
+                console.warn(`Could not find topic ${topicId} in its expected round ${vueltaId}. Falling back to global search.`);
+                assignment = findTopicGlobalAssignment(topicId);
+            }
+
+            if (assignment.status === 'unassigned' || !assignment.date) {
+                console.log(`Topic ${topicId} is not assigned to a date.`);
                 return;
             }
 
-            const isStudied = tickBox.classList.contains('studied');
-            document.querySelector('.security-selector')?.remove();
+            const dateStr = assignment.date;
+            const targetDate = new Date(dateStr + 'T00:00:00Z');
 
-            const selector = document.createElement('div');
-            selector.className = 'security-selector';
-            
-            [20, 40, 60, 80, 100].forEach(level => {
-                const option = document.createElement('div');
-                option.className = 'security-option';
-                option.textContent = `${level}%`;
-                option.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    updateSecurityLevel(topicId, vueltaId, level);
-                    selector.remove();
-                });
-                selector.appendChild(option);
-            });
-            
-            if (isStudied) {
-                const unstudyOption = document.createElement('div');
-                unstudyOption.className = 'security-option text-red-600';
-                unstudyOption.textContent = 'No estudiado';
-                unstudyOption.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    unstudyTopic(topicId, vueltaId);
-                    selector.remove();
-                });
-                selector.appendChild(unstudyOption);
-            }
+            // Set the displayDate to the month of the target date
+            state.displayDate = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), 1));
 
-            tickBox.appendChild(selector);
+            // Re-render the calendar to show the correct month
+            renderCalendar();
 
-            const closeListener = (e) => {
-                if (!selector.contains(e.target)) {
-                    selector.remove();
-                    document.removeEventListener('click', closeListener);
+            // The calendar is re-rendered, so we need a brief delay
+            // for the element to be available in the DOM.
+            setTimeout(() => {
+                const dayCell = document.querySelector(`.calendar-day[data-date="${dateStr}"]`);
+                if (dayCell) {
+                    dayCell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    dayCell.classList.add('highlight-day');
+                    setTimeout(() => {
+                        dayCell.classList.remove('highlight-day');
+                    }, 1500); // Keep highlight for 1.5 seconds
                 }
+            }, 100); // 100ms delay should be enough
+        }
+
+        function handleDragStartFromSource(e) {
+            const topicId = e.target.dataset.topicId;
+            const isSelected = state.selectedTopics.includes(topicId);
+
+            if (!isSelected) {
+                document.querySelectorAll('#topic-source-list .topic-card.selected').forEach(card => card.classList.remove('selected'));
+                state.selectedTopics = [topicId];
+                e.target.classList.add('selected');
+            }
+            
+            e.target.classList.add('dragging');
+            
+            state.draggedTopic = {
+                ids: [...state.selectedTopics],
+                from: 'source',
+                vuelta: state.currentVuelta
             };
-            setTimeout(() => document.addEventListener('click', closeListener), 0);
         }
         
-        function unstudyTopic(topicId, vueltaId) {
-            const topicProgress = progressByTopic[topicId]?.[vueltaId];
-            if (!topicProgress || topicProgress.status !== 'studied') return;
+        function handleDragStartFromCalendar(e) {
+            e.stopPropagation();
+            e.target.classList.add('dragging');
+            
+            const isStudied = e.target.dataset.isStudied === 'true';
+            const topicId = e.target.dataset.topicId;
 
-            const dateStr = topicProgress.dateObj;
-            const studiedDay = plannerState.topicState.studiedTopics[dateStr];
-            if (studiedDay) {
-                let unstudiedTopicData;
-                const newStudiedDay = studiedDay.filter(t => {
-                    if (t.id === topicId && t.originalVuelta === vueltaId) {
-                        unstudiedTopicData = t;
-                        return false;
-                    }
-                    return true;
-                });
-
-                if (!unstudiedTopicData) return;
-
-                if (newStudiedDay.length === 0) {
-                    delete plannerState.topicState.studiedTopics[dateStr];
-                } else {
-                    plannerState.topicState.studiedTopics[dateStr] = newStudiedDay;
+            if (isStudied) {
+                 state.draggedTopic = {
+                    ids: [topicId],
+                    from: 'calendar_fixed',
+                    sourceDate: e.target.closest('.calendar-day').dataset.date,
+                    originalVuelta: e.target.dataset.originalVuelta
+                };
+            } else {
+                state.draggedTopic = {
+                    ids: [topicId],
+                    from: 'calendar_relative',
+                    sourceVuelta: e.target.dataset.sourceVuelta,
+                    sourceDayIndex: parseInt(e.target.dataset.sourceDayIndex, 10)
+                };
+            }
+        }
+        
+        function handleDragEnd(e) {
+            if (state.draggedTopic) {
+                const draggingElement = document.querySelector('.dragging');
+                if (draggingElement) {
+                    draggingElement.classList.remove('dragging');
                 }
-
-                const roundInfo = state.rounds.find(r => r.vueltaId === vueltaId);
-                if (roundInfo) {
-                    const dropDate = new Date(dateStr + 'T00:00:00Z');
-                    const dayIndex = Math.round((dropDate - roundInfo.startDate) / (1000 * 60 * 60 * 24));
-
-                    if (dayIndex >= 0 && dayIndex < roundInfo.duration) {
-                        const roundState = plannerState.topicState[vueltaId];
-                        if (!roundState.assigned[dayIndex]) roundState.assigned[dayIndex] = [];
-                        // Add back with studied: false for consistency
-                        roundState.assigned[dayIndex].push({ id: topicId, studied: false });
-                    }
-                }
-                
-                savePlannerState();
-                processPlannerData();
-                updateUIFromProgress();
+                state.draggedTopic = null;
             }
         }
 
-        function updateSecurityLevel(topicId, vueltaId, newLevel) {
-            const topicProgress = progressByTopic[topicId]?.[vueltaId];
+        function handleDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+        function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+
+        function handleDropOnCalendar(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            if (!state.draggedTopic) return;
+
+            const dateStr = e.currentTarget.dataset.date;
+            const draggedIds = state.draggedTopic.ids;
+            const dropDate = new Date(dateStr + 'T00:00:00Z');
+            const targetRound = state.rounds.find(r => dropDate >= r.startDate && dropDate <= r.endDate);
+
+            if (!targetRound) return; 
             
-            if (topicProgress && topicProgress.status === 'studied') {
-                const dateStr = topicProgress.dateObj;
-                const studiedDay = plannerState.topicState.studiedTopics[dateStr];
-                const topicData = studiedDay?.find(t => t.id === topicId && t.originalVuelta === vueltaId);
-                if (topicData) {
-                    topicData.securityLevel = newLevel;
-                }
-            } else if (topicProgress && topicProgress.status === 'assigned') {
-                let dateStr = topicProgress.dateObj;
-                if (!dateStr) {
-                    console.error(`Fecha original no encontrada para ${topicId}. No se puede marcar como estudiado.`);
+            const targetDayIndex = Math.round((dropDate - targetRound.startDate) / (1000 * 60 * 60 * 24));
+
+            // Logic for moving from source list
+            if (state.draggedTopic.from === 'source') {
+                if (targetRound.vueltaId !== state.currentVuelta) {
+                    e.currentTarget.classList.add('drop-invalid');
+                    setTimeout(() => e.currentTarget.classList.remove('drop-invalid'), 500);
                     return;
                 }
 
-                const roundState = plannerState.topicState[vueltaId];
-                if (roundState && roundState.assigned) {
-                    for (const dayIndex in roundState.assigned) {
-                        const topicIndex = roundState.assigned[dayIndex].findIndex(t => t.id === topicId);
-                        if (topicIndex !== -1) {
-                            roundState.assigned[dayIndex].splice(topicIndex, 1);
-                            if (roundState.assigned[dayIndex].length === 0) delete roundState.assigned[dayIndex];
-                            break;
-                        }
-                    }
-                }
-
-                if (!plannerState.topicState.studiedTopics) plannerState.topicState.studiedTopics = {};
-                if (!plannerState.topicState.studiedTopics[dateStr]) plannerState.topicState.studiedTopics[dateStr] = [];
+                const roundState = state.topicState[state.currentVuelta];
                 
-                // Add with studied: true for compatibility
-                plannerState.topicState.studiedTopics[dateStr].push({
-                    id: topicId,
-                    originalVuelta: vueltaId,
-                    securityLevel: newLevel,
-                    studied: true 
+                draggedIds.forEach(topicId => {
+                    const topicIndex = roundState.unassigned.indexOf(topicId);
+                    if (topicIndex > -1) {
+                        roundState.unassigned.splice(topicIndex, 1);
+                        if (!roundState.assigned[targetDayIndex]) roundState.assigned[targetDayIndex] = [];
+                        roundState.assigned[targetDayIndex].push({ id: topicId, studied: false });
+                    }
+                });
+                
+                state.selectedTopics = [];
+                renderTopicSourceList();
+                updateSingleDay(dateStr);
+                renderSummaryTable();
+            } 
+            // Logic for moving a relative (unstudied) topic
+            else if (state.draggedTopic.from === 'calendar_relative') {
+                const topicId = draggedIds[0]; // Only one topic can be dragged from calendar
+                const { sourceVuelta, sourceDayIndex } = state.draggedTopic;
+                
+                if (sourceVuelta === targetRound.vueltaId && sourceDayIndex === targetDayIndex) return;
+
+                const sourceRoundState = state.topicState[sourceVuelta];
+                const sourceDayTopics = sourceRoundState.assigned[sourceDayIndex];
+                const topicIndex = sourceDayTopics.findIndex(t => t.id === topicId);
+                
+                if (topicIndex > -1) {
+                    const [movedTopic] = sourceDayTopics.splice(topicIndex, 1);
+                    if(sourceDayTopics.length === 0) delete sourceRoundState.assigned[sourceDayIndex];
+
+                    const targetRoundState = state.topicState[targetRound.vueltaId];
+                    if (!targetRoundState.assigned[targetDayIndex]) targetRoundState.assigned[targetDayIndex] = [];
+                    targetRoundState.assigned[targetDayIndex].push(movedTopic);
+
+                    const sourceRoundInfo = state.rounds.find(r => r.vueltaId === sourceVuelta);
+                    const sourceDate = new Date(sourceRoundInfo.startDate);
+                    sourceDate.setUTCDate(sourceDate.getUTCDate() + sourceDayIndex);
+                    
+                    updateSingleDay(sourceDate.toISOString().split('T')[0]);
+                    updateSingleDay(dateStr);
+                    renderSummaryTable();
+                }
+            }
+            // Cannot drag-and-drop studied (fixed) topics. They must be un-studied first.
+
+            state.draggedTopic = null;
+            document.querySelector('.dragging')?.classList.remove('dragging');
+        }
+
+        function handleDropOnSourceList(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            if (!state.draggedTopic || !state.draggedTopic.from.startsWith('calendar')) return;
+
+            const { ids } = state.draggedTopic;
+            const topicId = ids[0]; // Only one topic at a time from calendar
+            
+            const vueltaToReturnTo = state.draggedTopic.from === 'calendar_fixed' 
+                ? state.draggedTopic.originalVuelta 
+                : state.draggedTopic.sourceVuelta;
+            
+            unassignTopic(topicId, vueltaToReturnTo);
+
+            state.draggedTopic = null;
+            document.querySelector('.dragging')?.classList.remove('dragging');
+        }
+
+        function exportToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,tipo,vuelta,dia,id_tema,bloque,estudiado,seguridad\r\n";
+            // Studied topics
+            for(const dateStr in state.topicState.studiedTopics) {
+                state.topicState.studiedTopics[dateStr].forEach(topicData => {
+                    const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
+                    if (topicInfo) {
+                        const security = topicData.securityLevel || '';
+                        const row = ['fijo', topicData.originalVuelta, dateStr, `"${topicData.id}"`, `"${topicInfo.block}"`, topicData.studied, security].join(",");
+                        csvContent += row + "\r\n";
+                    }
                 });
             }
-
-            savePlannerState();
-            processPlannerData();
-            updateUIFromProgress();
-        }
-
-        function showNotesModal(topicId, topicTitle) {
-            const modalBackdrop = document.getElementById('notes-modal-backdrop');
-            const modalTitle = document.getElementById('notes-modal-title');
-            const modalTextarea = document.getElementById('notes-modal-textarea');
-            const saveButton = document.getElementById('notes-modal-save');
-
-            modalTitle.textContent = `Notas para: ${topicTitle}`;
-            modalTextarea.value = plannerState.topicState?.notes?.[topicId] || '';
-            
-            const newSaveButton = saveButton.cloneNode(true);
-            saveButton.parentNode.replaceChild(newSaveButton, saveButton);
-            
-            newSaveButton.onclick = () => saveNote(topicId, modalTextarea.value);
-
-            modalBackdrop.classList.remove('hidden');
-        }
-
-        function hideNotesModal() {
-            document.getElementById('notes-modal-backdrop').classList.add('hidden');
-        }
-
-        function saveNote(topicId, noteText) {
-            if (!plannerState.topicState) plannerState.topicState = {};
-            if (!plannerState.topicState.notes) plannerState.topicState.notes = {};
-            
-            plannerState.topicState.notes[topicId] = noteText;
-            savePlannerState();
-            hideNotesModal();
-            
-            const card = document.querySelector(`.topic-card[data-topic-id="${topicId}"]`);
-            if (card) {
-                const icon = card.querySelector('.notes-icon');
-                if (noteText) {
-                    icon.classList.add('has-notes');
-                } else {
-                    icon.classList.remove('has-notes');
+            // Relative topics
+            for (const vueltaId in state.topicState) {
+                if(vueltaId === 'studiedTopics' || !state.topicState[vueltaId].assigned) continue;
+                const roundData = state.topicState[vueltaId];
+                for (const dayIndex in roundData.assigned) {
+                    roundData.assigned[dayIndex].forEach(topicData => {
+                        const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
+                        if (topicInfo) {
+                            const row = ['relativo', vueltaId, dayIndex, `"${topicData.id}"`, `"${topicInfo.block}"`, topicData.studied, ''].join(",");
+                            csvContent += row + "\r\n";
+                        }
+                    });
                 }
             }
-        }
 
-        function openCalculator() {
-            const selectedVuelta = document.getElementById('vuelta-selector').value;
-            const vueltaIndex = parseInt(selectedVuelta, 10);
-            if(isNaN(vueltaIndex)) {
-                console.error("Por favor, selecciona una vuelta válida.");
-                return;
-            }
-            const calculatorUrl = 'https://cheradra312.github.io/CAL_PROB/';
-            const params = new URLSearchParams();
-            const calcData = { admin: 0, aguas: 0, carreteras: 0, transportes: 0 };
-            
-            document.querySelectorAll('.topic-card').forEach(card => {
-                const tickBox = card.querySelector(`.tick-container:nth-child(${vueltaIndex}) .tick-box`);
-                if (tickBox && tickBox.classList.contains('studied')) {
-                    const subBlockName = card.dataset.subBlockName;
-                    const config = BLOCKS_CONFIG[subBlockName];
-                    if (config && calcData.hasOwnProperty(config.calcId)) {
-                        calcData[config.calcId]++;
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `plan_estudio_${sessionId}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } 
+
+        function importFromCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const rows = text.split('\n').slice(1);
+                
+                resetTopicState();
+
+                rows.forEach(row => {
+                    if (!row) return;
+                    const columns = row.split(',').map(c => c.replace(/"/g, ''));
+                    const [tipo, vueltaId, dia, topicId, block, studiedStr, securityStr] = columns;
+                    
+                    if (!tipo || !vueltaId || !dia || !topicId) return;
+
+                    const studied = studiedStr.trim() === 'true';
+                    const securityLevel = securityStr ? parseInt(securityStr, 10) : undefined;
+
+                    if (tipo === 'fijo') {
+                        const dateStr = dia;
+                         if (!state.topicState.studiedTopics[dateStr]) {
+                            state.topicState.studiedTopics[dateStr] = [];
+                        }
+                        const topicObject = { id: topicId, studied: studied, originalVuelta: vueltaId };
+                        if (securityLevel) {
+                            topicObject.securityLevel = securityLevel;
+                        }
+                        state.topicState.studiedTopics[dateStr].push(topicObject);
+                    } else { // relativo
+                        const dayIndex = parseInt(dia, 10);
+                        if (isNaN(dayIndex) || !state.topicState[vueltaId]) return;
+                        const roundState = state.topicState[vueltaId];
+                         if (!roundState.assigned[dayIndex]) {
+                            roundState.assigned[dayIndex] = [];
+                        }
+                        roundState.assigned[dayIndex].push({ id: topicId, studied: studied });
                     }
-                }
-            });
-
-            for (const key in calcData) {
-                params.append(key, calcData[key]);
-            }
-            window.open(`${calculatorUrl}?${params.toString()}`, '_blank');
+                    
+                    // Remove from unassigned
+                    for(const vId in state.topicState){
+                        if(vId === 'studiedTopics' || !state.topicState[vId].unassigned) continue;
+                        const unassignedIndex = state.topicState[vId].unassigned.indexOf(topicId);
+                        if (unassignedIndex > -1) {
+                            state.topicState[vId].unassigned.splice(unassignedIndex, 1);
+                        }
+                    }
+                });
+                alert('¡Plan importado con éxito!');
+                renderAll();
+            };
+            reader.readAsText(file);
+            event.target.value = '';
         }
 
-        function toggleAll(collapse) {
-            document.querySelectorAll('.main-block.collapsible, .sub-block.collapsible').forEach(el => {
-                el.classList.toggle('collapsed', collapse);
-            });
-        }
+        initialize();
     </script>
 </body>
 </html>
