@@ -207,6 +207,7 @@
         let db, sessionId;
         let plannerState = {};
         let progressByTopic = {};
+        let state = { rounds: [] }; // Add state object to hold rounds info
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-planner-app';
         
         const BLOCKS_CONFIG = {
@@ -291,7 +292,6 @@
             sessionId = username;
             document.getElementById('login-modal').style.display = 'none';
             document.getElementById('main-content').classList.remove('hidden');
-            document.getElementById('user-info').innerHTML = `<p>Usuario: <span class="font-semibold">${sessionId}</span></p>`;
             
             setupVueltaSelector();
             setupEventListeners();
@@ -573,12 +573,37 @@
 
         function processPlannerData() {
             progressByTopic = {};
-            const { topicState } = plannerState;
-            if (!topicState) return;
+            const { topicState: loadedTopicState, endDate, roundDurations } = plannerState;
+            if (!loadedTopicState) return;
 
-            if (topicState.studiedTopics) {
-                for (const dateStr in topicState.studiedTopics) {
-                    topicState.studiedTopics[dateStr].forEach(topic => {
+            // Calculate round dates to find original assignment dates
+            const roundDates = {};
+            if (endDate && roundDurations) {
+                const deadline = new Date(endDate.split('/').reverse().join('-') + 'T00:00:00Z');
+                const durations = roundDurations.map(Number);
+                const totalDuration = durations.reduce((sum, d) => sum + d, 0);
+                let planStartDate = new Date(deadline.getTime());
+                planStartDate.setUTCDate(planStartDate.getUTCDate() - totalDuration + 1);
+                
+                let currentStartDate = new Date(planStartDate.getTime());
+                for (let i = 0; i < 5; i++) {
+                    const roundEndDate = new Date(currentStartDate.getTime());
+                    roundEndDate.setUTCDate(roundEndDate.getUTCDate() + durations[i] - 1);
+                    state.rounds[i] = {
+                        vueltaId: `vuelta-${i + 1}`,
+                        startDate: new Date(currentStartDate.getTime()),
+                        endDate: roundEndDate,
+                        duration: durations[i]
+                    };
+                    roundDates[`vuelta-${i + 1}`] = new Date(currentStartDate.getTime());
+                    currentStartDate.setUTCDate(currentStartDate.getUTCDate() + durations[i]);
+                }
+            }
+
+            // Process studied topics
+            if (loadedTopicState.studiedTopics) {
+                for (const dateStr in loadedTopicState.studiedTopics) {
+                    loadedTopicState.studiedTopics[dateStr].forEach(topic => {
                         const topicDate = new Date(dateStr + 'T00:00:00Z');
                         progressByTopic[topic.id] = progressByTopic[topic.id] || {};
                         progressByTopic[topic.id][topic.originalVuelta] = { 
@@ -591,23 +616,10 @@
                 }
             }
 
-            const roundDates = {};
-             if (plannerState.endDate && plannerState.roundDurations) {
-                const deadline = new Date(plannerState.endDate.split('/').reverse().join('-') + 'T00:00:00Z');
-                const durations = plannerState.roundDurations.map(Number);
-                const totalDuration = durations.reduce((sum, d) => sum + d, 0);
-                let planStartDate = new Date(deadline.getTime());
-                planStartDate.setUTCDate(planStartDate.getUTCDate() - totalDuration + 1);
-                let currentStartDate = new Date(planStartDate.getTime());
-                for (let i = 0; i < 5; i++) {
-                    roundDates[`vuelta-${i + 1}`] = new Date(currentStartDate.getTime());
-                    currentStartDate.setUTCDate(currentStartDate.getUTCDate() + durations[i]);
-                }
-            }
-
+            // Process assigned topics
             for (let i = 1; i <= 5; i++) {
                 const vueltaId = `vuelta-${i}`;
-                const roundState = topicState[vueltaId];
+                const roundState = loadedTopicState[vueltaId];
                 if (roundState && roundState.assigned && roundDates[vueltaId]) {
                     const vueltaStartDate = roundDates[vueltaId];
                     for (const dayIndex in roundState.assigned) {
@@ -618,7 +630,8 @@
                                 assignedDate.setUTCDate(assignedDate.getUTCDate() + parseInt(dayIndex));
                                 progressByTopic[topic.id][vueltaId] = {
                                     status: 'assigned',
-                                    date: `${String(assignedDate.getUTCDate()).padStart(2,'0')}/${String(assignedDate.getUTCMonth()+1).padStart(2,'0')}`
+                                    date: `${String(assignedDate.getUTCDate()).padStart(2,'0')}/${String(assignedDate.getUTCMonth()+1).padStart(2,'0')}`,
+                                    dateObj: assignedDate.toISOString().slice(0, 10) // Store full date string
                                 };
                             }
                         });
@@ -639,7 +652,6 @@
                     notesIcon.classList.remove('has-notes');
                 }
 
-                // --- LOGIC FOR TOPIC CARD BACKGROUND ---
                 let studiedVueltasCount = 0;
                 if (progressByTopic[topicId]) {
                     for (let i = 1; i <= 5; i++) {
@@ -649,13 +661,12 @@
                     }
                 }
                 
-                card.classList.remove('status-not-studied', 'status-vuelta-1', 'status-vuelta-2', 'status-vuelta-3', 'status-vuelta-4', 'status-vuelta-5');
+                card.className = 'topic-card p-2 rounded-lg shadow-sm mb-2 flex items-center justify-between gap-4 transition-colors duration-300'; // Reset classes
                 if (studiedVueltasCount > 0) {
                     card.classList.add(`status-vuelta-${studiedVueltasCount}`);
                 } else {
                     card.classList.add('status-not-studied');
                 }
-                // --- END OF LOGIC FOR TOPIC CARD BACKGROUND ---
                 
                 tickContainers.forEach((container, index) => {
                     const tickBox = container.querySelector('.tick-box');
@@ -668,7 +679,6 @@
                     const progress = progressByTopic[topicId]?.[vueltaId];
                     if (progress) {
                         if (progress.status === 'studied') {
-                            // Use security level for tick color
                             tickBox.classList.add('studied', `security-${progress.securityLevel}`);
                         } else if (progress.status === 'assigned') {
                             tickBox.classList.add('assigned');
@@ -702,9 +712,8 @@
             event.stopPropagation();
             const tickBox = event.currentTarget;
 
-            // Only allow editing if the topic has been studied or is assigned to be studied.
             if (!tickBox.classList.contains('studied') && !tickBox.classList.contains('assigned')) {
-                return; // Do nothing if the tick is empty
+                return;
             }
 
             const isStudied = tickBox.classList.contains('studied');
@@ -755,10 +764,35 @@
             const dateStr = topicProgress.dateObj;
             const studiedDay = plannerState.topicState.studiedTopics[dateStr];
             if (studiedDay) {
-                plannerState.topicState.studiedTopics[dateStr] = studiedDay.filter(t => !(t.id === topicId && t.originalVuelta === vueltaId));
-                if (plannerState.topicState.studiedTopics[dateStr].length === 0) {
+                let unstudiedTopicData;
+                const newStudiedDay = studiedDay.filter(t => {
+                    if (t.id === topicId && t.originalVuelta === vueltaId) {
+                        unstudiedTopicData = t;
+                        return false;
+                    }
+                    return true;
+                });
+
+                if (!unstudiedTopicData) return;
+
+                if (newStudiedDay.length === 0) {
                     delete plannerState.topicState.studiedTopics[dateStr];
+                } else {
+                    plannerState.topicState.studiedTopics[dateStr] = newStudiedDay;
                 }
+
+                const roundInfo = state.rounds.find(r => r.vueltaId === vueltaId);
+                if (roundInfo) {
+                    const dropDate = new Date(dateStr + 'T00:00:00Z');
+                    const dayIndex = Math.round((dropDate - roundInfo.startDate) / (1000 * 60 * 60 * 24));
+
+                    if (dayIndex >= 0 && dayIndex < roundInfo.duration) {
+                        const roundState = plannerState.topicState[vueltaId];
+                        if (!roundState.assigned[dayIndex]) roundState.assigned[dayIndex] = [];
+                        roundState.assigned[dayIndex].push({ id: topicId });
+                    }
+                }
+                
                 savePlannerState();
                 processPlannerData();
                 updateUIFromProgress();
@@ -771,19 +805,33 @@
             if (topicProgress && topicProgress.status === 'studied') {
                 const dateStr = topicProgress.dateObj;
                 const studiedDay = plannerState.topicState.studiedTopics[dateStr];
-                const topicData = studiedDay.find(t => t.id === topicId && t.originalVuelta === vueltaId);
+                const topicData = studiedDay?.find(t => t.id === topicId && t.originalVuelta === vueltaId);
                 if (topicData) {
                     topicData.securityLevel = newLevel;
                 }
-            } else {
-                const today = new Date();
-                const dateStr = today.toISOString().slice(0, 10);
-                if (!plannerState.topicState.studiedTopics) {
-                    plannerState.topicState.studiedTopics = {};
+            } else if (topicProgress && topicProgress.status === 'assigned') {
+                let dateStr = topicProgress.dateObj;
+                if (!dateStr) {
+                    console.error(`Fecha original no encontrada para ${topicId}. Usando fecha de hoy.`);
+                    dateStr = new Date().toISOString().slice(0, 10);
                 }
-                if (!plannerState.topicState.studiedTopics[dateStr]) {
-                    plannerState.topicState.studiedTopics[dateStr] = [];
+
+                const roundState = plannerState.topicState[vueltaId];
+                let foundAndRemoved = false;
+                if (roundState && roundState.assigned) {
+                    for (const dayIndex in roundState.assigned) {
+                        const topicIndex = roundState.assigned[dayIndex].findIndex(t => t.id === topicId);
+                        if (topicIndex !== -1) {
+                            roundState.assigned[dayIndex].splice(topicIndex, 1);
+                            if (roundState.assigned[dayIndex].length === 0) delete roundState.assigned[dayIndex];
+                            foundAndRemoved = true;
+                            break;
+                        }
+                    }
                 }
+
+                if (!plannerState.topicState.studiedTopics) plannerState.topicState.studiedTopics = {};
+                if (!plannerState.topicState.studiedTopics[dateStr]) plannerState.topicState.studiedTopics[dateStr] = [];
                 
                 plannerState.topicState.studiedTopics[dateStr].push({
                     id: topicId,
