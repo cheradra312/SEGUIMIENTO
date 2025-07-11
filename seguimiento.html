@@ -701,6 +701,12 @@
         function showSecuritySelector(event, topicId, vueltaId) {
             event.stopPropagation();
             const tickBox = event.currentTarget;
+
+            // Only allow editing if the topic has been studied or is assigned to be studied.
+            if (!tickBox.classList.contains('studied') && !tickBox.classList.contains('assigned')) {
+                return; // Do nothing if the tick is empty
+            }
+
             const isStudied = tickBox.classList.contains('studied');
             document.querySelector('.security-selector')?.remove();
 
