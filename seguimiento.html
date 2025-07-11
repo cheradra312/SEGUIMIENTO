@@ -29,20 +29,20 @@
             justify-content: center;
             flex-shrink: 0;
             position: relative;
-        }
-        .tick-box.studied {
             cursor: pointer;
         }
+        
+        /* --- NEW COLOR PALETTE --- */
+        /* Assigned (not studied) color */
+        .tick-box.assigned { background-color: #f1f5f9; border-color: #9ca3af; } /* gray-100 bg, gray-400 border */
 
-        /* Security Level Colors for Studied topics */
-        .tick-box.studied.security-20 { background-color: #fecaca; border-color: #ef4444; } /* red-200 bg, red-500 border */
-        .tick-box.studied.security-40 { background-color: #fed7aa; border-color: #f97316; } /* orange-200 bg, orange-500 border */
-        .tick-box.studied.security-60 { background-color: #fef08a; border-color: #eab308; } /* yellow-200 bg, yellow-500 border */
-        .tick-box.studied.security-80 { background-color: #d9f99d; border-color: #84cc16; } /* lime-200 bg, lime-500 border */
-        .tick-box.studied.security-100 { background-color: #bbf7d0; border-color: #22c55e; } /* green-200 bg, green-500 border */
+        /* Studied colors based on 'vuelta' number */
+        .tick-box.studied.vuelta-1 { background-color: #fef9c3; border-color: #facc15; } /* yellow-100 / yellow-400 */
+        .tick-box.studied.vuelta-2 { background-color: #fef08a; border-color: #eab308; } /* yellow-200 / yellow-500 */
+        .tick-box.studied.vuelta-3 { background-color: #d9f99d; border-color: #84cc16; } /* lime-200 / lime-500 */
+        .tick-box.studied.vuelta-4 { background-color: #bbf7d0; border-color: #22c55e; } /* green-200 / green-600 */
+        .tick-box.studied.vuelta-5 { background-color: #a7f3d0; border-color: #10b981; } /* emerald-200 / emerald-500 */
 
-        /* Assigned color */
-        .tick-box.assigned { background-color: #e5e7eb; border-color: #9ca3af; } /* gray-200 bg, gray-400 border */
 
         .tick-box .tick-mark { display: none; }
 
@@ -80,7 +80,7 @@
         #login-modal.hidden, #notes-modal-backdrop.hidden { opacity: 0; pointer-events: none; }
 
         .collapsible-content { max-height: 5000px; overflow: hidden; transition: max-height 0.5s ease-in-out; }
-        .collapsible.collapsed > .collapsible-content { max-height: 0; margin: 0; padding: 0; }
+        .collapsible.collapsed > .collapsible-content { max-height: 0; margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
         .toggle-icon { transition: transform 0.3s ease; flex-shrink: 0; margin-right: 0.75rem; color: #6b7280; }
         .collapsible.collapsed .toggle-icon { transform: rotate(-90deg); }
 
@@ -104,8 +104,28 @@
         .color-adm { color: #b45309; } .color-aguas { color: #0369a1; } .color-costas { color: #0e7490; }
         .color-infra { color: #4b5563; } .color-trans { color: #059669; } .color-ma { color: #15803d; }
 
-        body:not(.show-full-names) .compact-layout-container { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        body:not(.show-full-names) .sub-block-header { font-weight: bold; margin-bottom: 0.5rem; grid-column: 1 / -1; }
+        /* --- NEW STYLES FOR SUB-BLOCKS LAYOUT --- */
+        .sub-blocks-container {
+            display: block;
+        }
+
+        body:not(.show-full-names) .sub-blocks-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        body:not(.show-full-names) .sub-block.collapsible.collapsed > .collapsible-content {
+            max-height: 5000px; /* Show content in compact view */
+        }
+        
+        body:not(.show-full-names) .sub-block .is-collapsible {
+            cursor: default; /* Not clickable in compact view */
+        }
+
+        body:not(.show-full-names) .sub-block .toggle-icon {
+            display: none; /* Hide collapse icon in compact view */
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-gray-800">
@@ -265,9 +285,7 @@
             document.getElementById('main-content').classList.remove('hidden');
             document.getElementById('user-info').innerHTML = `<p>Usuario: <span class="font-semibold">${sessionId}</span></p>`;
             
-            // FIX: Call the function to populate the 'vuelta' selector. This was the main error.
             setupVueltaSelector();
-            
             setupEventListeners();
             renderSyllabus(); 
             await loadProgress(); 
@@ -318,18 +336,23 @@
                     if (Array.isArray(subBlocksOrTopics)) {
                         subBlocksOrTopics.forEach(topic => mainBlockContent.appendChild(createTopicElement(topic, mainBlockTitle)));
                     } else {
-                        const compactContainer = document.createElement('div');
-                        compactContainer.className = 'compact-layout-container';
+                        const subBlocksContainer = document.createElement('div');
+                        subBlocksContainer.className = 'sub-blocks-container';
                         for (const subBlockKey in subBlocksOrTopics) {
-                            const subBlockWrapper = document.createElement('div');
-                            const subBlockHeader = document.createElement('h4');
-                            subBlockHeader.className = `sub-block-header text-base font-semibold mb-2 ${BLOCKS_CONFIG[subBlockKey]?.color || ''}`;
-                            subBlockHeader.textContent = subBlockKey;
-                            subBlockWrapper.appendChild(subBlockHeader);
-                            subBlocksOrTopics[subBlockKey].forEach(topic => subBlockWrapper.appendChild(createTopicElement(topic, subBlockKey)));
-                            compactContainer.appendChild(subBlockWrapper);
+                            const subBlockEl = document.createElement('div');
+                            subBlockEl.className = 'sub-block collapsible collapsed';
+                            
+                            const subBlockHeader = createHeader(4, subBlockKey, true);
+                            const subBlockTopics = document.createElement('div');
+                            subBlockTopics.className = 'collapsible-content';
+
+                            subBlocksOrTopics[subBlockKey].forEach(topic => subBlockTopics.appendChild(createTopicElement(topic, subBlockKey)));
+                            
+                            subBlockEl.appendChild(subBlockHeader);
+                            subBlockEl.appendChild(subBlockTopics);
+                            subBlocksContainer.appendChild(subBlockEl);
                         }
-                        mainBlockContent.appendChild(compactContainer);
+                        mainBlockContent.appendChild(subBlocksContainer);
                     }
                     mainBlockEl.appendChild(mainBlockContent);
                     topLevelBlock.appendChild(mainBlockEl);
@@ -344,7 +367,12 @@
              if (isCollapsible) {
                 headerWrapper.classList.add('is-collapsible');
                 headerWrapper.addEventListener('click', (e) => {
+                    // Prevent collapse when clicking on counters or other elements inside header
                     if (e.target.closest('.header-counters')) return;
+                    // In compact view, sub-block headers are not clickable
+                    if (headerWrapper.closest('.sub-block') && !document.body.classList.contains('show-full-names')) {
+                        return;
+                    }
                     headerWrapper.parentElement.classList.toggle('collapsed');
                 });
             }
@@ -357,7 +385,11 @@
                 titleWrapper.appendChild(icon);
             }
             const titleEl = document.createElement(`h${level}`);
-            const styles = {2: 'text-2xl font-bold text-slate-800 border-b-2 border-slate-300 pb-2', 3: 'text-xl font-semibold text-slate-700'};
+            const styles = {
+                2: 'text-2xl font-bold text-slate-800 border-b-2 border-slate-300 pb-2', 
+                3: 'text-xl font-semibold text-slate-700',
+                4: 'text-base font-semibold text-slate-600' // Style for H4 sub-block headers
+            };
             titleEl.className = styles[level];
             titleEl.textContent = title;
             const config = BLOCKS_CONFIG[title];
@@ -370,7 +402,8 @@
         function createTopicElement(topic, subBlockName) {
             const topicId = `${subBlockName}-${topic.id}`;
             const topicDiv = document.createElement('div');
-            topicDiv.className = 'topic-card bg-white p-3 rounded-lg shadow-sm mb-3 flex items-center justify-between gap-4';
+            // REDUCED PADDING AND MARGIN
+            topicDiv.className = 'topic-card bg-white p-2 rounded-lg shadow-sm mb-2 flex items-center justify-between gap-4';
             topicDiv.dataset.topicId = topicId;
             topicDiv.dataset.subBlockName = subBlockName;
 
@@ -609,14 +642,14 @@
                     const dateSpan = container.querySelector('.tick-date');
                     const vueltaId = `vuelta-${index + 1}`;
                     
-                    // Reset styles
-                    tickBox.className = 'tick-box';
+                    tickBox.className = 'tick-box'; // Reset styles
                     dateSpan.textContent = '';
 
                     const progress = progressByTopic[topicId]?.[vueltaId];
                     if (progress) {
                         if (progress.status === 'studied') {
-                            tickBox.classList.add('studied', `security-${progress.securityLevel}`);
+                            // Apply color based on vuelta number
+                            tickBox.classList.add('studied', `vuelta-${index + 1}`);
                         } else if (progress.status === 'assigned') {
                             tickBox.classList.add('assigned');
                         }
@@ -648,14 +681,16 @@
         function showSecuritySelector(event, topicId, vueltaId) {
             event.stopPropagation();
             const tickBox = event.currentTarget;
-            if (!tickBox.classList.contains('studied')) return;
+            
+            // Allow clicking to mark as studied (if not already) or change security level
+            const isStudied = tickBox.classList.contains('studied');
 
-            // Remove any existing selector
             document.querySelector('.security-selector')?.remove();
 
             const selector = document.createElement('div');
             selector.className = 'security-selector';
             
+            // Options to change security level
             [20, 40, 60, 80, 100].forEach(level => {
                 const option = document.createElement('div');
                 option.className = 'security-option';
@@ -667,10 +702,23 @@
                 });
                 selector.appendChild(option);
             });
+            
+            // Option to un-study the topic
+            if (isStudied) {
+                const unstudyOption = document.createElement('div');
+                unstudyOption.className = 'security-option text-red-600';
+                unstudyOption.textContent = 'No estudiado';
+                unstudyOption.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    unstudyTopic(topicId, vueltaId);
+                    selector.remove();
+                });
+                selector.appendChild(unstudyOption);
+            }
+
 
             tickBox.appendChild(selector);
 
-            // Add a listener to close the selector when clicking outside
             const closeListener = (e) => {
                 if (!selector.contains(e.target)) {
                     selector.remove();
@@ -679,23 +727,63 @@
             };
             setTimeout(() => document.addEventListener('click', closeListener), 0);
         }
-
-        function updateSecurityLevel(topicId, vueltaId, newLevel) {
+        
+        function unstudyTopic(topicId, vueltaId) {
             const topicProgress = progressByTopic[topicId]?.[vueltaId];
             if (!topicProgress || topicProgress.status !== 'studied') return;
-            
+
             const dateStr = topicProgress.dateObj;
             const studiedDay = plannerState.topicState.studiedTopics[dateStr];
             if (studiedDay) {
+                // Filter out the topic to be un-studied
+                plannerState.topicState.studiedTopics[dateStr] = studiedDay.filter(t => !(t.id === topicId && t.originalVuelta === vueltaId));
+                // If the day becomes empty, remove it
+                if (plannerState.topicState.studiedTopics[dateStr].length === 0) {
+                    delete plannerState.topicState.studiedTopics[dateStr];
+                }
+                savePlannerState();
+                processPlannerData();
+                updateUIFromProgress();
+            }
+        }
+
+
+        function updateSecurityLevel(topicId, vueltaId, newLevel) {
+            // Find if the topic is already marked as studied
+            const topicProgress = progressByTopic[topicId]?.[vueltaId];
+            
+            if (topicProgress && topicProgress.status === 'studied') {
+                // It's already studied, just update the level
+                const dateStr = topicProgress.dateObj;
+                const studiedDay = plannerState.topicState.studiedTopics[dateStr];
                 const topicData = studiedDay.find(t => t.id === topicId && t.originalVuelta === vueltaId);
                 if (topicData) {
                     topicData.securityLevel = newLevel;
-                    savePlannerState();
-                    // Re-process and re-render to reflect changes
-                    processPlannerData();
-                    updateUIFromProgress();
                 }
+            } else {
+                // It's not studied yet, so we add it.
+                const today = new Date();
+                const dateStr = today.toISOString().slice(0, 10); // YYYY-MM-DD format
+                if (!plannerState.topicState.studiedTopics) {
+                    plannerState.topicState.studiedTopics = {};
+                }
+                if (!plannerState.topicState.studiedTopics[dateStr]) {
+                    plannerState.topicState.studiedTopics[dateStr] = [];
+                }
+                
+                // Remove from assigned if it exists there to avoid conflicts
+                // (This part of the logic depends on how your planner works, but it's good practice)
+
+                plannerState.topicState.studiedTopics[dateStr].push({
+                    id: topicId,
+                    originalVuelta: vueltaId,
+                    securityLevel: newLevel
+                });
             }
+
+            savePlannerState();
+            processPlannerData();
+            updateUIFromProgress();
         }
 
         function showNotesModal(topicId, topicTitle) {
@@ -707,7 +795,6 @@
             modalTitle.textContent = `Notas para: ${topicTitle}`;
             modalTextarea.value = plannerState.topicState?.notes?.[topicId] || '';
             
-            // Clone and replace the button to remove old event listeners
             const newSaveButton = saveButton.cloneNode(true);
             saveButton.parentNode.replaceChild(newSaveButton, saveButton);
             
@@ -731,7 +818,6 @@
             savePlannerState();
             hideNotesModal();
             
-            // Update the icon status without a full re-render
             const card = document.querySelector(`.topic-card[data-topic-id="${topicId}"]`);
             if (card) {
                 const icon = card.querySelector('.notes-icon');
@@ -747,7 +833,9 @@
             const selectedVuelta = document.getElementById('vuelta-selector').value;
             const vueltaIndex = parseInt(selectedVuelta, 10);
             if(isNaN(vueltaIndex)) {
-                alert("Por favor, selecciona una vuelta válida.");
+                // Using a custom modal/alert would be better, but window.alert for simplicity here.
+                // In a real app, replace this with a styled modal.
+                console.error("Por favor, selecciona una vuelta válida.");
                 return;
             }
             const calculatorUrl = 'https://cheradra312.github.io/CAL_PROB/';
@@ -772,7 +860,7 @@
         }
 
         function toggleAll(collapse) {
-            document.querySelectorAll('.collapsible').forEach(el => {
+            document.querySelectorAll('.main-block.collapsible, .sub-block.collapsible').forEach(el => {
                 el.classList.toggle('collapsed', collapse);
             });
         }
