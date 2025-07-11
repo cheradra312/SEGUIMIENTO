@@ -576,7 +576,6 @@
             const { topicState: loadedTopicState, endDate, roundDurations } = plannerState;
             if (!loadedTopicState) return;
 
-            // Calculate round dates to find original assignment dates
             const roundDates = {};
             if (endDate && roundDurations) {
                 const deadline = new Date(endDate.split('/').reverse().join('-') + 'T00:00:00Z');
@@ -600,7 +599,6 @@
                 }
             }
 
-            // Process studied topics
             if (loadedTopicState.studiedTopics) {
                 for (const dateStr in loadedTopicState.studiedTopics) {
                     loadedTopicState.studiedTopics[dateStr].forEach(topic => {
@@ -616,7 +614,6 @@
                 }
             }
 
-            // Process assigned topics
             for (let i = 1; i <= 5; i++) {
                 const vueltaId = `vuelta-${i}`;
                 const roundState = loadedTopicState[vueltaId];
@@ -631,7 +628,7 @@
                                 progressByTopic[topic.id][vueltaId] = {
                                     status: 'assigned',
                                     date: `${String(assignedDate.getUTCDate()).padStart(2,'0')}/${String(assignedDate.getUTCMonth()+1).padStart(2,'0')}`,
-                                    dateObj: assignedDate.toISOString().slice(0, 10) // Store full date string
+                                    dateObj: assignedDate.toISOString().slice(0, 10)
                                 };
                             }
                         });
@@ -661,7 +658,7 @@
                     }
                 }
                 
-                card.className = 'topic-card p-2 rounded-lg shadow-sm mb-2 flex items-center justify-between gap-4 transition-colors duration-300'; // Reset classes
+                card.className = 'topic-card p-2 rounded-lg shadow-sm mb-2 flex items-center justify-between gap-4 transition-colors duration-300';
                 if (studiedVueltasCount > 0) {
                     card.classList.add(`status-vuelta-${studiedVueltasCount}`);
                 } else {
@@ -789,7 +786,8 @@
                     if (dayIndex >= 0 && dayIndex < roundInfo.duration) {
                         const roundState = plannerState.topicState[vueltaId];
                         if (!roundState.assigned[dayIndex]) roundState.assigned[dayIndex] = [];
-                        roundState.assigned[dayIndex].push({ id: topicId });
+                        // Add back with studied: false for consistency
+                        roundState.assigned[dayIndex].push({ id: topicId, studied: false });
                     }
                 }
                 
@@ -812,19 +810,17 @@
             } else if (topicProgress && topicProgress.status === 'assigned') {
                 let dateStr = topicProgress.dateObj;
                 if (!dateStr) {
-                    console.error(`Fecha original no encontrada para ${topicId}. Usando fecha de hoy.`);
-                    dateStr = new Date().toISOString().slice(0, 10);
+                    console.error(`Fecha original no encontrada para ${topicId}. No se puede marcar como estudiado.`);
+                    return;
                 }
 
                 const roundState = plannerState.topicState[vueltaId];
-                let foundAndRemoved = false;
                 if (roundState && roundState.assigned) {
                     for (const dayIndex in roundState.assigned) {
                         const topicIndex = roundState.assigned[dayIndex].findIndex(t => t.id === topicId);
                         if (topicIndex !== -1) {
                             roundState.assigned[dayIndex].splice(topicIndex, 1);
                             if (roundState.assigned[dayIndex].length === 0) delete roundState.assigned[dayIndex];
-                            foundAndRemoved = true;
                             break;
                         }
                     }
@@ -833,10 +829,12 @@
                 if (!plannerState.topicState.studiedTopics) plannerState.topicState.studiedTopics = {};
                 if (!plannerState.topicState.studiedTopics[dateStr]) plannerState.topicState.studiedTopics[dateStr] = [];
                 
+                // Add with studied: true for compatibility
                 plannerState.topicState.studiedTopics[dateStr].push({
                     id: topicId,
                     originalVuelta: vueltaId,
-                    securityLevel: newLevel
+                    securityLevel: newLevel,
+                    studied: true 
                 });
             }
 
