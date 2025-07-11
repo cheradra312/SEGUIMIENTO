@@ -166,11 +166,17 @@
         }
         .topic-card.unavailable {
             opacity: 0.6;
-            /* cursor: not-allowed; We manage cursor with JS now */
+            /* cursor is managed with JS now */
         }
         .topic-card.needs-review {
             background-color: #fefce8; /* yellow-50 */
             border: 1px solid #fde047; /* yellow-400 */
+        }
+
+        /* Style for multi-selection */
+        .topic-card.selected {
+            background-color: #c7d2fe; /* indigo-200 */
+            border: 1px solid #6366f1; /* indigo-500 */
         }
 
         /* Security Level Colors */
@@ -290,13 +296,13 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>
                     </div>
                 </div>
-                <div id="topics-content" class="content-panel">
+                <div id="topics-content" class="content-panel flex-grow flex flex-col">
                     <div class="flex flex-wrap gap-2 items-center border-b border-gray-200 pb-2 mb-2">
                         <div id="round-tabs" class="flex"></div>
                         <div id="sub-block-filter-container" class="flex-grow"></div>
                     </div>
                     <input type="text" id="topic-search" placeholder="Buscar tema..." class="w-full p-2 border border-gray-300 rounded-lg mb-2">
-                    <div id="topic-source-list" class="overflow-y-auto h-96 lg:h-[45vh] p-1"></div>
+                    <div id="topic-source-list" class="overflow-y-auto flex-grow p-1"></div>
                 </div>
             </aside>
 
@@ -417,6 +423,8 @@
             mainBlocks: {},
             rounds: [],
             topicState: {},
+            dayTypes: {}, // NEW: Stores day types, e.g., { '2025-07-11': 'work' }
+            selectedTopics: [], // NEW: Stores selected topic IDs for multi-drag
             currentVuelta: 'vuelta-1',
             currentSubBlock: 'todos',
             currentSummaryVuelta: 'vuelta-1',
@@ -536,6 +544,7 @@
                 }
                 const dataToSave = {
                     topicState: state.topicState,
+                    dayTypes: state.dayTypes,
                     endDate: endDateInput.value,
                     roundDurations: roundDurations
                 };
@@ -575,10 +584,10 @@
                         if (!state.topicState.studiedTopics) {
                             state.topicState.studiedTopics = {};
                         }
-                        console.log("Previous state loaded.");
                     } else {
                          resetTopicState();
                     }
+                    state.dayTypes = data.dayTypes || {};
                 } else {
                     console.log("No previous state found, starting fresh.");
                     resetTopicState();
@@ -676,6 +685,7 @@
             state.topicState = {
                 studiedTopics: {}
             };
+            state.dayTypes = {};
             const allTopicIds = state.flatTopics.map(t => t.fullId);
             for (let i = 1; i <= 5; i++) {
                 state.topicState[`vuelta-${i}`] = {
@@ -1083,7 +1093,6 @@
                     
                     el.addEventListener('click', (e) => {
                         if (!e.target.closest('.unassign-btn')) {
-                            // Pass the current vuelta context to the navigation function
                             navigateToTopicDate(topicId, state.currentVuelta);
                         }
                     });
@@ -1099,6 +1108,29 @@
                     el.className = 'topic-card bg-gray-100 p-2 rounded-lg mb-2 flex items-center justify-between';
                     el.draggable = true;
                     el.dataset.topicId = topicId;
+
+                    if (state.selectedTopics.includes(topicId)) {
+                        el.classList.add('selected');
+                    }
+
+                    el.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+                        
+                        if (!isCtrlOrMeta) {
+                            document.querySelectorAll('#topic-source-list .topic-card.selected').forEach(card => card.classList.remove('selected'));
+                            state.selectedTopics = [topicId];
+                            el.classList.add('selected');
+                        } else {
+                            if (state.selectedTopics.includes(topicId)) {
+                                state.selectedTopics = state.selectedTopics.filter(id => id !== topicId);
+                                el.classList.remove('selected');
+                            } else {
+                                state.selectedTopics.push(topicId);
+                                el.classList.add('selected');
+                            }
+                        }
+                    });
 
                     const currentRoundNumber = parseInt(state.currentVuelta.split('-')[1], 10);
                     let needsReview = false;
@@ -1145,6 +1177,52 @@
             updateAllCalendarDaysForMonth(monthGridElement, year, month);
         }
 
+        function getDayType(dateStr) {
+            if (state.dayTypes[dateStr]) {
+                return state.dayTypes[dateStr];
+            }
+            const day = new Date(dateStr + 'T00:00:00Z').getUTCDay();
+            // 0=Sun, 1=Mon, ..., 6=Sat
+            return (day === 0 || day === 6) ? 'vacation' : 'work';
+        }
+
+        function updateDayAppearance(dayCell) {
+            const dateStr = dayCell.dataset.date;
+            const dayDate = new Date(dateStr + 'T00:00:00Z');
+            const round = state.rounds.find(r => dayDate >= r.startDate && dayDate <= r.endDate);
+            const dayType = getDayType(dateStr);
+
+            const holidayLabel = dayCell.querySelector('.day-round-label-holiday');
+            const workLabel = dayCell.querySelector('.day-round-label-work');
+            
+            // Reset
+            dayCell.style.background = '';
+            holidayLabel.textContent = '';
+            workLabel.textContent = '';
+            holidayLabel.className = 'day-round-label-holiday text-xs font-bold px-1';
+            workLabel.className = 'day-round-label-work text-xs font-bold px-1 mb-1';
+
+            if (round) {
+                const roundBgClass = ROUND_COLORS.bg[round.roundNumber - 1];
+                const roundTextClass = ROUND_COLORS.text[round.roundNumber - 1];
+                const roundColorMap = { 'bg-red-100': '#fee2e2', 'bg-orange-100': '#ffedd5', 'bg-yellow-100': '#fef9c3', 'bg-blue-100': '#dbeafe', 'bg-green-100': '#dcfce7' };
+                const roundBgColor = roundColorMap[roundBgClass] || '#f9fafb';
+                const labelContent = `Vuelta ${round.roundNumber}`;
+
+                if (dayType === 'work') {
+                    dayCell.style.background = `linear-gradient(to bottom, #fecaca 25%, ${roundBgColor} 25%)`;
+                    workLabel.textContent = labelContent;
+                    workLabel.classList.add(roundTextClass);
+                } else { // vacation
+                    dayCell.style.background = roundBgColor;
+                    holidayLabel.textContent = labelContent;
+                    holidayLabel.classList.add(roundTextClass);
+                }
+            } else {
+                dayCell.style.background = '#f9fafb'; // bg-gray-50
+            }
+        }
+
         function createMonthGrid(year, month) {
             const monthContainer = document.createElement('div');
             const firstDayOfMonth = new Date(Date.UTC(year, month, 1));
@@ -1166,23 +1244,22 @@
                 const dayDate = new Date(Date.UTC(year, month, i));
                 const dateStr = dayDate.toISOString().split('T')[0];
                 const dayCell = document.createElement('div');
-                dayCell.className = 'calendar-day border bg-gray-50 border-gray-200 rounded-lg p-1.5 flex flex-col';
+                dayCell.className = 'calendar-day border border-gray-200 rounded-lg flex flex-col';
                 dayCell.dataset.date = dateStr;
 
-                let cellHeader = `<div class="text-sm font-semibold text-right pr-1">${i}</div>`;
-                const round = state.rounds.find(r => dayDate >= r.startDate && dayDate <= r.endDate);
-                if (round) {
-                    dayCell.classList.remove('bg-gray-50');
-                    dayCell.classList.add(ROUND_COLORS.bg[round.roundNumber - 1]);
-                    cellHeader += `<div class="text-xs font-bold ${ROUND_COLORS.text[round.roundNumber - 1]} px-1">Vuelta ${round.roundNumber}</div>`;
-                }
-                
-                const topicsContainer = document.createElement('div');
-                topicsContainer.className = 'calendar-day-topics flex-grow mt-1 space-y-1 overflow-y-auto p-1';
-                topicsContainer.id = `topics-${dateStr}`;
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'p-1.5 pb-0 flex justify-between items-start';
+                headerDiv.innerHTML = `<div class="day-round-label-holiday text-xs font-bold px-1"></div>
+                                       <div class="text-sm font-semibold">${i}</div>`;
 
-                dayCell.innerHTML = cellHeader;
-                dayCell.appendChild(topicsContainer);
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'flex-grow flex flex-col p-1.5 pt-0';
+                contentDiv.innerHTML = `<div class="day-round-label-work text-xs font-bold px-1 mb-1"></div>
+                                        <div id="topics-${dateStr}" class="calendar-day-topics flex-grow space-y-1 overflow-y-auto"></div>`;
+
+                dayCell.append(headerDiv, contentDiv);
+                
+                updateDayAppearance(dayCell);
                 
                 dayCell.addEventListener('dragover', handleDragOver);
                 dayCell.addEventListener('dragleave', handleDragLeave);
@@ -1528,6 +1605,28 @@
                 dayModalContent.innerHTML = '<p class="text-gray-500 text-center">No hay temas asignados para este día.</p>';
             }
 
+            const currentDayType = getDayType(dateStr);
+            const dayTypeSelectorHTML = `
+                <div class="mt-6 pt-4 border-t">
+                    <label for="day-type-select" class="block text-sm font-medium text-gray-700">Tipo de Día</label>
+                    <select id="day-type-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                        <option value="work" ${currentDayType === 'work' ? 'selected' : ''}>Laboral</option>
+                        <option value="vacation" ${currentDayType === 'vacation' ? 'selected' : ''}>Vacaciones / Festivo</option>
+                    </select>
+                </div>
+            `;
+            dayModalContent.insertAdjacentHTML('beforeend', dayTypeSelectorHTML);
+
+            const dayTypeSelect = document.getElementById('day-type-select');
+            dayTypeSelect.addEventListener('change', (e) => {
+                const newType = e.target.value;
+                state.dayTypes[dateStr] = newType;
+                const dayCell = document.querySelector(`.calendar-day[data-date="${dateStr}"]`);
+                if (dayCell) {
+                    updateDayAppearance(dayCell);
+                }
+            });
+
             dayModalBackdrop.classList.remove('hidden');
             dayModalContainer.classList.remove('hidden');
         }
@@ -1623,9 +1722,19 @@
         }
 
         function handleDragStartFromSource(e) {
+            const topicId = e.target.dataset.topicId;
+            const isSelected = state.selectedTopics.includes(topicId);
+
+            if (!isSelected) {
+                document.querySelectorAll('#topic-source-list .topic-card.selected').forEach(card => card.classList.remove('selected'));
+                state.selectedTopics = [topicId];
+                e.target.classList.add('selected');
+            }
+            
             e.target.classList.add('dragging');
+            
             state.draggedTopic = {
-                id: e.target.dataset.topicId,
+                ids: [...state.selectedTopics],
                 from: 'source',
                 vuelta: state.currentVuelta
             };
@@ -1640,14 +1749,14 @@
 
             if (isStudied) {
                  state.draggedTopic = {
-                    id: topicId,
+                    ids: [topicId],
                     from: 'calendar_fixed',
                     sourceDate: e.target.closest('.calendar-day').dataset.date,
                     originalVuelta: e.target.dataset.originalVuelta
                 };
             } else {
                 state.draggedTopic = {
-                    id: topicId,
+                    ids: [topicId],
                     from: 'calendar_relative',
                     sourceVuelta: e.target.dataset.sourceVuelta,
                     sourceDayIndex: parseInt(e.target.dataset.sourceDayIndex, 10)
@@ -1674,7 +1783,7 @@
             if (!state.draggedTopic) return;
 
             const dateStr = e.currentTarget.dataset.date;
-            const topicId = state.draggedTopic.id;
+            const draggedIds = state.draggedTopic.ids;
             const dropDate = new Date(dateStr + 'T00:00:00Z');
             const targetRound = state.rounds.find(r => dropDate >= r.startDate && dropDate <= r.endDate);
 
@@ -1691,19 +1800,24 @@
                 }
 
                 const roundState = state.topicState[state.currentVuelta];
-                const topicIndex = roundState.unassigned.indexOf(topicId);
-                if (topicIndex > -1) {
-                    roundState.unassigned.splice(topicIndex, 1);
-                    if (!roundState.assigned[targetDayIndex]) roundState.assigned[targetDayIndex] = [];
-                    roundState.assigned[targetDayIndex].push({ id: topicId, studied: false });
-                    
-                    renderTopicSourceList();
-                    updateSingleDay(dateStr);
-                    renderSummaryTable();
-                }
+                
+                draggedIds.forEach(topicId => {
+                    const topicIndex = roundState.unassigned.indexOf(topicId);
+                    if (topicIndex > -1) {
+                        roundState.unassigned.splice(topicIndex, 1);
+                        if (!roundState.assigned[targetDayIndex]) roundState.assigned[targetDayIndex] = [];
+                        roundState.assigned[targetDayIndex].push({ id: topicId, studied: false });
+                    }
+                });
+                
+                state.selectedTopics = [];
+                renderTopicSourceList();
+                updateSingleDay(dateStr);
+                renderSummaryTable();
             } 
             // Logic for moving a relative (unstudied) topic
             else if (state.draggedTopic.from === 'calendar_relative') {
+                const topicId = draggedIds[0]; // Only one topic can be dragged from calendar
                 const { sourceVuelta, sourceDayIndex } = state.draggedTopic;
                 
                 if (sourceVuelta === targetRound.vueltaId && sourceDayIndex === targetDayIndex) return;
@@ -1740,13 +1854,14 @@
             e.currentTarget.classList.remove('drag-over');
             if (!state.draggedTopic || !state.draggedTopic.from.startsWith('calendar')) return;
 
-            const { id } = state.draggedTopic;
+            const { ids } = state.draggedTopic;
+            const topicId = ids[0]; // Only one topic at a time from calendar
             
             const vueltaToReturnTo = state.draggedTopic.from === 'calendar_fixed' 
                 ? state.draggedTopic.originalVuelta 
                 : state.draggedTopic.sourceVuelta;
             
-            unassignTopic(id, vueltaToReturnTo);
+            unassignTopic(topicId, vueltaToReturnTo);
 
             state.draggedTopic = null;
             document.querySelector('.dragging')?.classList.remove('dragging');
