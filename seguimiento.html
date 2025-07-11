@@ -29,24 +29,43 @@
             justify-content: center;
             flex-shrink: 0;
         }
-        .tick-box.green { background-color: #22c55e; border-color: #22c55e; }
-        .tick-box.orange { background-color: #f97316; border-color: #f97316; }
+
+        /* Security Level Colors for Studied topics */
+        .tick-box.studied.security-20 { background-color: #fecaca; border-color: #ef4444; } /* red-200 bg, red-500 border */
+        .tick-box.studied.security-40 { background-color: #fed7aa; border-color: #f97316; } /* orange-200 bg, orange-500 border */
+        .tick-box.studied.security-60 { background-color: #fef08a; border-color: #eab308; } /* yellow-200 bg, yellow-500 border */
+        .tick-box.studied.security-80 { background-color: #d9f99d; border-color: #84cc16; } /* lime-200 bg, lime-500 border */
+        .tick-box.studied.security-100 { background-color: #bbf7d0; border-color: #22c55e; } /* green-200 bg, green-500 border */
+
+        /* Assigned color */
+        .tick-box.assigned { background-color: #e5e7eb; border-color: #9ca3af; } /* gray-200 bg, gray-400 border */
+
+        /* Hide tick mark by default */
         .tick-box .tick-mark {
             display: none;
+        }
+
+        /* Tick mark for STUDIED (check) */
+        .tick-box.studied .tick-mark {
+            display: block;
             width: 8px;
             height: 14px;
             border: solid white;
             border-width: 0 3px 3px 0;
             transform: rotate(45deg);
         }
-        .tick-box.green .tick-mark, .tick-box.orange .tick-mark { display: block; }
-        .tick-box.orange .tick-mark {
-             width: 10px;
-             height: 10px;
-             border: 2px solid white;
-             border-radius: 50%;
-             transform: none;
+
+        /* Tick mark for ASSIGNED (circle) */
+        .tick-box.assigned .tick-mark {
+            display: block;
+            width: 10px;
+            height: 10px;
+            border: 2px solid white;
+            border-radius: 50%;
+            transform: none;
+            background-color: transparent;
         }
+
         .tick-date {
             font-size: 0.65rem; /* 10.4px */
             color: #6b7280; /* gray-500 */
@@ -184,7 +203,6 @@
         import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
-            // Tu configuración de Firebase aquí...
             apiKey: "AIzaSyCKXzSmQ9F1M4W59Vyalu3CWdKFsh7dOmE",
             authDomain: "costas-304b9.firebaseapp.com",
             projectId: "costas-304b9",
@@ -195,7 +213,7 @@
         };
 
         let db, sessionId;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-planner-app';
         
         const BLOCKS_CONFIG = {
             "Organización y Funcionamiento de la Administración Pública": { abbr: "ADM", icon: "fa-gavel", color: "color-adm", calcId: 'admin' },
@@ -380,6 +398,7 @@
                 }
             }
         };
+
 
         window.onload = async () => {
             try {
@@ -575,9 +594,9 @@
                     <tr>
                         <th class="px-6 py-3">Bloque</th>
                         <th class="px-6 py-3">Sub-bloque</th>
-                        <th class="px-6 py-3 text-center">Pendientes</th>
-                        <th class="px-6 py-3 text-center">Estudiados</th>
                         <th class="px-6 py-3 text-center">Asignados</th>
+                        <th class="px-6 py-3 text-center">Estudiados</th>
+                        <th class="px-6 py-3 text-center">Total Asignados</th>
                         <th class="px-6 py-3 text-center">Total Temas</th>
                     </tr>
                 </thead>`;
@@ -590,12 +609,12 @@
                 const subBlocksOrTopics = allBlocks[mainBlockTitle];
                 if (Array.isArray(subBlocksOrTopics)) {
                     const blockName = mainBlockTitle;
-                    const pendingCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${blockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.orange`).length;
-                    const studiedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${blockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.green`).length;
-                    const totalAssigned = pendingCount + studiedCount;
+                    const assignedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${blockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.assigned`).length;
+                    const studiedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${blockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.studied`).length;
+                    const totalAssigned = assignedCount + studiedCount;
                     const totalTopics = subBlocksOrTopics.length;
                     
-                    grandTotal.pending += pendingCount;
+                    grandTotal.pending += assignedCount;
                     grandTotal.studied += studiedCount;
                     grandTotal.assigned += totalAssigned;
                     grandTotal.total += totalTopics;
@@ -603,7 +622,7 @@
                     const config = BLOCKS_CONFIG[blockName];
                     tableBody += `<tr class="bg-slate-50 border-b-4 border-slate-300">
                         <td colspan="2" class="px-6 py-4 font-semibold ${config.c || config.color}"><i class="fas ${config.icon} fa-fw w-5 text-center"></i>${blockName}</td>
-                        <td class="px-6 py-4 text-center font-mono text-orange-600">${pendingCount}</td>
+                        <td class="px-6 py-4 text-center font-mono text-gray-600">${assignedCount}</td>
                         <td class="px-6 py-4 text-center font-mono text-green-600">${studiedCount}</td>
                         <td class="px-6 py-4 text-center font-mono">${totalAssigned}</td>
                         <td class="px-6 py-4 text-center font-mono">${totalTopics}</td>
@@ -614,12 +633,12 @@
                     const subBlockKeys = Object.keys(subBlocksOrTopics);
 
                     subBlockKeys.forEach((subBlockName, index) => {
-                        const pendingCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${subBlockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.orange`).length;
-                        const studiedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${subBlockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.green`).length;
-                        const totalAssigned = pendingCount + studiedCount;
+                        const assignedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${subBlockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.assigned`).length;
+                        const studiedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${subBlockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.studied`).length;
+                        const totalAssigned = assignedCount + studiedCount;
                         const totalTopics = subBlocksOrTopics[subBlockName].length;
                         
-                        blockTotals.pending += pendingCount;
+                        blockTotals.pending += assignedCount;
                         blockTotals.studied += studiedCount;
                         blockTotals.assigned += totalAssigned;
                         blockTotals.total += totalTopics;
@@ -628,7 +647,7 @@
                         subRows += `<tr class="border-t border-slate-200">
                             ${index === 0 ? `<td class="px-6 py-4 font-bold align-top" rowspan="${subBlockKeys.length}">${mainBlockTitle}</td>` : ''}
                             <td class="px-6 py-4 flex items-center gap-3 ${config.c || config.color}"><i class="fas ${config.icon} fa-fw w-5 text-center"></i><span class="font-semibold">${subBlockName}</span></td>
-                            <td class="px-6 py-4 text-center font-mono text-orange-600">${pendingCount}</td>
+                            <td class="px-6 py-4 text-center font-mono text-gray-600">${assignedCount}</td>
                             <td class="px-6 py-4 text-center font-mono text-green-600">${studiedCount}</td>
                             <td class="px-6 py-4 text-center font-mono">${totalAssigned}</td>
                             <td class="px-6 py-4 text-center font-mono">${totalTopics}</td>
@@ -641,7 +660,7 @@
                     grandTotal.total += blockTotals.total;
 
                     tableBody += subRows;
-                    tableBody += `<tr class="bg-slate-100 font-semibold"><td class="px-6 py-2 text-right font-bold" colspan="2">Total Bloque:</td><td class="px-6 py-2 text-center font-mono text-orange-600">${blockTotals.pending}</td><td class="px-6 py-2 text-center font-mono text-green-600">${blockTotals.studied}</td><td class="px-6 py-2 text-center font-mono">${blockTotals.assigned}</td><td class="px-6 py-2 text-center font-mono">${blockTotals.total}</td></tr>`;
+                    tableBody += `<tr class="bg-slate-100 font-semibold"><td class="px-6 py-2 text-right font-bold" colspan="2">Total Bloque:</td><td class="px-6 py-2 text-center font-mono text-gray-600">${blockTotals.pending}</td><td class="px-6 py-2 text-center font-mono text-green-600">${blockTotals.studied}</td><td class="px-6 py-2 text-center font-mono">${blockTotals.assigned}</td><td class="px-6 py-2 text-center font-mono">${blockTotals.total}</td></tr>`;
                 }
             }
             
@@ -649,7 +668,7 @@
             const tableFoot = `<tfoot class="bg-blue-100 font-bold text-blue-800 text-base">
                 <tr>
                     <td colspan="2" class="px-6 py-4 text-right">TOTAL GENERAL (Vuelta ${selectedVuelta}):</td>
-                    <td class="px-6 py-4 text-center font-mono text-orange-600">${grandTotal.pending}</td>
+                    <td class="px-6 py-4 text-center font-mono text-gray-600">${grandTotal.pending}</td>
                     <td class="px-6 py-4 text-center font-mono text-green-600">${grandTotal.studied}</td>
                     <td class="px-6 py-4 text-center font-mono">${grandTotal.assigned}</td>
                     <td class="px-6 py-4 text-center font-mono">${grandTotal.total}</td>
@@ -663,7 +682,7 @@
                 updateAllCounters();
                 return;
             }
-            const docRef = doc(db, `artifacts/default-planner-app/public/data/${sessionId}/plannerState`);
+            const docRef = doc(db, `artifacts/${appId}/public/data/${sessionId}/plannerState`);
 
             try {
                 const docSnap = await getDoc(docRef);
@@ -709,7 +728,11 @@
                             if (progressByVuelta[topic.originalVuelta]) {
                                 const topicDate = new Date(dateStr + 'T00:00:00Z');
                                 const formattedDate = `${String(topicDate.getUTCDate()).padStart(2,'0')}/${String(topicDate.getUTCMonth()+1).padStart(2,'0')}`;
-                                progressByVuelta[topic.originalVuelta][topic.id] = { status: 'studied', date: formattedDate };
+                                progressByVuelta[topic.originalVuelta][topic.id] = { 
+                                    status: 'studied', 
+                                    date: formattedDate,
+                                    securityLevel: topic.securityLevel || 100
+                                };
                             }
                         });
                     }
@@ -744,15 +767,16 @@
                         const dateSpan = container.querySelector('.tick-date');
                         const vueltaId = `vuelta-${index + 1}`;
                         
-                        tickBox.classList.remove('green', 'orange');
+                        tickBox.className = 'tick-box'; // Reset classes
                         dateSpan.textContent = '';
 
                         const progress = progressByVuelta[vueltaId]?.[topicId];
                         if (progress) {
                             if (progress.status === 'studied') {
-                                tickBox.classList.add('green');
+                                tickBox.classList.add('studied');
+                                tickBox.classList.add(`security-${progress.securityLevel}`);
                             } else if (progress.status === 'assigned') {
-                                tickBox.classList.add('orange');
+                                tickBox.classList.add('assigned');
                             }
                             dateSpan.textContent = progress.date;
                         }
@@ -777,7 +801,7 @@
             
             document.querySelectorAll('.topic-card').forEach(card => {
                 const tickBox = card.querySelector(`.tick-container:nth-child(${vueltaIndex}) .tick-box`);
-                if (tickBox && tickBox.classList.contains('green')) {
+                if (tickBox && tickBox.classList.contains('studied')) {
                     const subBlockName = card.dataset.subBlockName;
                     const config = BLOCKS_CONFIG[subBlockName];
                     if (config && calcData.hasOwnProperty(config.calcId)) {
@@ -799,4 +823,4 @@
         }
     </script>
 </body>
-</html>
+</ht
