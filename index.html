@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planificador de Estudio Interactivo</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"> 
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         body { 
@@ -296,13 +296,13 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>
                     </div>
                 </div>
-                <div id="topics-content" class="content-panel">
+                <div id="topics-content" class="content-panel flex-grow flex flex-col">
                     <div class="flex flex-wrap gap-2 items-center border-b border-gray-200 pb-2 mb-2">
                         <div id="round-tabs" class="flex"></div>
                         <div id="sub-block-filter-container" class="flex-grow"></div>
                     </div>
                     <input type="text" id="topic-search" placeholder="Buscar tema..." class="w-full p-2 border border-gray-300 rounded-lg mb-2">
-                    <div id="topic-source-list" class="overflow-y-auto h-96 lg:h-[45vh] p-1"></div>
+                    <div id="topic-source-list" class="overflow-y-auto flex-grow p-1"></div>
                 </div>
             </aside>
 
@@ -423,8 +423,9 @@
             mainBlocks: {},
             rounds: [],
             topicState: {},
-            dayTypes: {}, // NEW: Stores day types, e.g., { '2025-07-11': 'work' }
-            selectedTopics: [], // NEW: Stores selected topic IDs for multi-drag
+            dayTypes: {}, 
+            dayNotes: {},
+            selectedTopics: [],
             currentVuelta: 'vuelta-1',
             currentSubBlock: 'todos',
             currentSummaryVuelta: 'vuelta-1',
@@ -545,6 +546,7 @@
                 const dataToSave = {
                     topicState: state.topicState,
                     dayTypes: state.dayTypes,
+                    dayNotes: state.dayNotes,
                     endDate: endDateInput.value,
                     roundDurations: roundDurations
                 };
@@ -588,6 +590,7 @@
                          resetTopicState();
                     }
                     state.dayTypes = data.dayTypes || {};
+                    state.dayNotes = data.dayNotes || {};
                 } else {
                     console.log("No previous state found, starting fresh.");
                     resetTopicState();
@@ -686,6 +689,7 @@
                 studiedTopics: {}
             };
             state.dayTypes = {};
+            state.dayNotes = {};
             const allTopicIds = state.flatTopics.map(t => t.fullId);
             for (let i = 1; i <= 5; i++) {
                 state.topicState[`vuelta-${i}`] = {
@@ -1191,32 +1195,39 @@
             const dayDate = new Date(dateStr + 'T00:00:00Z');
             const round = state.rounds.find(r => dayDate >= r.startDate && dayDate <= r.endDate);
             const dayType = getDayType(dateStr);
-            const roundLabel = dayCell.querySelector('.day-round-label');
 
-            // Reset styles
+            const roundLabel = dayCell.querySelector('.day-round-label');
+            const noteIcon = dayCell.querySelector('.note-icon');
+            
+            // Reset
             dayCell.style.background = '';
-            if(roundLabel) roundLabel.innerHTML = '';
-            ROUND_COLORS.text.forEach(c => roundLabel?.classList.remove(c));
+            roundLabel.textContent = '';
+            roundLabel.className = 'day-round-label text-xs font-bold text-center pb-1';
 
             if (round) {
                 const roundBgClass = ROUND_COLORS.bg[round.roundNumber - 1];
                 const roundTextClass = ROUND_COLORS.text[round.roundNumber - 1];
                 const roundColorMap = { 'bg-red-100': '#fee2e2', 'bg-orange-100': '#ffedd5', 'bg-yellow-100': '#fef9c3', 'bg-blue-100': '#dbeafe', 'bg-green-100': '#dcfce7' };
                 const roundBgColor = roundColorMap[roundBgClass] || '#f9fafb';
+                
+                roundLabel.textContent = `Vuelta ${round.roundNumber}`;
+                roundLabel.classList.add(roundTextClass);
 
                 if (dayType === 'work') {
                     dayCell.style.background = `linear-gradient(to bottom, #fecaca 25%, ${roundBgColor} 25%)`;
-                } else {
+                } else { // vacation
                     dayCell.style.background = roundBgColor;
                 }
-                
-                if (roundLabel) {
-                    roundLabel.className = `day-round-label text-xs font-bold px-1 ${roundTextClass}`;
-                    roundLabel.textContent = `Vuelta ${round.roundNumber}`;
-                }
-
             } else {
                 dayCell.style.background = '#f9fafb'; // bg-gray-50
+            }
+
+            if (noteIcon) {
+                if (state.dayNotes[dateStr] && state.dayNotes[dateStr].trim() !== '') {
+                    noteIcon.classList.remove('hidden');
+                } else {
+                    noteIcon.classList.add('hidden');
+                }
             }
         }
 
@@ -1241,12 +1252,15 @@
                 const dayDate = new Date(Date.UTC(year, month, i));
                 const dateStr = dayDate.toISOString().split('T')[0];
                 const dayCell = document.createElement('div');
-                dayCell.className = 'calendar-day border bg-gray-50 border-gray-200 rounded-lg p-1.5 flex flex-col';
+                dayCell.className = 'calendar-day border border-gray-200 rounded-lg flex flex-col relative';
                 dayCell.dataset.date = dateStr;
 
-                dayCell.innerHTML = `<div class="text-sm font-semibold text-right pr-1">${i}</div>
-                                     <div class="day-round-label"></div>
-                                     <div id="topics-${dateStr}" class="calendar-day-topics flex-grow mt-1 space-y-1 overflow-y-auto p-1"></div>`;
+                dayCell.innerHTML = `
+                    <i class="fas fa-sticky-note text-yellow-500 note-icon hidden absolute top-2 left-2"></i>
+                    <div class="day-number text-sm font-bold absolute top-1.5 right-2">${i}</div>
+                    <div id="topics-${dateStr}" class="calendar-day-topics flex-grow space-y-1 overflow-y-auto mt-8 p-1.5"></div>
+                    <div class="day-round-label text-xs font-bold text-center pb-1"></div>
+                `;
                 
                 updateDayAppearance(dayCell);
                 
@@ -1595,21 +1609,42 @@
             }
 
             const currentDayType = getDayType(dateStr);
-            const dayTypeSelectorHTML = `
-                <div class="mt-6 pt-4 border-t">
-                    <label for="day-type-select" class="block text-sm font-medium text-gray-700">Tipo de Día</label>
-                    <select id="day-type-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                        <option value="work" ${currentDayType === 'work' ? 'selected' : ''}>Laboral</option>
-                        <option value="vacation" ${currentDayType === 'vacation' ? 'selected' : ''}>Vacaciones / Festivo</option>
-                    </select>
+            const dayConfigHTML = `
+                <div class="mt-6 pt-4 border-t space-y-4">
+                    <div>
+                        <label for="day-type-select" class="block text-sm font-medium text-gray-700">Tipo de Día</label>
+                        <select id="day-type-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option value="work" ${currentDayType === 'work' ? 'selected' : ''}>Laboral</option>
+                            <option value="vacation" ${currentDayType === 'vacation' ? 'selected' : ''}>Vacaciones / Festivo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="day-note-textarea" class="block text-sm font-medium text-gray-700">Notas del Día</label>
+                        <textarea id="day-note-textarea" rows="3" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="Añade tus notas aquí..."></textarea>
+                    </div>
                 </div>
             `;
-            dayModalContent.insertAdjacentHTML('beforeend', dayTypeSelectorHTML);
+            dayModalContent.insertAdjacentHTML('beforeend', dayConfigHTML);
 
             const dayTypeSelect = document.getElementById('day-type-select');
             dayTypeSelect.addEventListener('change', (e) => {
                 const newType = e.target.value;
                 state.dayTypes[dateStr] = newType;
+                const dayCell = document.querySelector(`.calendar-day[data-date="${dateStr}"]`);
+                if (dayCell) {
+                    updateDayAppearance(dayCell);
+                }
+            });
+
+            const dayNoteTextarea = document.getElementById('day-note-textarea');
+            dayNoteTextarea.value = state.dayNotes[dateStr] || '';
+            dayNoteTextarea.addEventListener('input', (e) => {
+                const newNote = e.target.value;
+                if (newNote && newNote.trim() !== '') {
+                    state.dayNotes[dateStr] = newNote;
+                } else {
+                    delete state.dayNotes[dateStr];
+                }
                 const dayCell = document.querySelector(`.calendar-day[data-date="${dateStr}"]`);
                 if (dayCell) {
                     updateDayAppearance(dayCell);
@@ -1916,7 +1951,7 @@
 
                     if (tipo === 'fijo') {
                         const dateStr = dia;
-                         if (!state.topicState.studiedTopics[dateStr]) {
+                         if (!state.topicState.studiedTopics[dateStr]) { 
                             state.topicState.studiedTopics[dateStr] = [];
                         }
                         const topicObject = { id: topicId, studied: studied, originalVuelta: vueltaId };
