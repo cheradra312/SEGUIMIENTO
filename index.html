@@ -19,8 +19,9 @@
         
         .calendar-day {
             min-height: 160px;
-            transition: background-color 0.2s ease-in-out;
+            transition: all 0.3s ease-in-out;
             cursor: pointer;
+            position: relative;
         }
         .drag-over {
             background-color: #c7d2fe !important; /* indigo-200 */
@@ -165,7 +166,7 @@
         }
         .topic-card.unavailable {
             opacity: 0.6;
-            cursor: not-allowed;
+            /* cursor: not-allowed; We manage cursor with JS now */
         }
         .topic-card.needs-review {
             background-color: #fefce8; /* yellow-50 */
@@ -187,6 +188,15 @@
         .color-infra { color: #4b5563; }
         .color-trans { color: #059669; }
         .color-ma { color: #15803d; }
+
+        /* Style for highlighting a day on the calendar */
+        .highlight-day {
+            transform: scale(1.08);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.5s ease;
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(79, 70, 229, 0.7); /* indigo-600 glow */
+            border-color: #4f46e5 !important; /* indigo-600 */
+        }
     </style>
 </head>
 <body class="text-gray-800">
@@ -1047,6 +1057,8 @@
                 if (statusInCurrentVuelta.status === 'assigned' || statusInCurrentVuelta.status === 'studied') {
                     const el = document.createElement('div');
                     el.className = 'topic-card unavailable bg-gray-50 p-2 rounded-lg mb-2 flex items-center justify-between';
+                    el.style.cursor = 'pointer';
+                    el.title = 'Haz clic para ver en el calendario';
                     
                     const color = BLOCKS_CONFIG[topic.block]?.color || '#6b7280';
                     const displayName = SHORT_NAMES[topic.block] || topic.block;
@@ -1069,6 +1081,13 @@
                         </button>
                     `;
                     
+                    el.addEventListener('click', (e) => {
+                        if (!e.target.closest('.unassign-btn')) {
+                            // Pass the current vuelta context to the navigation function
+                            navigateToTopicDate(topicId, state.currentVuelta);
+                        }
+                    });
+
                     el.querySelector('.unassign-btn').addEventListener('click', (e) => {
                         e.stopPropagation();
                         unassignTopic(topicId, state.currentVuelta);
@@ -1522,6 +1541,85 @@
         function changeMonth(direction) {
             state.displayDate.setUTCMonth(state.displayDate.getUTCMonth() + direction);
             renderCalendar();
+        }
+
+        /**
+         * Finds a topic's assignment specifically within a given round.
+         * @param {string} topicId - The full ID of the topic.
+         * @param {string} vueltaId - The ID of the round to search within.
+         * @returns {object|null} An object with status and date, or null if not found.
+         */
+        function findTopicAssignmentInVuelta(topicId, vueltaId) {
+            if (!vueltaId) return null;
+
+            // First, check for topics studied that *originated* from this vueltaId
+            for (const dateStr in state.topicState.studiedTopics) {
+                const topic = state.topicState.studiedTopics[dateStr].find(t => t.id === topicId && t.originalVuelta === vueltaId);
+                if (topic) {
+                    return { status: 'studied', date: dateStr };
+                }
+            }
+
+            // Second, check for topics assigned (but not yet studied) in this vueltaId
+            const roundState = state.topicState[vueltaId];
+            const roundInfo = state.rounds.find(r => r.vueltaId === vueltaId);
+            if (roundState && roundState.assigned && roundInfo) {
+                for (const dayIndex in roundState.assigned) {
+                    const topic = roundState.assigned[dayIndex].find(t => t.id === topicId);
+                    if (topic) {
+                        const date = new Date(roundInfo.startDate);
+                        date.setUTCDate(date.getUTCDate() + parseInt(dayIndex, 10));
+                        return { status: 'assigned', date: date.toISOString().split('T')[0] };
+                    }
+                }
+            }
+
+            return null; // Not found in this specific round
+        }
+
+
+        /**
+         * Navigates the calendar to the month of the assigned topic and highlights the day.
+         * @param {string} topicId - The full ID of the topic to find.
+         * @param {string} vueltaId - The specific round context for the search.
+         */
+        function navigateToTopicDate(topicId, vueltaId) {
+            // Prioritize searching in the specific round context provided
+            let assignment = findTopicAssignmentInVuelta(topicId, vueltaId);
+
+            // As a fallback, if not found in the specific round (which would be an inconsistent state),
+            // search globally. This maintains robustness.
+            if (!assignment || !assignment.date) {
+                console.warn(`Could not find topic ${topicId} in its expected round ${vueltaId}. Falling back to global search.`);
+                assignment = findTopicGlobalAssignment(topicId);
+            }
+
+            if (assignment.status === 'unassigned' || !assignment.date) {
+                console.log(`Topic ${topicId} is not assigned to a date.`);
+                return;
+            }
+
+            const dateStr = assignment.date;
+            const targetDate = new Date(dateStr + 'T00:00:00Z');
+
+            // Set the displayDate to the month of the target date
+            state.displayDate = new Date(Date.UTC(targetDate.getUTCFullYear(), targetDate.getUTCMonth(), 1));
+
+            // Re-render the calendar to show the correct month
+            renderCalendar();
+
+            // The calendar is re-rendered, so we need a brief delay
+            // for the element to be available in the DOM.
+            setTimeout(() => {
+                const dayCell = document.querySelector(`.calendar-day[data-date="${dateStr}"]`);
+                if (dayCell) {
+                    dayCell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    dayCell.classList.add('highlight-day');
+                    setTimeout(() => {
+                        dayCell.classList.remove('highlight-day');
+                    }, 1500); // Keep highlight for 1.5 seconds
+                }
+            }, 100); // 100ms delay should be enough
         }
 
         function handleDragStartFromSource(e) {
