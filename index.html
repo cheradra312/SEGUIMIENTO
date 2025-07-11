@@ -296,13 +296,13 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>
                     </div>
                 </div>
-                <div id="topics-content" class="content-panel flex-grow flex flex-col">
+                <div id="topics-content" class="content-panel">
                     <div class="flex flex-wrap gap-2 items-center border-b border-gray-200 pb-2 mb-2">
                         <div id="round-tabs" class="flex"></div>
                         <div id="sub-block-filter-container" class="flex-grow"></div>
                     </div>
                     <input type="text" id="topic-search" placeholder="Buscar tema..." class="w-full p-2 border border-gray-300 rounded-lg mb-2">
-                    <div id="topic-source-list" class="overflow-y-auto flex-grow p-1"></div>
+                    <div id="topic-source-list" class="overflow-y-auto h-96 lg:h-[45vh] p-1"></div>
                 </div>
             </aside>
 
@@ -1191,33 +1191,30 @@
             const dayDate = new Date(dateStr + 'T00:00:00Z');
             const round = state.rounds.find(r => dayDate >= r.startDate && dayDate <= r.endDate);
             const dayType = getDayType(dateStr);
+            const roundLabel = dayCell.querySelector('.day-round-label');
 
-            const holidayLabel = dayCell.querySelector('.day-round-label-holiday');
-            const workLabel = dayCell.querySelector('.day-round-label-work');
-            
-            // Reset
+            // Reset styles
             dayCell.style.background = '';
-            holidayLabel.textContent = '';
-            workLabel.textContent = '';
-            holidayLabel.className = 'day-round-label-holiday text-xs font-bold px-1';
-            workLabel.className = 'day-round-label-work text-xs font-bold px-1 mb-1';
+            if(roundLabel) roundLabel.innerHTML = '';
+            ROUND_COLORS.text.forEach(c => roundLabel?.classList.remove(c));
 
             if (round) {
                 const roundBgClass = ROUND_COLORS.bg[round.roundNumber - 1];
                 const roundTextClass = ROUND_COLORS.text[round.roundNumber - 1];
                 const roundColorMap = { 'bg-red-100': '#fee2e2', 'bg-orange-100': '#ffedd5', 'bg-yellow-100': '#fef9c3', 'bg-blue-100': '#dbeafe', 'bg-green-100': '#dcfce7' };
                 const roundBgColor = roundColorMap[roundBgClass] || '#f9fafb';
-                const labelContent = `Vuelta ${round.roundNumber}`;
 
                 if (dayType === 'work') {
                     dayCell.style.background = `linear-gradient(to bottom, #fecaca 25%, ${roundBgColor} 25%)`;
-                    workLabel.textContent = labelContent;
-                    workLabel.classList.add(roundTextClass);
-                } else { // vacation
+                } else {
                     dayCell.style.background = roundBgColor;
-                    holidayLabel.textContent = labelContent;
-                    holidayLabel.classList.add(roundTextClass);
                 }
+                
+                if (roundLabel) {
+                    roundLabel.className = `day-round-label text-xs font-bold px-1 ${roundTextClass}`;
+                    roundLabel.textContent = `Vuelta ${round.roundNumber}`;
+                }
+
             } else {
                 dayCell.style.background = '#f9fafb'; // bg-gray-50
             }
@@ -1244,20 +1241,12 @@
                 const dayDate = new Date(Date.UTC(year, month, i));
                 const dateStr = dayDate.toISOString().split('T')[0];
                 const dayCell = document.createElement('div');
-                dayCell.className = 'calendar-day border border-gray-200 rounded-lg flex flex-col';
+                dayCell.className = 'calendar-day border bg-gray-50 border-gray-200 rounded-lg p-1.5 flex flex-col';
                 dayCell.dataset.date = dateStr;
 
-                const headerDiv = document.createElement('div');
-                headerDiv.className = 'p-1.5 pb-0 flex justify-between items-start';
-                headerDiv.innerHTML = `<div class="day-round-label-holiday text-xs font-bold px-1"></div>
-                                       <div class="text-sm font-semibold">${i}</div>`;
-
-                const contentDiv = document.createElement('div');
-                contentDiv.className = 'flex-grow flex flex-col p-1.5 pt-0';
-                contentDiv.innerHTML = `<div class="day-round-label-work text-xs font-bold px-1 mb-1"></div>
-                                        <div id="topics-${dateStr}" class="calendar-day-topics flex-grow space-y-1 overflow-y-auto"></div>`;
-
-                dayCell.append(headerDiv, contentDiv);
+                dayCell.innerHTML = `<div class="text-sm font-semibold text-right pr-1">${i}</div>
+                                     <div class="day-round-label"></div>
+                                     <div id="topics-${dateStr}" class="calendar-day-topics flex-grow mt-1 space-y-1 overflow-y-auto p-1"></div>`;
                 
                 updateDayAppearance(dayCell);
                 
