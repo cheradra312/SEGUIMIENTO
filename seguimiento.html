@@ -32,16 +32,24 @@
             cursor: pointer;
         }
         
-        /* --- NEW COLOR PALETTE --- */
+        /* --- TICK BOX COLORS (RESTORED) --- */
         /* Assigned (not studied) color */
         .tick-box.assigned { background-color: #f1f5f9; border-color: #9ca3af; } /* gray-100 bg, gray-400 border */
 
-        /* Studied colors based on 'vuelta' number */
-        .tick-box.studied.vuelta-1 { background-color: #fef9c3; border-color: #facc15; } /* yellow-100 / yellow-400 */
-        .tick-box.studied.vuelta-2 { background-color: #fef08a; border-color: #eab308; } /* yellow-200 / yellow-500 */
-        .tick-box.studied.vuelta-3 { background-color: #d9f99d; border-color: #84cc16; } /* lime-200 / lime-500 */
-        .tick-box.studied.vuelta-4 { background-color: #bbf7d0; border-color: #22c55e; } /* green-200 / green-600 */
-        .tick-box.studied.vuelta-5 { background-color: #a7f3d0; border-color: #10b981; } /* emerald-200 / emerald-500 */
+        /* Security Level Colors for Studied topics */
+        .tick-box.studied.security-20 { background-color: #fecaca; border-color: #ef4444; } /* red-200 bg, red-500 border */
+        .tick-box.studied.security-40 { background-color: #fed7aa; border-color: #f97316; } /* orange-200 bg, orange-500 border */
+        .tick-box.studied.security-60 { background-color: #fef08a; border-color: #eab308; } /* yellow-200 bg, yellow-500 border */
+        .tick-box.studied.security-80 { background-color: #d9f99d; border-color: #84cc16; } /* lime-200 bg, lime-500 border */
+        .tick-box.studied.security-100 { background-color: #bbf7d0; border-color: #22c55e; } /* green-200 bg, green-500 border */
+
+        /* --- TOPIC CARD BACKGROUND COLORS (NEW) --- */
+        .topic-card.status-not-studied { background-color: #ffffff; } /* white */
+        .topic-card.status-vuelta-1 { background-color: #fefce8; }    /* yellow-50 */
+        .topic-card.status-vuelta-2 { background-color: #fef9c3; }    /* yellow-100 */
+        .topic-card.status-vuelta-3 { background-color: #ecfccb; }    /* lime-100 */
+        .topic-card.status-vuelta-4 { background-color: #dcfce7; }    /* green-100 */
+        .topic-card.status-vuelta-5 { background-color: #ccfbf1; }    /* teal-100 */
 
 
         .tick-box .tick-mark { display: none; }
@@ -104,7 +112,7 @@
         .color-adm { color: #b45309; } .color-aguas { color: #0369a1; } .color-costas { color: #0e7490; }
         .color-infra { color: #4b5563; } .color-trans { color: #059669; } .color-ma { color: #15803d; }
 
-        /* --- NEW STYLES FOR SUB-BLOCKS LAYOUT --- */
+        /* --- STYLES FOR SUB-BLOCKS LAYOUT --- */
         .sub-blocks-container {
             display: block;
         }
@@ -367,9 +375,7 @@
              if (isCollapsible) {
                 headerWrapper.classList.add('is-collapsible');
                 headerWrapper.addEventListener('click', (e) => {
-                    // Prevent collapse when clicking on counters or other elements inside header
                     if (e.target.closest('.header-counters')) return;
-                    // In compact view, sub-block headers are not clickable
                     if (headerWrapper.closest('.sub-block') && !document.body.classList.contains('show-full-names')) {
                         return;
                     }
@@ -388,7 +394,7 @@
             const styles = {
                 2: 'text-2xl font-bold text-slate-800 border-b-2 border-slate-300 pb-2', 
                 3: 'text-xl font-semibold text-slate-700',
-                4: 'text-base font-semibold text-slate-600' // Style for H4 sub-block headers
+                4: 'text-base font-semibold text-slate-600'
             };
             titleEl.className = styles[level];
             titleEl.textContent = title;
@@ -402,8 +408,7 @@
         function createTopicElement(topic, subBlockName) {
             const topicId = `${subBlockName}-${topic.id}`;
             const topicDiv = document.createElement('div');
-            // REDUCED PADDING AND MARGIN
-            topicDiv.className = 'topic-card bg-white p-2 rounded-lg shadow-sm mb-2 flex items-center justify-between gap-4';
+            topicDiv.className = 'topic-card p-2 rounded-lg shadow-sm mb-2 flex items-center justify-between gap-4 transition-colors duration-300';
             topicDiv.dataset.topicId = topicId;
             topicDiv.dataset.subBlockName = subBlockName;
 
@@ -450,7 +455,7 @@
         }
         
         function renderTopSummaryTable(selectedVuelta) {
-            if (isNaN(selectedVuelta)) return; // Fix for initial load error
+            if (isNaN(selectedVuelta)) return;
             const summaryTable = document.getElementById('top-summary-table');
             const tableHead = `
                 <thead class="bg-slate-200 text-xs text-slate-700 uppercase tracking-wider">
@@ -548,7 +553,7 @@
                 if (!docSnap.exists()) {
                     console.log("No progress data found for this user. Initializing with empty state.");
                     plannerState = { topicState: { studiedTopics: {}, notes: {} } };
-                    updateUIFromProgress(); // Render with empty state
+                    updateUIFromProgress();
                     return;
                 }
                 plannerState = docSnap.data();
@@ -562,7 +567,6 @@
                 updateUIFromProgress();
             } catch (error) {
                 console.error("Error loading progress from Firestore:", error);
-                // alert(`No se pudo cargar el progreso. Revisa la consola para ver los errores. Error: ${error.message}`);
                 updateAllCounters();
             }
         }
@@ -572,7 +576,6 @@
             const { topicState } = plannerState;
             if (!topicState) return;
 
-            // Process studied topics first to give them priority
             if (topicState.studiedTopics) {
                 for (const dateStr in topicState.studiedTopics) {
                     topicState.studiedTopics[dateStr].forEach(topic => {
@@ -588,7 +591,6 @@
                 }
             }
 
-            // Process assigned topics
             const roundDates = {};
              if (plannerState.endDate && plannerState.roundDurations) {
                 const deadline = new Date(plannerState.endDate.split('/').reverse().join('-') + 'T00:00:00Z');
@@ -611,7 +613,7 @@
                     for (const dayIndex in roundState.assigned) {
                         roundState.assigned[dayIndex].forEach(topic => {
                             progressByTopic[topic.id] = progressByTopic[topic.id] || {};
-                            if (!progressByTopic[topic.id][vueltaId]) { // Don't overwrite studied
+                            if (!progressByTopic[topic.id][vueltaId]) {
                                 const assignedDate = new Date(vueltaStartDate.getTime());
                                 assignedDate.setUTCDate(assignedDate.getUTCDate() + parseInt(dayIndex));
                                 progressByTopic[topic.id][vueltaId] = {
@@ -636,20 +638,38 @@
                 } else {
                     notesIcon.classList.remove('has-notes');
                 }
+
+                // --- LOGIC FOR TOPIC CARD BACKGROUND ---
+                let studiedVueltasCount = 0;
+                if (progressByTopic[topicId]) {
+                    for (let i = 1; i <= 5; i++) {
+                        if (progressByTopic[topicId][`vuelta-${i}`]?.status === 'studied') {
+                            studiedVueltasCount++;
+                        }
+                    }
+                }
+                
+                card.classList.remove('status-not-studied', 'status-vuelta-1', 'status-vuelta-2', 'status-vuelta-3', 'status-vuelta-4', 'status-vuelta-5');
+                if (studiedVueltasCount > 0) {
+                    card.classList.add(`status-vuelta-${studiedVueltasCount}`);
+                } else {
+                    card.classList.add('status-not-studied');
+                }
+                // --- END OF LOGIC FOR TOPIC CARD BACKGROUND ---
                 
                 tickContainers.forEach((container, index) => {
                     const tickBox = container.querySelector('.tick-box');
                     const dateSpan = container.querySelector('.tick-date');
                     const vueltaId = `vuelta-${index + 1}`;
                     
-                    tickBox.className = 'tick-box'; // Reset styles
+                    tickBox.className = 'tick-box';
                     dateSpan.textContent = '';
 
                     const progress = progressByTopic[topicId]?.[vueltaId];
                     if (progress) {
                         if (progress.status === 'studied') {
-                            // Apply color based on vuelta number
-                            tickBox.classList.add('studied', `vuelta-${index + 1}`);
+                            // Use security level for tick color
+                            tickBox.classList.add('studied', `security-${progress.securityLevel}`);
                         } else if (progress.status === 'assigned') {
                             tickBox.classList.add('assigned');
                         }
@@ -681,16 +701,12 @@
         function showSecuritySelector(event, topicId, vueltaId) {
             event.stopPropagation();
             const tickBox = event.currentTarget;
-            
-            // Allow clicking to mark as studied (if not already) or change security level
             const isStudied = tickBox.classList.contains('studied');
-
             document.querySelector('.security-selector')?.remove();
 
             const selector = document.createElement('div');
             selector.className = 'security-selector';
             
-            // Options to change security level
             [20, 40, 60, 80, 100].forEach(level => {
                 const option = document.createElement('div');
                 option.className = 'security-option';
@@ -703,7 +719,6 @@
                 selector.appendChild(option);
             });
             
-            // Option to un-study the topic
             if (isStudied) {
                 const unstudyOption = document.createElement('div');
                 unstudyOption.className = 'security-option text-red-600';
@@ -715,7 +730,6 @@
                 });
                 selector.appendChild(unstudyOption);
             }
-
 
             tickBox.appendChild(selector);
 
@@ -735,9 +749,7 @@
             const dateStr = topicProgress.dateObj;
             const studiedDay = plannerState.topicState.studiedTopics[dateStr];
             if (studiedDay) {
-                // Filter out the topic to be un-studied
                 plannerState.topicState.studiedTopics[dateStr] = studiedDay.filter(t => !(t.id === topicId && t.originalVuelta === vueltaId));
-                // If the day becomes empty, remove it
                 if (plannerState.topicState.studiedTopics[dateStr].length === 0) {
                     delete plannerState.topicState.studiedTopics[dateStr];
                 }
@@ -747,13 +759,10 @@
             }
         }
 
-
         function updateSecurityLevel(topicId, vueltaId, newLevel) {
-            // Find if the topic is already marked as studied
             const topicProgress = progressByTopic[topicId]?.[vueltaId];
             
             if (topicProgress && topicProgress.status === 'studied') {
-                // It's already studied, just update the level
                 const dateStr = topicProgress.dateObj;
                 const studiedDay = plannerState.topicState.studiedTopics[dateStr];
                 const topicData = studiedDay.find(t => t.id === topicId && t.originalVuelta === vueltaId);
@@ -761,9 +770,8 @@
                     topicData.securityLevel = newLevel;
                 }
             } else {
-                // It's not studied yet, so we add it.
                 const today = new Date();
-                const dateStr = today.toISOString().slice(0, 10); // YYYY-MM-DD format
+                const dateStr = today.toISOString().slice(0, 10);
                 if (!plannerState.topicState.studiedTopics) {
                     plannerState.topicState.studiedTopics = {};
                 }
@@ -771,9 +779,6 @@
                     plannerState.topicState.studiedTopics[dateStr] = [];
                 }
                 
-                // Remove from assigned if it exists there to avoid conflicts
-                // (This part of the logic depends on how your planner works, but it's good practice)
-
                 plannerState.topicState.studiedTopics[dateStr].push({
                     id: topicId,
                     originalVuelta: vueltaId,
@@ -808,12 +813,9 @@
         }
 
         function saveNote(topicId, noteText) {
-            if (!plannerState.topicState) {
-                plannerState.topicState = {};
-            }
-            if (!plannerState.topicState.notes) {
-                plannerState.topicState.notes = {};
-            }
+            if (!plannerState.topicState) plannerState.topicState = {};
+            if (!plannerState.topicState.notes) plannerState.topicState.notes = {};
+            
             plannerState.topicState.notes[topicId] = noteText;
             savePlannerState();
             hideNotesModal();
@@ -833,8 +835,6 @@
             const selectedVuelta = document.getElementById('vuelta-selector').value;
             const vueltaIndex = parseInt(selectedVuelta, 10);
             if(isNaN(vueltaIndex)) {
-                // Using a custom modal/alert would be better, but window.alert for simplicity here.
-                // In a real app, replace this with a styled modal.
                 console.error("Por favor, selecciona una vuelta válida.");
                 return;
             }
