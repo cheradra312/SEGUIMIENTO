@@ -172,6 +172,14 @@
             border: 1px solid #fde047; /* yellow-400 */
         }
 
+        /* Security Level Colors */
+        .security-20 { background-color: #fecaca; } /* red-200 */
+        .security-40 { background-color: #fed7aa; } /* orange-200 */
+        .security-60 { background-color: #fef08a; } /* yellow-200 */
+        .security-80 { background-color: #d9f99d; } /* lime-200 */
+        .security-100 { background-color: #bbf7d0; } /* green-200 */
+
+
         /* Block Colors */
         .color-adm { color: #b45309; }
         .color-aguas { color: #0369a1; }
@@ -1258,30 +1266,86 @@
             return el;
         }
         
+        function handleSecurityLevelChange(topicId, dateStr, newLevel) {
+            const studiedDay = state.topicState.studiedTopics[dateStr];
+            if (studiedDay) {
+                const topic = studiedDay.find(t => t.id === topicId);
+                if (topic) {
+                    topic.securityLevel = newLevel;
+                }
+            }
+        }
+
         function createExpandedCalendarTopicElement(topic, dateStr) {
             const { type, topicData, topicInfo } = topic;
             const vueltaId = type === 'relative' ? topic.vueltaId : topic.originalVuelta;
 
             const el = document.createElement('div');
-            el.className = 'p-3 rounded-lg bg-gray-100 shadow-sm flex items-center gap-4';
-            
-            const color = BLOCKS_CONFIG[topicInfo.block]?.color || '#6b7280';
-            
+            el.className = 'p-3 rounded-lg shadow-sm flex items-center gap-3'; // Base classes
+
+            // Apply background color based on security level
+            if (topicData.studied) {
+                const securityLevel = topicData.securityLevel || 100;
+                el.classList.add(`security-${securityLevel}`);
+            } else {
+                el.classList.add('bg-gray-100');
+            }
+
+            // Security level selector (if studied)
+            if (topicData.studied) {
+                const securitySelectContainer = document.createElement('div');
+                securitySelectContainer.className = 'flex flex-col items-center flex-shrink-0';
+                
+                const securityLabel = document.createElement('label');
+                securityLabel.className = 'text-xs font-bold text-gray-600 mb-1';
+                securityLabel.textContent = 'Seg.';
+
+                const securitySelect = document.createElement('select');
+                securitySelect.className = 'p-1 border border-gray-400 rounded-md text-xs shadow-sm w-16';
+                
+                const levels = [20, 40, 60, 80, 100];
+                levels.forEach(level => {
+                    const option = document.createElement('option');
+                    option.value = level;
+                    option.textContent = `${level}%`;
+                    securitySelect.appendChild(option);
+                });
+
+                securitySelect.value = topicData.securityLevel || 100;
+
+                securitySelect.addEventListener('click', e => e.stopPropagation());
+                securitySelect.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    handleSecurityLevelChange(topicInfo.fullId, dateStr, parseInt(e.target.value, 10));
+                    showExpandedDayView(dateStr);
+                });
+                
+                securitySelectContainer.appendChild(securityLabel);
+                securitySelectContainer.appendChild(securitySelect);
+                el.appendChild(securitySelectContainer);
+            }
+
+            const mainContentContainer = document.createElement('div');
+            mainContentContainer.className = 'flex items-center gap-3 flex-grow';
+
+            const colorDot = document.createElement('div');
+            colorDot.className = 'w-3 h-3 rounded-full flex-shrink-0';
+            colorDot.style.backgroundColor = BLOCKS_CONFIG[topicInfo.block]?.color || '#6b7280';
+            mainContentContainer.appendChild(colorDot);
+
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.className = 'form-checkbox';
             checkbox.checked = topicData.studied;
-            
             checkbox.addEventListener('click', (e) => e.stopPropagation());
-
             checkbox.addEventListener('change', () => {
                 handleTopicStudiedChange(checkbox.checked, topic, dateStr);
-                el.querySelector('.topic-text-container').classList.toggle('line-through', checkbox.checked);
-                el.querySelector('.topic-text-container').classList.toggle('text-gray-400', checkbox.checked);
+                showExpandedDayView(dateStr);
             });
+            mainContentContainer.appendChild(checkbox);
 
             const textContainer = document.createElement('div');
-            textContainer.className = `topic-text-container flex-grow ${topicData.studied ? 'line-through text-gray-400' : ''}`;
+            textContainer.className = 'topic-text-container flex-grow';
             
             const mainLabel = document.createElement('div');
             mainLabel.className = 'font-semibold';
@@ -1293,16 +1357,12 @@
             subLabel.textContent = `Vuelta ${vueltaId.slice(-1)} | ${displayName}`;
 
             textContainer.append(mainLabel, subLabel);
+            mainContentContainer.appendChild(textContainer);
+            el.appendChild(mainContentContainer);
 
-            const colorDot = document.createElement('div');
-            colorDot.className = 'w-3 h-3 rounded-full flex-shrink-0';
-            colorDot.style.backgroundColor = color;
-
-            el.appendChild(colorDot);
-            el.appendChild(checkbox);
-            el.appendChild(textContainer);
             return el;
         }
+
 
         function handleTopicStudiedChange(isStudied, topic, dateStr) {
             const { type, topicData, topicInfo } = topic;
@@ -1324,7 +1384,8 @@
                     state.topicState.studiedTopics[dateStr].push({
                         id: topicInfo.fullId,
                         studied: true,
-                        originalVuelta: topic.vueltaId
+                        originalVuelta: topic.vueltaId,
+                        securityLevel: 100 // Default security level
                     });
                 }
             } else {
@@ -1550,13 +1611,14 @@
         }
 
         function exportToCSV() {
-            let csvContent = "data:text/csv;charset=utf-8,tipo,vuelta,dia,id_tema,bloque,estudiado\r\n";
+            let csvContent = "data:text/csv;charset=utf-8,tipo,vuelta,dia,id_tema,bloque,estudiado,seguridad\r\n";
             // Studied topics
             for(const dateStr in state.topicState.studiedTopics) {
                 state.topicState.studiedTopics[dateStr].forEach(topicData => {
                     const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
                     if (topicInfo) {
-                        const row = ['fijo', topicData.originalVuelta, dateStr, `"${topicData.id}"`, `"${topicInfo.block}"`, topicData.studied].join(",");
+                        const security = topicData.securityLevel || '';
+                        const row = ['fijo', topicData.originalVuelta, dateStr, `"${topicData.id}"`, `"${topicInfo.block}"`, topicData.studied, security].join(",");
                         csvContent += row + "\r\n";
                     }
                 });
@@ -1569,7 +1631,7 @@
                     roundData.assigned[dayIndex].forEach(topicData => {
                         const topicInfo = state.flatTopics.find(t => t.fullId === topicData.id);
                         if (topicInfo) {
-                            const row = ['relativo', vueltaId, dayIndex, `"${topicData.id}"`, `"${topicInfo.block}"`, topicData.studied].join(",");
+                            const row = ['relativo', vueltaId, dayIndex, `"${topicData.id}"`, `"${topicInfo.block}"`, topicData.studied, ''].join(",");
                             csvContent += row + "\r\n";
                         }
                     });
@@ -1599,18 +1661,23 @@
                 rows.forEach(row => {
                     if (!row) return;
                     const columns = row.split(',').map(c => c.replace(/"/g, ''));
-                    const [tipo, vueltaId, dia, topicId, block, studiedStr] = columns;
+                    const [tipo, vueltaId, dia, topicId, block, studiedStr, securityStr] = columns;
                     
                     if (!tipo || !vueltaId || !dia || !topicId) return;
 
                     const studied = studiedStr.trim() === 'true';
+                    const securityLevel = securityStr ? parseInt(securityStr, 10) : undefined;
 
                     if (tipo === 'fijo') {
                         const dateStr = dia;
                          if (!state.topicState.studiedTopics[dateStr]) {
                             state.topicState.studiedTopics[dateStr] = [];
                         }
-                        state.topicState.studiedTopics[dateStr].push({ id: topicId, studied: studied, originalVuelta: vueltaId });
+                        const topicObject = { id: topicId, studied: studied, originalVuelta: vueltaId };
+                        if (securityLevel) {
+                            topicObject.securityLevel = securityLevel;
+                        }
+                        state.topicState.studiedTopics[dateStr].push(topicObject);
                     } else { // relativo
                         const dayIndex = parseInt(dia, 10);
                         if (isNaN(dayIndex) || !state.topicState[vueltaId]) return;
