@@ -193,7 +193,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // NOTE: It's recommended to use environment variables for Firebase config in production.
         const firebaseConfig = {
             apiKey: "AIzaSyCKXzSmQ9F1M4W59Vyalu3CWdKFsh7dOmE",
             authDomain: "costas-304b9.firebaseapp.com",
@@ -207,7 +206,7 @@
         let db, sessionId;
         let plannerState = {};
         let progressByTopic = {};
-        let state = { rounds: [] }; // Add state object to hold rounds info
+        let state = { rounds: [] }; 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-planner-app';
         
         const BLOCKS_CONFIG = {
@@ -602,13 +601,14 @@
             if (loadedTopicState.studiedTopics) {
                 for (const dateStr in loadedTopicState.studiedTopics) {
                     loadedTopicState.studiedTopics[dateStr].forEach(topic => {
-                        const topicDate = new Date(dateStr + 'T00:00:00Z');
+                        // Use completionDate if available, otherwise use the key (dateStr)
+                        const displayDate = topic.completionDate ? new Date(topic.completionDate + 'T00:00:00Z') : new Date(dateStr + 'T00:00:00Z');
                         progressByTopic[topic.id] = progressByTopic[topic.id] || {};
                         progressByTopic[topic.id][topic.originalVuelta] = { 
                             status: 'studied', 
-                            date: `${String(topicDate.getUTCDate()).padStart(2,'0')}/${String(topicDate.getUTCMonth()+1).padStart(2,'0')}`,
+                            date: `${String(displayDate.getUTCDate()).padStart(2,'0')}/${String(displayDate.getUTCMonth()+1).padStart(2,'0')}`,
                             securityLevel: topic.securityLevel || 100,
-                            dateObj: dateStr
+                            dateObj: dateStr // The key in the database remains the original planned date
                         };
                     });
                 }
@@ -758,8 +758,9 @@
             const topicProgress = progressByTopic[topicId]?.[vueltaId];
             if (!topicProgress || topicProgress.status !== 'studied') return;
 
-            const dateStr = topicProgress.dateObj;
-            const studiedDay = plannerState.topicState.studiedTopics[dateStr];
+            const originalPlannedDate = topicProgress.dateObj;
+            const studiedDay = plannerState.topicState.studiedTopics[originalPlannedDate];
+            
             if (studiedDay) {
                 let unstudiedTopicData;
                 const newStudiedDay = studiedDay.filter(t => {
@@ -773,20 +774,19 @@
                 if (!unstudiedTopicData) return;
 
                 if (newStudiedDay.length === 0) {
-                    delete plannerState.topicState.studiedTopics[dateStr];
+                    delete plannerState.topicState.studiedTopics[originalPlannedDate];
                 } else {
-                    plannerState.topicState.studiedTopics[dateStr] = newStudiedDay;
+                    plannerState.topicState.studiedTopics[originalPlannedDate] = newStudiedDay;
                 }
 
                 const roundInfo = state.rounds.find(r => r.vueltaId === vueltaId);
                 if (roundInfo) {
-                    const dropDate = new Date(dateStr + 'T00:00:00Z');
+                    const dropDate = new Date(originalPlannedDate + 'T00:00:00Z');
                     const dayIndex = Math.round((dropDate - roundInfo.startDate) / (1000 * 60 * 60 * 24));
 
                     if (dayIndex >= 0 && dayIndex < roundInfo.duration) {
                         const roundState = plannerState.topicState[vueltaId];
                         if (!roundState.assigned[dayIndex]) roundState.assigned[dayIndex] = [];
-                        // Add back with studied: false for consistency
                         roundState.assigned[dayIndex].push({ id: topicId, studied: false });
                     }
                 }
@@ -801,15 +801,16 @@
             const topicProgress = progressByTopic[topicId]?.[vueltaId];
             
             if (topicProgress && topicProgress.status === 'studied') {
-                const dateStr = topicProgress.dateObj;
-                const studiedDay = plannerState.topicState.studiedTopics[dateStr];
+                const originalPlannedDate = topicProgress.dateObj;
+                const studiedDay = plannerState.topicState.studiedTopics[originalPlannedDate];
                 const topicData = studiedDay?.find(t => t.id === topicId && t.originalVuelta === vueltaId);
                 if (topicData) {
                     topicData.securityLevel = newLevel;
+                    topicData.completionDate = new Date().toISOString().slice(0, 10);
                 }
             } else if (topicProgress && topicProgress.status === 'assigned') {
-                let dateStr = topicProgress.dateObj;
-                if (!dateStr) {
+                const originalPlannedDate = topicProgress.dateObj;
+                if (!originalPlannedDate) {
                     console.error(`Fecha original no encontrada para ${topicId}. No se puede marcar como estudiado.`);
                     return;
                 }
@@ -827,14 +828,16 @@
                 }
 
                 if (!plannerState.topicState.studiedTopics) plannerState.topicState.studiedTopics = {};
-                if (!plannerState.topicState.studiedTopics[dateStr]) plannerState.topicState.studiedTopics[dateStr] = [];
+                if (!plannerState.topicState.studiedTopics[originalPlannedDate]) {
+                    plannerState.topicState.studiedTopics[originalPlannedDate] = [];
+                }
                 
-                // Add with studied: true for compatibility
-                plannerState.topicState.studiedTopics[dateStr].push({
+                plannerState.topicState.studiedTopics[originalPlannedDate].push({
                     id: topicId,
                     originalVuelta: vueltaId,
                     securityLevel: newLevel,
-                    studied: true 
+                    studied: true,
+                    completionDate: new Date().toISOString().slice(0, 10)
                 });
             }
 
