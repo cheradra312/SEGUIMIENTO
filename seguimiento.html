@@ -1030,6 +1030,17 @@
                 }
             });
 
+            // Si el número de temas de 'admin' es 0, se envía 16
+            if (calcData.admin === 0) {
+                calcData.admin = 16;
+            }
+
+            for (const key in calcData) {
+                params.append(key, calcData[key]);
+            }
+            window.open(`${calculatorUrl}?${params.toString()}`, '_blank');
+        }
+
             for (const key in calcData) {
                 params.append(key, calcData[key]);
             }
