@@ -1,1057 +1,2021 @@
 <!DOCTYPE html>
+
 <html lang="es">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Seguimiento de Estudio para Oposición</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
+
         body {
+
             font-family: 'Inter', sans-serif;
+
             background-color: #f8fafc; /* slate-50 */
+
         }
+
         .tick-container {
+
             display: flex;
+
             flex-direction: column;
+
             align-items: center;
+
             width: 40px; /* Ancho para el tick y la fecha */
+
         }
+
         .tick-box {
+
             width: 24px;
+
             height: 24px;
+
             border: 2px solid #d1d5db;
+
             border-radius: 6px;
+
             transition: all 0.2s ease-in-out;
+
             display: flex;
+
             align-items: center;
+
             justify-content: center;
+
             flex-shrink: 0;
+
             position: relative;
+
             cursor: pointer;
+
         }
+
         
+
         /* --- TICK BOX COLORS (RESTORED) --- */
+
         /* Assigned (not studied) color */
+
         .tick-box.assigned { background-color: #f1f5f9; border-color: #9ca3af; } /* gray-100 bg, gray-400 border */
 
+
         /* Security Level Colors for Studied topics */
+
         .tick-box.studied.security-20 { background-color: #fecaca; border-color: #ef4444; } /* red-200 bg, red-500 border */
+
         .tick-box.studied.security-40 { background-color: #fed7aa; border-color: #f97316; } /* orange-200 bg, orange-500 border */
+
         .tick-box.studied.security-60 { background-color: #fef08a; border-color: #eab308; } /* yellow-200 bg, yellow-500 border */
+
         .tick-box.studied.security-80 { background-color: #d9f99d; border-color: #84cc16; } /* lime-200 bg, lime-500 border */
+
         .tick-box.studied.security-100 { background-color: #bbf7d0; border-color: #22c55e; } /* green-200 bg, green-500 border */
 
+
         /* --- TOPIC CARD BACKGROUND COLORS (NEW) --- */
+
         .topic-card.status-not-studied { background-color: #ffffff; } /* white */
+
         .topic-card.status-vuelta-1 { background-color: #fefce8; }    /* yellow-50 */
+
         .topic-card.status-vuelta-2 { background-color: #fef9c3; }    /* yellow-100 */
+
         .topic-card.status-vuelta-3 { background-color: #ecfccb; }    /* lime-100 */
+
         .topic-card.status-vuelta-4 { background-color: #dcfce7; }    /* green-100 */
+
         .topic-card.status-vuelta-5 { background-color: #ccfbf1; }    /* teal-100 */
+
 
 
         .tick-box .tick-mark { display: none; }
 
+
         .tick-box.studied .tick-mark {
+
             display: block; width: 8px; height: 14px;
+
             border: solid white; border-width: 0 3px 3px 0;
+
             transform: rotate(45deg);
+
         }
+
         .tick-box.assigned .tick-mark {
+
             display: block; width: 10px; height: 10px;
+
             border: 2px solid white; border-radius: 50%;
+
             transform: none; background-color: transparent;
+
         }
+
 
         .tick-date {
+
             font-size: 0.65rem; color: #6b7280;
+
             margin-top: 2px; height: 1em;
+
         }
+
         .topic-card:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); }
+
         .topic-full-name { display: none; margin-left: 8px; font-size: 0.875rem; }
+
         body.show-full-names .topic-full-name { display: inline; }
 
+
         .header-container { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+
         .header-container.is-collapsible { cursor: pointer; }
+
         .header-title-wrapper { display: flex; align-items: center; flex-grow: 1; min-width: 0; }
+
         .topic-text-container { flex-grow: 1; }
+
         
+
         #login-modal, #notes-modal-backdrop {
+
             position: fixed; top: 0; left: 0;
+
             width: 100%; height: 100%;
+
             background-color: rgba(0,0,0,0.6);
+
             display: flex; align-items: center; justify-content: center;
+
             z-index: 1000; transition: opacity 0.3s;
+
         }
+
         #login-modal.hidden, #notes-modal-backdrop.hidden { opacity: 0; pointer-events: none; }
 
+
         .collapsible-content { max-height: 5000px; overflow: hidden; transition: max-height 0.5s ease-in-out; }
+
         .collapsible.collapsed > .collapsible-content { max-height: 0; margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; }
+
         .toggle-icon { transition: transform 0.3s ease; flex-shrink: 0; margin-right: 0.75rem; color: #6b7280; }
+
         .collapsible.collapsed .toggle-icon { transform: rotate(-90deg); }
 
+
         .notes-icon { cursor: pointer; color: #cbd5e1; transition: color 0.2s; }
+
         .notes-icon:hover { color: #64748b; }
+
         .notes-icon.has-notes { color: #facc15; }
+
         .notes-icon.has-notes:hover { color: #eab308; }
 
+
         .security-selector {
+
             position: absolute; background: white; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+
             z-index: 10; padding: 4px; display: flex; flex-direction: column; gap: 2px;
+
             top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4px;
+
         }
+
         .security-option {
+
             padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;
+
             font-weight: 500; text-align: center;
+
         }
+
         .security-option:hover { background-color: #f1f5f9; }
 
+
         /* Color Theming */
+
         .color-adm { color: #b45309; } .color-aguas { color: #0369a1; } .color-costas { color: #0e7490; }
+
         .color-infra { color: #4b5563; } .color-trans { color: #059669; } .color-ma { color: #15803d; }
 
+
         /* --- STYLES FOR SUB-BLOCKS LAYOUT --- */
+
         .sub-blocks-container {
+
             display: block;
+
         }
+
 
         body:not(.show-full-names) .sub-blocks-container {
+
             display: grid;
+
             grid-template-columns: 1fr 1fr;
+
             gap: 1rem;
+
         }
+
 
         body:not(.show-full-names) .sub-block.collapsible.collapsed > .collapsible-content {
+
             max-height: 5000px; /* Show content in compact view */
+
         }
+
         
+
         body:not(.show-full-names) .sub-block .is-collapsible {
+
             cursor: default; /* Not clickable in compact view */
+
         }
+
 
         body:not(.show-full-names) .sub-block .toggle-icon {
+
             display: none; /* Hide collapse icon in compact view */
+
         }
+
     </style>
+
 </head>
+
 <body class="bg-slate-50 text-gray-800">
 
+
     <div id="login-modal">
+
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-sm">
+
             <h2 class="text-2xl font-bold mb-4 text-center">Bienvenido</h2>
+
             <p class="text-gray-600 mb-6 text-center">Introduce un nombre de usuario o ID para cargar tu progreso.</p>
+
             <form id="login-form">
+
                 <input type="text" id="username-input" placeholder="Tu nombre de usuario" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4" required>
+
                 <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold">Empezar</button>
+
             </form>
+
         </div>
+
     </div>
+
     
+
     <div id="notes-modal-backdrop" class="hidden">
+
         <div id="notes-modal-container" class="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl">
+
             <h3 id="notes-modal-title" class="text-xl font-bold mb-4"></h3>
+
             <textarea id="notes-modal-textarea" class="w-full h-48 p-2 border border-gray-300 rounded-lg" placeholder="Escribe tus notas aquí..."></textarea>
+
             <div class="mt-4 flex justify-end gap-3">
+
                 <button id="notes-modal-cancel" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Cancelar</button>
+
                 <button id="notes-modal-save" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar</button>
+
             </div>
+
         </div>
+
     </div>
+
 
     <div id="main-content" class="container mx-auto p-4 md:p-8 hidden">
+
         <header class="text-center mb-8">
+
             <h1 class="text-4xl md:text-5xl font-bold text-slate-800">Seguimiento de Estudio</h1>
+
             <p class="text-lg text-slate-500 mt-2">Cuerpo de Ingenieros de Caminos, Canales y Puertos del Estado</p>
+
             <div id="user-info" class="mt-4 text-sm text-gray-500"></div>
+
             <div id="connection-status" class="mt-2 text-sm font-semibold h-5"></div>
+
             <div class="mt-6 flex flex-wrap justify-center items-center gap-4">
+
                 <button id="toggle-names-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium">Mostrar Nombres</button>
+
                 <button id="calc-prob-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"><i class="fas fa-calculator mr-2"></i>Calcular Probabilidad</button>
+
                 <button id="collapse-all-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm font-medium">Plegar Todo</button>
+
                 <button id="expand-all-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-sm font-medium">Desplegar Todo</button>
+
                 <div class="flex items-center gap-2">
+
                     <label for="vuelta-selector" class="font-medium text-slate-700">Ver Vuelta:</label>
+
                     <select id="vuelta-selector" class="px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+
                 </div>
+
             </div>
+
         </header>
 
+
         <div class="bg-white rounded-lg shadow-md mb-8 overflow-x-auto">
+
             <table id="top-summary-table" class="w-full text-sm text-left text-slate-600"></table>
+
         </div>
+
 
         <main id="syllabus-container"></main>
 
+
         <footer class="text-center mt-12 py-4">
+
             <p class="text-sm text-gray-500">Aplicación generada para el seguimiento de estudio.</p>
+
         </footer>
+
     </div>
 
+
     <script type="module">
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+
         const firebaseConfig = {
+
             apiKey: "AIzaSyCKXzSmQ9F1M4W59Vyalu3CWdKFsh7dOmE",
+
             authDomain: "costas-304b9.firebaseapp.com",
+
             projectId: "costas-304b9",
+
             storageBucket: "costas-304b9.appspot.com",
+
             messagingSenderId: "251850800414", 
+
             appId: "1:251850800414:web:435e20e5305881732e5d0f",
+
             measurementId: "G-C2NTL72PZH"
+
         };
+
 
         let db, sessionId;
+
         let plannerState = {};
+
         let progressByTopic = {};
+
         let state = { rounds: [] }; 
+
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-planner-app';
+
         
+
         const BLOCKS_CONFIG = {
+
             "Organización y Funcionamiento de la Administración Pública": { abbr: "ADM", icon: "fa-gavel", color: "color-adm", calcId: 'admin' },
+
             "A.1) Aguas y Obras Hidráulicas": { abbr: "AGUAS", icon: "fa-tint", color: "color-aguas", calcId: 'aguas' },
+
             "A.2) Puertos y Costas": { abbr: "COSTAS", icon: "fa-water", color: "color-costas", calcId: 'aguas' },
+
             "B.1) Carreteras": { abbr: "CARR", icon: "fa-road", color: "color-infra", calcId: 'carreteras' },
+
             "B.2) Ferrocarriles": { abbr: "FERR", icon: "fa-train", color: "color-infra", calcId: 'carreteras' },
+
             "C.1) Transportes y Movilidad": { abbr: "TRANS", icon: "fa-bus", color: "color-trans", calcId: 'transportes' },
+
             "C.2) Medio Ambiente": { abbr: "MA", icon: "fa-leaf", color: "color-ma", calcId: 'transportes' }
+
         };
+
         
+
         const syllabus = {
+
             "Materias comunes": {
+
                 "Organización y Funcionamiento de la Administración Pública": [
+
                     { id: 1, text: "La Constitución Española de 1978. Estructura, principios constitucionales y valores superiores. Los derechos y libertades fundamentales. La reforma constitucional." },
+
                     { id: 2, text: "La estructura de poderes del Estado. Poder legislativo, poder ejecutivo y poder judicial. La Corona." },
+
                     { id: 3, text: "Fuentes del ordenamiento jurídico administrativo. La Constitución. Los tratados internacionales. La ley. El reglamento. Otras fuentes del derecho administrativo." },
+
                     { id: 4, text: "La Administración General del Estado. Órganos superiores y órganos directivos. La organización central. La organización periférica. Delegados y Subdelegados del Gobierno. Especial referencia al Ministerio de Transportes y Movilidad Sostenible." },
+
                     { id: 5, text: "Las Comunidades Autónomas. El proceso autonómico y el sistema de distribución de competencias entre la Administración General del Estado y las Comunidades Autónomas. Los Estatutos de Autonomía y la organización institucional de las Comunidades Autónomas. La Administración Local: entidades que la integran." },
+
                     { id: 6, text: "La Unión Europea y sus tratados constitutivos. Sistema institucional. Fuentes del Derecho de la Unión y su trasposición al ordenamiento jurídico español. Políticas comunes." },
+
                     { id: 7, text: "El régimen jurídico de las Administraciones Públicas y su regulación. Principios que rigen las relaciones de las Administraciones Públicas. Actividad de las administraciones públicas: derechos y deberes de los ciudadanos." },
+
                     { id: 8, text: "La Gobernanza Pública y el Gobierno Abierto. Concepto y principios informadores del Gobierno Abierto en España." },
+
                     { id: 9, text: "El acto administrativo: concepto, elementos y clases. Requisitos. Motivación, notificación y publicación. Nulidad y anulabilidad de los actos. Disposiciones administrativas generales: jerarquía y competencia. Publicidad e inderogabilidad." },
+
                     { id: 10, text: "El procedimiento administrativo común y sus fases. Concepto de persona interesada. Iniciación y ordenación del procedimiento, instrucción, finalización. El silencio administrativo. Ejecución." },
+
                     { id: 11, text: "Revisión de los actos en vía administrativa. Recursos administrativos: concepto, naturaleza y clases. Revisión de oficio. La jurisdicción contencioso-administrativa. El recurso contencioso-administrativo." },
+
                     { id: 12, text: "La responsabilidad patrimonial de la Administración. Regulación, Principios y procedimientos. La indemnización: concepto y naturaleza. La responsabilidad civil y penal de las autoridades y personal al servicio de las Administraciones Públicas. La potestad sancionadora. Regulación, naturaleza y principios rectores de la potestad sancionadora y del procedimiento sancionador." },
+
                     { id: 13, text: "La expropiación forzosa. Actos administrativos previos de expropiación. Justiprecio. Jurado Provincial de Expropiación. Pago y ocupación de bienes. Inscripción registral." },
+
                     { id: 14, text: "Los contratos del sector público (1): ámbito subjetivo y objetivo de aplicación de la legislación de contratación del sector público. Disposiciones comunes sobre la contratación del sector público. Los sujetos parte en el contrato. Tipología de contratos." },
+
                     { id: 15, text: "Los contratos del sector público (II). Actuaciones administrativas. Preparación: consultas, expediente de contratación, pliegos. Adjudicación: normas generales y formas de adjudicación. Perfección, formalización y extinción de los contratos. Ejecución." },
+
                     { id: 16, text: "El modelo de Función Pública del Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público. Características generales. El personal al servicio de las Administraciones Públicas: clasificación, derechos y deberes." },
+
                     { id: 17, text: "Principios, políticas y medidas de igualdad de género y contra la violencia de género. Normativa vigente en el ordenamiento español y en el de la Unión Europea, con especial referencia al III Plan para la Igualdad de Género en la Administración General del Estado y en sus Organismos Autónomos vinculados o dependientes de ella. Políticas de igualdad de trato y no discriminación de las personas LGTBI. Políticas dirigidas a la atención a personas con discapacidad y a las personas en situación de dependencia." }
+
                 ]
+
             },
+
             "Materias específicas": {
+
                 "A) Aguas y Obras Hidráulicas, Puertos y Costas": {
+
                     "A.1) Aguas y Obras Hidráulicas": [
+
                         { id: 1, text: "Marco normativo en materia de aguas en España. Elementos que regula el texto refundido de la Ley de Aguas. Organización de la Administración Hidráulica en España. Reglamento del Dominio Público Hidráulico. Dominio Público Hidráulico: aguas públicas y privadas. Utilización del Dominio Público Hidráulico: servidumbres, usos comunes y privativos, concesiones y autorizaciones, registro de aguas y régimen jurídico de las comunidades de usuarios. Reconocimiento de derechos anteriores a 1986. Protección del Dominio Público Hidráulico y de la calidad de las aguas continentales: zonas de servidumbre y de policía, apeo y deslinde; vertidos; reutilización. Régimen económico-financiero de la utilización del dominio público hidráulico. Infracciones y sanciones. Contrato de cesión de derechos al uso privativo de las aguas públicas. Seguridad de presas, embalses y balsas." },
+
                         { id: 2, text: "Directiva 2000/60/CE Marco del Agua y directivas relacionadas. Objetivos medioambientales. Tipos de masas de agua, caracterización de masas de agua, presiones e impactos. Estado ecológico, potencial ecológico y designación de masas artificiales y muy modificadas. Real Decreto 817/2015, de 11 de septiembre, por el que se establecen los criterios de seguimiento y evaluación del estado de las aguas superficiales y las normas de calidad ambiental. Reglamento de planificación hidrológica. Marco normativo de los Planes hidrológicos. Características de la demarcación hidrográfica. Recuperación de costes. Programa de medidas." },
+
                         { id: 3, text: "Avenidas e inundaciones. La Directiva 2007/60/CE de Evaluación y Gestión de los Riesgos de Inundación y Real Decreto 903/2010, de 9 de julio, de evaluación y gestión de riesgos de inundación. Planes de Gestión del Riesgo de Inundación. Sequías. Planes especiales de alerta y eventual sequía. Estudios relativos a inundaciones y sequías. Prevención y control. Sistema automático de información hidrológica." },
+
                         { id: 4, text: "Cooperación internacional y participación pública. Principales convenios internacionales relacionados con la gestión de los recursos transfronterizos: Convenio de Albufeira, Convenio OSPAR, Convenio de Barcelona y Plan de Acción del Mediterráneo, Convenio RAMSAR, Acuerdo de Toulouse, Conferencia de Directores Iberoamericanos del Agua (CODIA), Convenio de Helsinki. Principales organismos internacionales relacionados con la gestión de los recursos hídricos." },
+
                         { id: 5, text: "Legislación de aguas en relación a la calidad del agua. La Directiva 91/271/CEE. El Real-Decreto Ley 11/1995, de 28 de diciembre y el Real Decreto 509/1996, de 15 de marzo. Las zonas sensibles: La Resolución de 25 de mayo de 1998. Vertidos. Declaración de vertidos. Autorizaciones de vertido. Procedimientos de infracción abiertos por la Comisión Europea al Reino de España por incumplimiento de la Directiva 91/271/CEE." },
+
                         { id: 6, text: "Las zonas húmedas. Inventario español de zonas húmedas. La delimitación de zonas húmedas. Mecanismos de protección y conservación de las zonas húmedas. Rehabilitación o restauración. Directivas de Hábitats y de Aves." },
+
                         { id: 7, text: "El régimen económico financiero de la Ley de Aguas. Canon de ocupación o utilización. El canon de control de vertidos. Canon de regulación y tarifa de utilización del agua. Distribución entre los beneficiarios. Canon por utilización de las aguas continentales para la producción de energía eléctrica." },
+
                         { id: 8, text: "Principios generales de la administración pública del agua. El Consejo Nacional del Agua. Los Organismos de cuenca: configuración y funciones. Atribuciones y cometidos. Órganos de gobierno, administración y cooperación. Comité de autoridades competentes de las Demarcaciones Hidrográficas intercomunitarias. Hacienda y patrimonio. Régimen jurídico de las comunidades de usuarios. Derechos y obligaciones. Reparto y distribución del agua." },
+
                         { id: 9, text: "Objetivos generales de la planificación hidrológica. La Ley de Aguas y sus Reglamentos en relación con la planificación hidrológica. Instrucción de planificación hidrológica. El proceso de planificación hidrológico, elaboración y contenido de los planes hidrológicos de demarcación. Programas de medidas de los planes hidrológicos. Criterios para la selección de las medidas. Financiación. Coordinación con otros Planes y Programas." },
+
                         { id: 10, text: "Evaluación de recursos existentes: recursos en régimen natural, recursos disponibles y recursos libres. Las demandas. La demanda medioambiental. Balances hidráulicos. Los sistemas de explotación de recursos: Modelos de optimización y simulación de recursos. Rasgos del balance hidráulico nacional." },
+
                         { id: 11, text: "Hidrología. Ciclo hidrológico Red Integrada de Estaciones de Aforos (SAIH-ROEA), el Sistema Automático de Información de Calidad de las Aguas (SAICA) y las redes de control de las aguas subterráneas. Los SIG y su aplicación a la gestión de los recursos hidráulicos. Orden TED/1191/2024, de 24 de octubre, por la que se regulan los sistemas electrónicos de control de los volúmenes de agua utilizados por los aprovechamientos de agua, los retornos y los vertidos al dominio público hidráulico." },
+
                         { id: 12, text: "Regulación. Garantía de la regulación. Criterios de garantía. Modelos matemáticos de regulación. Leyes de distribución de aportaciones." },
+
                         { id: 13, text: "Hidrología de las aguas subterráneas. Utilización y aprovechamiento de las aguas subterráneas: régimen de explotación. Masas de agua subterráneas en riesgo de no alcanzar el buen estado cuantitativo o químico. Técnicas de investigación hidrogeológica y evaluación de recursos." },
+
                         { id: 14, text: "Usos de agua en abastecimiento a poblaciones. Prognosis de la demanda de abastecimiento. Dotaciones. Pérdidas en la red de distribución. Captaciones de aguas superficiales y subterráneas: tipos. Perímetros de protección de captaciones." },
+
                         { id: 15, text: "Técnicas especiales e indirectas para incrementar la eficacia de los recursos del agua. Actuaciones sobre la oferta de recursos. Desalación de agua del mar y salobre; conceptos y requisitos. Reutilización de aguas residuales. Real Decreto 1085/2024, de 22 de octubre, por el que se aprueba el Reglamento de reutilización del agua y se modifican diversos reales decretos que regulan la gestión del agua. Prevención de evaporación de embalses. Actuaciones sobre la demanda: soluciones legales, técnicas y de gestión." },
+
                         { id: 16, text: "Condiciones de potabilidad del agua. Técnicas de potabilización, desalación y técnicas de tratamiento de aguas industriales. Pretratamientos y postratamientos necesarios. Obras de abastecimiento y saneamiento en general." },
+
                         { id: 17, text: "Depuración de aguas residuales. Control e índices de contaminación. Autodepuración en cursos naturales. Tecnología de la depuración físico-química: Pretratamiento y tratamientos primarios. Tecnología de eliminación biológica de nutrientes: Tratamientos secundarios. Tecnología del tratamiento terciario: filtración y esterilización. Tratamientos avanzados de eliminación de nutrientes: fósforo y nitrógeno." },
+
                         { id: 18, text: "Problemas de contaminación en relación con los efluentes industriales. Reutilización de efluentes industriales. Evaluación de la carga contaminante por sector industrial. Categorización del sector industrial. Características de los efluentes. Selección de parámetros contaminantes a efectos de establecimiento de niveles de emisión. Tecnologías disponibles para reducir la contaminación de efluentes: medidas internas y tratamiento de efluentes." },
+
                         { id: 19, text: "Uso del agua para regadío. El agua en la fisiología vegetal. Técnicas de aplicación del agua al terreno y obras de riego en general. Dotaciones, garantía y calidad del agua. Reutilización de caudales de riego. Los fertilizantes y los productos fitosanitarios como agentes contaminantes potenciales. La contaminación difusa. Problemas de salinidad. Gestión sostenible de regadíos. Plan Nacional de Regadíos." },
+
                         { id: 20, text: "Energía. Aprovechamientos hidráulicos convencionales. Centrales de acumulación o de bombeo y de usos múltiples. Obras civiles de carácter hidroeléctrico. Tecnologías energéticas, convencionales y renovables. Usos: generación eléctrica, aprovechamiento térmico y transporte." },
+
                         { id: 21, text: "Otros usos del agua. El agua en la industria. Evaluación de necesidades. Refrigeración de las centrales térmicas de combustión fósil y nuclear. Calor a disipar. Caudal de refrigeración y de dilución. Navegación fluvial. Usos recreativos." },
+
                         { id: 22, text: "Las obras hidráulicas. Concepto y naturaleza jurídica de las obras hidráulicas: competencias para la ejecución, gestión y explotación de las obras hidráulicas públicas. Obras hidráulicas de interés general, declaración de obras hidráulicas de interés general, prerrogativas de las obras hidráulicas de interés general. Coordinación de competencias concurrentes, declaración de utilidad pública y necesidad de ocupación. Régimen jurídico de las Sociedades Estatales de Aguas. Contrato de concesión de obras hidráulicas." },
+
                         { id: 23, text: "Presas: Generalidades. Avenidas y otros criterios de proyecto. Criterios generales de pre dimensionamiento. Clasificación tipológica de las presas." },
+
                         { id: 24, text: "Presas II: Presas de hormigón y de materiales sueltos: tipologías, elementos funcionales y materiales. Construcción de presas. Órganos de desagüe de la presa." },
+
                         { id: 25, text: "Normativa de seguridad de presas, embalses y balsas. Gestión de seguridad de las presas. Inventario de presas y embalses. Planes de emergencia y revisiones de seguridad de las presas." },
+
                         { id: 26, text: "Biodiversidad, conservación y restauración de ecosistemas fluviales y acuáticos. Indicadores. Caudales ecológicos. Eutrofización de las masas de agua. Infraestructuras verdes y soluciones basadas en la naturaleza en el medio hídrico." },
+
                         { id: 27, text: "Canales y conducciones en carga. Revestimientos, juntas y obras singulares. Redes de distribución de agua potable. Redes de saneamiento. Emisarios submarinos. Depósitos. Construcción, explotación y conservación." },
+
                         { id: 28, text: "Estaciones de bombeo. Conceptos básicos. Tipos de bombas: características, selección, transitorios. Protección y tipos de estaciones. Estaciones de sobrepresión. Elementos constructivos. Ingeniería de impulsiones: Trazado, tipos y cálculo." }
+
                     ],
+
                     "A.2) Puertos y Costas": [
+
                         { id: 1, text: "Evolución de la Normativa de Costas. Leyes de Puertos de 1880 y 1928. Ley sobre costas de 1969. La Ley 22/1988, de 28 de julio, de Costas y la Ley 2/2013, de 29 de mayo, de protección y uso sostenible del litoral y de modificación de la Ley 22/1988, de Costas. Real Decreto 876/2014, de 10 de octubre, por el que se aprueba el Reglamento General de Costas." },
+
                         { id: 2, text: "Los bienes de dominio público marítimo-terrestre. Clasificación y definiciones. Prevalencia del dominio público marítimo-terrestre. Potestades de la Administración. El deslinde del dominio público marítimo-terrestre. Procedimiento. Estudios para la justificación del deslinde. Proyecto de deslinde. Efectos de la aprobación del deslinde. Inmatriculación de fincas colindantes con el dominio público marítimo-terrestre. Afectación y desafectación." },
+
                         { id: 3, text: "Limitaciones a la propiedad sobre los terrenos contiguos a la ribera del mar por razones de protección del dominio público marítimo-terrestre. Servidumbres de protección, tránsito y acceso al mar. Anchura y usos permitidos. La disposición transitoria tercera de la Ley 22/1988. Otras limitaciones a la propiedad. Zona de influencia." },
+
                         { id: 4, text: "Utilización del dominio público marítimo-terrestre. Disposiciones Generales. Proyectos y obras en el dominio público marítimo-terrestre. Estudios complementarios. Reservas, adscripciones, autorizaciones y concesiones." },
+
                         { id: 5, text: "El Régimen económico-financiero de la utilización del dominio público marítimo-terrestre. Cánones. Fianzas. Rescates. El Régimen sancionador en el dominio público marítimo-terrestre. Infracciones, sanciones y responsabilidad. Procedimientos y medios de ejecución." },
+
                         { id: 6, text: "Competencias de la Administración General del Estado según la Normativa de costas. Decretos de transferencias a las Comunidades Autónomas. Obras de interés general. Informes preceptivos y vinculantes. Competencias de las Comunidades Autónomas. Competencias Municipales." },
+
                         { id: 7, text: "Régimen Transitorio de la Ley 22/1988 y de la Ley 2/2013. La Disposición Transitoria Primera de la Ley 22/1988 y su desarrollo reglamentario. Los Fundamentos Jurídicos de la Sentencia del Tribunal Constitucional en relación con ella." },
+
                         { id: 8, text: "Las Autorizaciones en servidumbre de protección. Competencia. La declaración responsable. La disposición transitoria cuarta de la Ley 22/1988 y su desarrollo reglamentario. Autorización de nuevos usos y construcciones conforme a los instrumentos de ordenación: fachadas marítimas." },
+
                         { id: 9, text: "Biodiversidad y conservación de ecosistemas marinos y costeros. Las zonas húmedas y las zonas dunares costeras: definición y evolución en la normativa de costas. Las zonas de fanerógamas marinas. Importancia y tratamiento." },
+
                         { id: 10, text: "La gestión integral del litoral (GIZC). La GIZC como herramienta de la compatibilidad de usos y mecanismo de interacción entre Administraciones. La ordenación del espacio marítimo (OEM)." },
+
                         { id: 11, text: "Las distintas teorías de ondas. La propagación del oleaje. Los fenómenos de refracción, difracción, transmisión y reflexión del oleaje." },
+
                         { id: 12, text: "El transporte sólido litoral. Distintas formulaciones. Evolución de la línea de costa. Modelos. El perfil de playa. Distintas formulaciones teóricas. Variaciones del perfil. La profundidad del cierre." },
+
                         { id: 13, text: "Los efectos del cambio climático sobre las dinámicas oceánicas, el litoral, los ecosistemas y los recursos marinos. Factores de degradación del litoral. Adaptación de la costa a los efectos del cambio climático. Evaluación del riesgo de inundación en zonas costeras. Efectos del cambio climático sobre la inundación costera. Las infraestructuras costeras ante los impactos del cambio climático: análisis y diseño de medidas de adaptación. Huella de carbono de los proyectos en análisis de ciclo de vida. Principales medidas en infraestructuras para contribuir a la reducción de emisiones de gases de efecto invernadero." },
+
                         { id: 14, text: "Las estrategias marinas en España. El buen estado ambiental del medio marino. Programas de seguimiento y programas de medidas." },
+
                         { id: 15, text: "La erosión en los distintos tipos de playas. Causas de la erosión. Efectos de las infraestructuras litorales sobre las playas. Medidas correctoras y actuaciones. Efectos del cambio climático sobre la erosión costera." },
+
                         { id: 16, text: "Proyecto de playas artificiales. Formas de playa en planta. La espiral logarítmica y las soluciones parabólicas. La granulometría de la arena como condicionante del diseño. Aspectos ambientales de la regeneración de playas. Efectos sobre las comunidades pelágicas y bentónicas." },
+
                         { id: 17, text: "Las fuentes naturales de sedimentos. Las zonas de préstamo para alimentación artificial. Aspectos ambientales de la extracción de materiales del fondo marino. Directrices para la caracterización del material dragado y su reubicación en aguas del dominio público marítimo-terrestre. Métodos de prospección submarina." },
+
                         { id: 18, text: "El puerto: Aspectos generales y físicos. Objetivos y funciones. El sistema portuario español. Real Decreto Legislativo 2/2011, de 5 de septiembre, por el que se aprueba el texto refundido de la Ley de Puertos del Estado y de la Marina Mercante. Financiación de puertos. Modelos de gestión. Planificación portuaria. Fundamentos y planes. Previsiones de tráfico. Estudio de capacidad. Ordenación de terminales." },
+
                         { id: 19, text: "Obras de abrigo y portuarias (1). Definición y caracterización de la situación y factores de proyecto. Carácter de las obras. Estados límite últimos. Períodos de retorno. Bases de datos. Clima marítimo: Caracterización estadística del oleaje. Análisis estadístico del oleaje en aguas profundas y poco profundas: Régimen extremal y régimen medio." },
+
                         { id: 20, text: "Obras de abrigo y portuarias (II). Diseños y dimensionamiento. Diseño en planta. Obras exteriores: diques verticales, diques en talud, diques rebasables. Obras interiores: muelles, dársenas, amarres, fondeo. Superficies portuarias. Profundidades accesorias, maniobrabilidad de buques." }
+
                     ]
+
                 },
+
                 "B) Infraestructuras de Transporte": {
+
                     "B.1) Carreteras": [
+
                         { id: 1, text: "La legislación de carreteras. Ley 37/2015, de 29 de septiembre, de carreteras. Reglamento General de Carreteras. Funciones y estructura de la Dirección General de Carreteras. Catálogo de la Red de Carreteras del Estado." },
+
                         { id: 2, text: "La planificación estratégica de carreteras del Estado y los programas de carreteras. Evaluación coste-beneficio, análisis multicriterio y viabilidad financiera. Estudios informativos y anteproyectos. Nota de Servicio 3/2014 sobre prescripciones y recomendaciones técnicas relativas a los contenidos mínimos a incluir en los estudios de rentabilidad de los estudios informativos o anteproyectos. Criterios aplicables a carreteras de la Orden FOM/3317/2010 por la que se aprueba la instrucción sobre las medidas específicas para la mejora de la eficiencia en la ejecución de las obras públicas de infraestructuras ferroviarias, carreteras y aeropuertos del Ministerio de Transportes, Movilidad y Agenda Urbana." },
+
                         { id: 3, text: "Estudios de carreteras (1): cartografía y topografía. Estudios geológicos, geotécnicos y de procedencia de materiales. Estudios climatológicos e hidrológicos. Normativa sísmica." },
+
                         { id: 4, text: "Estudios de carreteras (II): estudios de tráfico. Toma de datos: sistemas convencionales y nuevas tecnologías. Modelización del tráfico. Prognosis de tráfico. Plan de aforos. Mapas de tráfico del Ministerio de Transportes, Movilidad y Agenda Urbana." },
+
                         { id: 5, text: "Trazado de carreteras: norma 3.1-IC de trazado. Trazado en planta. Trazado en alzado. Sección transversal. Nudos, enlaces e intersecciones. Orden Circular 1/2021 sobre recomendaciones para el diseño de carreteras 2+1 y carriles adicionales de adelantamiento." },
+
                         { id: 6, text: "Drenaje superficial y subterráneo. Norma 5.2-IC de drenaje superficial. Orden Circular 17/2003 de recomendaciones para el proyecto y construcción del drenaje subterráneo en obras de carretera." },
+
                         { id: 7, text: "Movimiento de tierras: clasificación y características de los suelos según el PG-3. Construcción de terraplenes, pedraplenes y rellenos todo uno. Compactación. Ejecución de excavaciones: estabilidad de taludes. Protección de la infraestructura frente a la caída de materiales. Técnicas de mejora del terreno. Cimentaciones de estructuras: tipologías y métodos constructivos." },
+
                         { id: 8, text: "Firmes (1): conceptos generales. La explanada: capacidad de soporte y materiales. Materiales de los firmes: zahorras, suelocemento, gravacemento y mezclas bituminosas. Clasificaciones de las mezclas bituminosas. Pavimentos de hormigón. Norma 6.1-IC de secciones de firme." },
+
                         { id: 9, text: "Firmes (II): características superficiales y estructurales de los firmes. Auscultación de firmes. Estrategias de conservación de los firmes. Rehabilitación de firmes: norma 6.3-IC. Orden Circular 40/2017: reciclado in situ con emulsión de capas bituminosas, reciclado in situ con cemento de capas de firme, reciclado en caliente y semicaliente en central de capas bituminosas (RAP). Transformación de firmes rígidos degradados en firmes mixtos. Consideraciones ambientales: carencia de materiales y huella energética." },
+
                         { id: 10, text: "Obras de paso: tipologías y materiales. Métodos constructivos y medios auxiliares. Conservación e inspección de obras de paso. Patologías de degradación. Rehabilitación de las obras de paso. Normativa aplicable. Aspectos principales del Real Decreto 470/2021 por el que se aprueba el Código Estructural. Monitorización en tiempo real de estructuras y taludes." },
+
                         { id: 11, text: "Túneles en carreteras (1): métodos constructivos. Maquinaria y medios auxiliares. Sostenimiento. Revestimiento. Equipamiento e instalaciones en los túneles. Real Decreto 635/2006 sobre requisitos mínimos de seguridad en los túneles de carreteras del Estado." },
+
                         { id: 12, text: "Túneles de carreteras (II): mantenimiento de túneles de carreteras. Plan de adecuación de túneles al Real Decreto 635/2006. Metodología de análisis de riesgo en túneles de la RCE. Orden Circular 27/2008 sobre metodología de inspección de túneles. Orden Circular 33/2013 sobre el manual de explotación de los túneles de la RCE." },
+
                         { id: 13, text: "Señalización: norma 8.1-IC de señalización vertical. Norma 8.2- IC de marcas viales. Sistema de señalización turística homologada en carreteras estatales (SISTHO). Balizamiento. Sistemas de contención: Orden Circular 35/2014 sobre criterios de aplicación de sistemas de contención de vehículos." },
+
                         { id: 14, text: "Pliego de prescripciones técnicas generales para obras de carreteras y puentes (PG-3). El Reglamento UE 305/2011 de productos de la construcción. El marcado CE. Los Eurocódigos." },
+
                         { id: 15, text: "Proyecto de trazado. Trámite de información pública. Proyecto de construcción. Documentos del proyecto de construcción: memoria y anejos, pliego de prescripciones técnicas particulares, mediciones y presupuestos. Dirección del proyecto. Supervisión y aprobación del proyecto. Principios de la metodología BIM aplicados a los proyectos de carreteras." },
+
                         { id: 16, text: "Construcción de carreteras (1): dirección de obras de carreteras. Plan de obra. Organización de las obras. Aseguramiento de la calidad. Plan de seguridad y salud. Plan de vigilancia medioambiental. Servicios afectados." },
+
                         { id: 17, text: "Construcción de carreteras (II): incidencias en las obras. Certificaciones de obras y relaciones valoradas. La certificación final y liquidación. Garantía de las obras y vicios ocultos." },
+
                         { id: 18, text: "La gestión de la Red de Carreteras del Estado: sistemas de gestión directos e indirectos. Concesiones de carreteras del Estado: autopistas de peaje y autovías en régimen de concesión. Actuaciones preparatorias de los contratos de concesión: el estudio de viabilidad. Inspección de concesiones. La Delegación del Gobierno en las sociedades concesionarias de autopistas nacionales de peaje. La gestión a través de la Sociedad Estatal de Infraestructuras del Transporte Terrestre, S.M.E., SA." },
+
                         { id: 19, text: "Conservación de carreteras (1): contratos de conservación y explotación empleados en la Red de Carreteras del Estado. Vialidad invernal. Inspecciones de elementos y sistemas de gestión. Nota de Servicio 2/2021: seguridad en las actividades de conservación. Nota de Servicio 1/2022: recomendaciones para mejorar la sostenibilidad en los centros de conservación y explotación." },
+
                         { id: 20, text: "Conservación de carreteras (II): proyectos y obras de conservación extraordinaria. Normativa específica de conservación y particularidades de la normativa genérica aplicables. Nota de Servicio 1/2019. Obras de emergencia. Orden Circular 36/2015, sobre criterios a aplicar en la iluminación de carreteras a cielo abierto y túneles." },
+
                         { id: 21, text: "Explotación de carreteras (1): protección del dominio público viario y limitaciones a la propiedad: zonas de dominio público, servidumbre y afección. Zona de limitación a la edificabilidad. Publicidad. Procedimiento de autorizaciones. Informes vinculantes a instrumentos de planeamiento urbanístico y ordenación territorial. Aplicación del Real Decreto Legislativo 7/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley de Suelo y Rehabilitación Urbana, en materia de explotación de carreteras. Régimen sancionador." },
+
                         { id: 22, text: "Explotación de carreteras (II): transportes especiales. Nota de Servicio 1/2018. Áreas de servicio y estaciones de servicio. Aparcamientos seguros. Accesos a la Red de Carreteras del Estado: normativa aplicable. Travesías y tramos urbanos. Estudios de delimitación de tramos urbanos. Cesión de tramos. Orden TMA/1160/2021, de cesión de tramos a Ayuntamientos. Gestión y seguimiento en materia de ruido: aplicación de la Ley 37/2003 de ruido a la Red de Carreteras del Estado. Mapas de ruido y planes de acción." },
+
                         { id: 23, text: "Innovación aplicada a la movilidad por carretera: sistemas inteligentes de transporte cooperativos (C-ITS): experiencias piloto. Vehículo autónomo y conectado. Carreteras inteligentes. Tecnologías aplicables para la tarificación de las carreteras. Digitalización de la Red de Carreteras del Estado." },
+
                         { id: 24, text: "Seguridad vial: indicadores de seguridad vial. Últimas cifras y evolución de los principales indicadores. Aspectos de la infraestructura que más incidencia tienen sobre la seguridad vial. Real Decreto 345/2011 sobre gestión de la seguridad de las infraestructuras viarias en la Red de Carreteras del Estado y su desarrollo en la Orden Circular 30/2012 y Orden Circular 39/2017." }
+
                     ],
+
                     "B.2) Ferrocarriles": [
+
                         { id: 1, text: "La infraestructura ferroviaria dentro de la Ley 38/2015, de 29 de septiembre, del Sector Ferroviario, y el Real Decreto 2387/2004, de 30 de diciembre, por el que se aprueba el Reglamento del Sector Ferroviario (I). La Red Ferroviaria de Interés General. La planificación, proyecto y construcción de sus infraestructuras. La Estrategia Indicativa. Estudios y proyectos: tipos, contenido y tramitación. La construcción y puesta en servicio. Incidencia sobre el planeamiento urbanístico." },
+
                         { id: 2, text: "La infraestructura ferroviaria dentro de la Ley 38/2015, de 29 de septiembre, del Sector Ferroviario, y el Real Decreto 2387/2004, de 30 de diciembre, por el que se aprueba el Reglamento del Sector Ferroviario (II). Los administradores de infraestructuras ferroviarias. Funciones, naturaleza, recursos, y patrimonio. Declaración de Red. Adjudicación de capacidad. Prestación de servicios." },
+
                         { id: 3, text: "La infraestructura ferroviaria dentro de la Ley 38/2015, de 29 de septiembre, del Sector Ferroviario, y el Real Decreto 2387/2004, de 30 de diciembre, por el que se aprueba el Reglamento del Sector Ferroviario (III). Zonas de servicio. Limitaciones a la propiedad. Infraestructuras ferroviarias en puertos y aeropuertos. Infraestructuras ferroviarias privadas." },
+
                         { id: 4, text: "El transporte ferroviario dentro de la Ley 38/2015, de 29 de septiembre, del Sector Ferroviario, y el Real Decreto 2387/2004, de 30 de diciembre, por el que se aprueba el Reglamento del Sector Ferroviario. Actores del sistema ferroviario nacional y europeo. Administradores de infraestructura y empresas ferroviarias. Concepto de empresa ferroviaria, obtención de licencias de empresas ferroviarias. Los cánones y tarifas." },
+
                         { id: 5, text: "Infraestructura ferroviaria: trazado y geometría. Definición de los parámetros básicos en planta y alzado. Valores recomendados y límite. Secciones transversales. Gálibos. Entre-eje. Criterios en infraestructuras ferroviarias de la Orden FOM/3317/2010, de 17 de diciembre, por la que se aprueba la Instrucción sobre las medidas específicas para la mejora de la eficiencia en la ejecución de las obras públicas de infraestructuras ferroviarias, carreteras y aeropuertos del Ministerio de Fomento." },
+
                         { id: 6, text: "Las capas de asiento ferroviario. Plataforma: capas constitutivas, características de los materiales. El balasto: funciones y características de los materiales. Dimensionamiento." },
+
                         { id: 7, text: "La vía y sus elementos constitutivos. Tipología y materiales. Aparatos de vía. La vía en placa. El ancho de vía en España. Problemática de la coexistencia de varios anchos y alternativas técnicas para su solución. Cambiadores de ancho. La vía de tres hilos, principales elementos y su problemática." },
+
                         { id: 8, text: "Túneles de ferrocarril. Normativa técnica, secciones, métodos constructivos, efectos aerodinámicos y seguridad. Estructuras ferroviarias: Instrucción sobre las acciones a considerar en el proyecto de puentes de ferrocarril (IAPF). Singularidad de los efectos dinámicos." },
+
                         { id: 9, text: "Conceptos básicos de la ejecución de obras ferroviarias. Procedimientos constructivos, condicionantes y maquinaria. El mantenimiento de la red. Operaciones de auscultación de la vía en servicio. Mantenimiento preventivo y correctivo. Plan de contingencias. Renovaciones y otras operaciones, procedimientos constructivos. Inspecciones técnicas en los puentes de ferrocarril." },
+
                         { id: 10, text: "Pasos a nivel. Marco legal. Definición y clasificación. Tipología de protecciones. Alternativas de supresión. Procedimientos constructivos singulares. Otros cruces a nivel y cruces entre andenes." },
+
                         { id: 11, text: "Instalaciones de servicio ferroviarias. Tipologías: viajeros, mercancías y técnicas. Necesidades funcionales ferroviarias. Condicionantes de diseño y dimensionamiento. Andenes. Accesibilidad. Autopistas ferroviarias." },
+
                         { id: 12, text: "Electrificación ferroviaria. Sistemas de sustentación. Tipologías de catenarias. Tensiones de funcionamiento. Otros sistemas de alimentación. Normativa de aplicación." },
+
                         { id: 13, text: "Señalización e instalaciones de seguridad ferroviaria. Conceptos generales. Sistemas tradicionales clase B y nuevas tendencias: el ERTMS. Normativa de aplicación Explotación ferroviaria: estudios de capacidad y de demanda y sistemas de gestión de capacidad." },
+
                         { id: 14, text: "Las infraestructuras ferroviarias en el entorno urbano. Problemática. Alternativas para su integración. Sistemas de financiación en colaboración con otras administraciones." },
+
                         { id: 15, text: "La seguridad ferroviaria en la Directiva 2016/798/UE de seguridad y en el Real Decreto 929/2020, de 27 de octubre de seguridad operacional e interoperabilidad ferroviarias (I). Desarrollo y gestión de la seguridad ferroviaria. Funciones de los agentes del sistema ferroviario. Objetivos comunes de seguridad. Métodos comunes de seguridad. Sistemas de gestión de la seguridad." },
+
                         { id: 16, text: "La seguridad ferroviaria en la Directiva 2016/798/UE de seguridad y en el Real Decreto 929/2020, de 27 de octubre de seguridad operacional e interoperabilidad ferroviarias (II). Certificados y autorizaciones de seguridad. Evaluación y supervisión. La Agencia Estatal de Seguridad Ferroviaria. La Autoridad Administrativa Independiente para la Investigación Técnica de Accidentes e Incidentes ferroviarios, marítimos y de aviación civil. La Agencia Ferroviaria de la Unión Europea." },
+
                         { id: 17, text: "La interoperabilidad ferroviaria en la Directiva 2016/797/UE de interoperabilidad y en el Real Decreto 929/2020, de 27 de octubre de seguridad operacional e interoperabilidad ferroviarias (I). Especificaciones técnicas de interoperabilidad (ETIS) y normas nacionales (Instrucciones ferroviarias). Componentes de interoperabilidad. Subsistemas estructurales y funcionales. Organismos notificados." },
+
                         { id: 18, text: "La interoperabilidad ferroviaria en la Directiva 2016/797/UE de interoperabilidad y en el Real Decreto 929/2020, de 27 de octubre de seguridad operacional e interoperabilidad ferroviarias (II). Entrada en servicio de subsistemas estructurales fijos y de puesta en servicio de líneas, tramos, estaciones y terminales." },
+
                         { id: 19, text: "Personal ferroviario. Conceptos generales de la Orden FOM/2872/2010, de 5 de noviembre: categorías de personal con actividades relacionadas con la seguridad, licencias y certificados de maquinistas, centros de formación y centros de reconocimiento médico. Conceptos generales de la ETI OPE en relación con el personal ferroviario." },
+
                         { id: 20, text: "Material rodante ferroviario. Entrada en servicio de vehículos. Mantenimiento de vehículos y organismos responsables: entidades encargadas de mantenimiento y centros de mantenimiento. Normativa básica." },
+
                         { id: 21, text: "Conceptos básicos de normativa de circulación ferroviaria: la Especificación Técnica de Interoperabilidad de Explotación y Gestión del tráfico (ETI OPE) y el Reglamento de Circulación Ferroviaria (Real Decreto 664/2015, de 17 de julio)." },
+
                         { id: 22, text: "La gestión de la seguridad operacional en los cambios en el sistema ferroviario: El Reglamento UE 402/2013 relativo a la adopción de un método común de seguridad para la evaluación y valoración del riesgo. Concepto de cambio significativo. Fases del proceso de gestión del riesgo: definición del sistema, identificación de amenazas, análisis del riesgo, registro de amenazas, funciones del evaluador independiente, informe del evaluador independiente. Declaración del proponente. Integración Segura." }
+
                     ]
+
                 },
+
                 "C) Transportes, Movilidad y Medio Ambiente": { 
+
                     "C.1) Transportes y Movilidad": [
+
                         { id: 1, text: "Transporte y movilidad en España (I). Movilidad interior y movilidad exterior de viajeros y mercancías. Repartos modales, principales magnitudes y evolución. Comparación con otros países de la Unión Europea. Relación entre movilidad y actividad económica. El transporte y la industria del turismo." },
+
                         { id: 2, text: "Transporte y movilidad en España (II). El transporte y la logística como sector empresarial. Participación en la economía nacional, empresas y participación en el empleo. Comparativa con otros países de la Unión Europea. Gasto de los ciudadanos en transporte. Gasto de los diferentes sectores empresariales en transporte de mercancías y logística. El Observatorio del Transporte y la Logística en España." },
+
                         { id: 3, text: "Organización del sistema de transporte en España. Función normativa. Inspección, supervisión y otorgamiento de permisos. Gestores de infraestructuras. Operadores. Prestadores de servicios auxiliares. Comisiones de estudio de accidentes. Regulador del mercado." },
+
                         { id: 4, text: "Conceptos básicos de la legislación en el transporte terrestre. Ley 16/1987 de Ordenación de los Transportes Terrestres (modificada por la Ley 9/2013) y su Reglamento." },
+
                         { id: 5, text: "Evolución y principios básicos de la legislación del transporte ferroviario en Europa. Los paquetes ferroviarios y la Agencia Ferroviaria Europea. El cuarto paquete ferroviario." },
+
                         { id: 6, text: "Mercados de transporte liberalizados y mercados en monopolio. Las obligaciones de servicio público en los servicios de transporte de competencia estatal. Normativa europea y su aplicación en España. El Reglamento (CE) N.º 1370/2007 del Parlamento europeo y del Consejo de 23 de octubre de 2007 sobre los servicios públicos de transporte de viajeros por ferrocarril y carretera. La liberalización del transporte ferroviario: modelos de acceso al mercado y situación actual en España. El modelo concesional en los servicios de transporte de viajeros en autobús." },
+
                         { id: 7, text: "Subvenciones al transporte. Conceptos básicos. Base de datos nacional de subvenciones. Ayudas de Estado." },
+
                         { id: 8, text: "La intermodalidad en el transporte de viajeros y mercancías. Principales objetivos. Principales magnitudes. Evolución. Corredores y nodos intermodales. Cadenas logísticas intermodales." },
+
                         { id: 9, text: "El transporte internacional. Principales acuerdos internacionales. Acuerdos internacionales para el transporte de mercancías peligrosas. Organismos y asociaciones internacionales: OACI, OMI. Principios y normativa de la Unión Europea en materia de política de transportes. Europa en Movimiento (Europe on the Move). La Estrategia Europea de Movilidad Sostenible e Inteligente de 2020." },
+
                         { id: 10, text: "Principales políticas nacionales en transporte y movilidad. Principios básicos de la Estrategia Española de Movilidad Segura, Sostenible y Conectada 2030. Estrategia Estatal por la Bicicleta. Plan de Recuperación, Transformación y Resiliencia de España (PRTR). Componentes 1 y 6." },
+
                         { id: 11, text: "La movilidad urbana y metropolitana, de viajeros y de mercancías. Principales actores. Movilidad sostenible en ámbito urbano y metropolitano. El transporte público en la movilidad de viajeros. Organización y gestión. Las autoridades de transporte metropolitano. Competencias de la Administración General del Estado. La Agenda Urbana Española. Tendencias. Retos. Movilidad rural." },
+
                         { id: 12, text: "El coste del transporte. Costes desde el punto de vista económico-privado (costes internos). Estructura de costes en los distintos modos de transporte, en viajeros y mercancías. Costes desde el punto de vista económico-social (costes externos). Internalización de costes externos. Fiscalidad verde." },
+
                         { id: 13, text: "La investigación, desarrollo e innovación en transportes y movilidad. Los Programas Marco de la Unión Europea. Horizonte Europa 2021-2027: pilares y programas horizontales, elementos principales, asociaciones. El sistema español de investigación, desarrollo e innovación en transportes y movilidad." },
+
                         { id: 14, text: "Nuevas tecnologías y desarrollos en el transporte y la movilidad (1). Digitalización y nuevos servicios y formas de movilidad. Datos abiertos. Puntos de Acceso Nacionales. La Movilidad como Servicio (MaaS). Big Data. Vehículos autónomos. Movilidad conectada. Automatización de la cadena logística." },
+
                         { id: 15, text: "Nuevas tecnologías y desarrollos en el transporte y la movilidad (II). Los Sistemas Inteligentes de Transporte (ITS): aplicación de la tecnología a la gestión del sistema de infraestructuras y transporte. Los sistemas de navegación por satélite (GNSS) Galileo y EGNOS y su aplicación en transporte y movilidad." },
+
                         { id: 16, text: "Planificación del sistema de infraestructuras y transporte de ámbito estatal. Historia reciente de la planificación estratégica de infraestructuras y transporte en España. Planificación estratégica en vigor. La planificación sectorial por modo de transporte. La participación pública en el proceso de planificación. Nuevo enfoque en las políticas de inversión." },
+
                         { id: 17, text: "Demanda de transporte y análisis coste-beneficio en la planificación del sistema de infraestructuras y transporte. Modelos de demanda de transporte. Empleo de la tecnología Big Data en la planificación. Encuestas y billetaje en la cuantificación y cualificación de la movilidad. Evaluación coste-beneficio (ACB) en el ámbito del transporte." },
+
                         { id: 18, text: "Infraestructuras de transporte, inversión y financiación. Dotación de infraestructuras de transporte y comparativa con otros países de la Unión Europea. Volumen de inversión en infraestructuras de transporte. La financiación de las infraestructuras: financiación presupuestaria y extrapresupuestaria. Participación del sector privado en la financiación de infraestructuras. Tarificación por uso de las infraestructuras." },
+
                         { id: 19, text: "La Red Transeuropea de Transporte (RTE-T). Reglamentos CE de desarrollo y financiación de la RTE-T. Los corredores Europeos de Transporte. La RTE-T en España. Financiación europea de infraestructuras. El Banco Europeo de Inversiones. Fondo Europeo de Inversiones Estratégicas (EFSI). Mecanismo Conectar Europa. Fondo Europeo de Desarrollo Regional. Next Generation EU." },
+
                         { id: 20, text: "La planificación del sistema de infraestructuras y transporte y su integración con las políticas del territorio y ambientales. Efectos ambientales de las infraestructuras de transporte. Gestión y mantenimiento sostenible de las infraestructuras de transporte. Resiliencia de las infraestructuras de transporte frente a los fenómenos meteorológicos extremos y su adaptación al cambio climático durante su ciclo de vida: análisis y diseño de medidas de adaptación. Huella de carbono de los proyectos en análisis de ciclo de vida. Principales medidas en infraestructuras para contribuir a la reducción de emisiones de gases de efecto invernadero." },
+
                         { id: 21, text: "Sostenibilidad ambiental del transporte. Consumo energético y eficiencia energética. Emisiones a la atmósfera de gases de efecto invernadero y otros contaminantes: papel del transporte en las causas del cambio climático y del deterioro de la calidad del aire. Fuentes de energía alternativas y tecnologías innovadoras de tracción para una movilidad de bajas emisiones. Transporte y políticas en materia de energía y clima: categorización y ejemplos. Marco normativo europeo y nacional sobre infraestructuras para combustibles alternativos." }
+
                     ],
+
                     "C.2) Medio Ambiente": [
+
                         { id: 1, text: "Desarrollo sostenible. Antecedentes, conceptos y estrategias internacionales, europeas y nacionales. La Agenda 2030 para el Desarrollo Sostenible y los Objetivos de desarrollo sostenible (ODS). Programa de las Naciones Unidas para el Medio Ambiente (PNUMA)." },
+
                         { id: 2, text: "La I+D+i ambiental. Estrategias y Planes Europeos y Nacionales. Ley 14/2011, de 1 de junio, de la Ciencia, la Tecnología y la Innovación. La Agencia Estatal de Innovación. Competitividad, innovación y sostenibilidad. Medidas de ahorro y eficiencia energética, situación actual y nuevas tendencias." },
+
                         { id: 3, text: "Política de la Unión Europea y nacional en materia de residuos. Directiva marco de residuos (Directiva 98/2008/CE) y Directiva (UE) 2018/851. Ley 7/2022, de 8 de abril, de residuos y suelos contaminados para una economía circular. Principios. La planificación en materia de residuos: el Plan Estatal Marco de Gestión de Residuos 2016-2022, el Plan Estatal de Inspección en materia de Traslados Transfronterizos de Residuos 2021-2026 (PEITTR) y el Plan Nacional Integral de Residuos de España (PNIR). Consejo de Economía Circular." },
+
                         { id: 4, text: "Normativa nacional en materia de contaminación del suelo. Real Decreto 9/2005, de 14 de enero, por el que se establece la relación de actividades potencialmente contaminantes del suelo y los criterios y estándares para la declaración de suelos contaminados. Tipos de contaminantes. Usos del suelo. Evaluación del riesgo. Niveles genéricos de referencia. Técnicas de recuperación de suelos." },
+
                         { id: 5, text: "La Estrategia Española de Economía Circular y sus Planes de Acción: vínculo y aplicación en el sector de la construcción y demolición. Producción y gestión de residuos de construcción y demolición: el Real Decreto 105/2008 de 1 de febrero. Utilización de residuos en obra pública (neumáticos fuera de uso, escorias de incineradores urbanos y materiales de dragado, etc.). La eliminación de residuos mediante depósito en vertedero. Orden APM/1007/2017, de 10 de octubre, sobre normas generales de valorización de materiales naturales excavados para su utilización en operaciones de relleno y obras distintas a aquéllas en las que se generaron." },
+
                         { id: 6, text: "Conservación, uso sostenible, mejora y restauración del patrimonio natural y de la biodiversidad. Normativa nacional y de la Unión Europea. La Ley 42/2007, de 13 de diciembre, del Patrimonio Natural y la Biodiversidad. La Red Natura 2000. La infraestructura verde." },
+
                         { id: 7, text: "La Directiva 2010/75/UE de 24 de noviembre de Emisiones Industriales. Real Decreto Legislativo 1/2016, de 16 de diciembre, por el que se aprueba el texto refundido de la Ley de prevención y control integrados de la contaminación. Contaminación: principios, valores y límites de emisión. Las autorizaciones ambientales integradas. Los intercambios de información." },
+
                         { id: 8, text: "La contaminación atmosférica. Tipos, orígenes y características. Sus fuentes. Sectores y actividades contaminantes. Contaminación atmosférica transfronteriza a larga distancia. Normativa española. Ley 34/2007 de, 15 de noviembre, de calidad del aire y protección de la atmósfera. Programa Nacional de Control de la Contaminación atmosférica." },
+
                         { id: 9, text: "La contaminación acústica. Normativa de la Unión Europea y española sobre ruido. La ley 37/2003, de 17 de noviembre, del Ruido. Efectos sobre la salud y el medio ambiente. La evaluación, prevención y reducción del ruido ambiental. Medidas correctoras." },
+
                         { id: 10, text: "La Convención Marco de Naciones Unidas sobre Cambio Climático, el Protocolo de Kioto y el Acuerdo de París. Acción Europea en la lucha contra el cambio climático: comercio europeo de derechos de emisión, normativa en sectores difusos y LULUCF, Estrategia Europea de Adaptación. Pacto Verde Europeo. Ley 7/2021, de 20 de mayo, de Cambio Climático y Transición Energética." },
+
                         { id: 11, text: "La evaluación ambiental de proyectos y la evaluación ambiental estratégica de planes y programas. Principios. El marco jurídico de la evaluación de impacto ambiental: Ley 21/2013, de 9 de diciembre, de evaluación ambiental. Su aplicación a las infraestructuras del transporte, hidráulicas y costeras." },
+
                         { id: 12, text: "Acceso a la información en materia de medio ambiente. Convenio de Aarhus. La participación en la gestión ambiental. Normativa de la Unión Europea. La Ley 27/2006, de 18 de julio, por la que se regulan los derechos de acceso a la información, de participación pública y de acceso a la justicia en materia de medio ambiente. Instrumentos y publicaciones para facilitar el acceso a la información ambiental en el ámbito del Ministerio para la Transición Ecológica y el Reto Demográfico." },
+
                         { id: 13, text: "La normativa de responsabilidad medioambiental. Ley 26/2007, de 23 de octubre, de Responsabilidad Medioambiental." },
+
                         { id: 14, text: "La protección del medio marino. Ley 41/2010, de 29 de diciembre, sobre protección del Medio Marino. Los Convenios regionales de protección del medio marino de los que España es Parte: el Convenio de Barcelona y el Convenio OSPAR." },
+
                         { id: 15, text: "Prevención y mitigación de la fragmentación de hábitats causada por las infraestructuras de transporte. Restauración ecológica y prevención de especies exóticas invasoras. Permeabilización de infraestructuras para la conservación de especies protegidas. Protección de la avifauna. Corrección de tendidos eléctricos para evitar la colisión y electrocución de la avifauna." }
+
                     ]
+
                 }
+
             }
+
         };
+
         window.onload = async () => {
+
             try {
+
                 initializeApp(firebaseConfig);
+
                 db = getFirestore();
+
                 const loginModal = document.getElementById('login-modal');
+
                 const loginForm = document.getElementById('login-form');
+
                 let user = sessionStorage.getItem('username');
+
                 if (!user) {
+
                     const urlParams = new URLSearchParams(window.location.search);
+
                     const userFromUrl = urlParams.get('user');
+
                     if (userFromUrl) {
+
                         user = userFromUrl;
+
                         sessionStorage.setItem('username', user);
+
                     }
+
                 }
+
                 if (user) await startApp(user);
+
                 else {
+
                     loginModal.style.display = 'flex'; 
+
                     loginForm?.addEventListener('submit', async (e) => {
+
                         e.preventDefault();
+
                         const username = document.getElementById('username-input').value.trim();
+
                         if (username) {
+
                             sessionStorage.setItem('username', username);
+
                             await startApp(username);
+
                         }
+
                     });
+
                 }
+
             } catch (error) { console.error("Error initializing:", error); }
+
         };
+
 
         async function startApp(username) {
+
             sessionId = username;
+
             document.getElementById('login-modal').style.display = 'none';
+
             document.getElementById('main-content').classList.remove('hidden');
+
             
+
             setupVueltaSelector();
+
             setupEventListeners();
+
             renderSyllabus(); 
+
             await loadProgress(); 
+
         }
+
 
         function setupEventListeners() {
+
             document.getElementById('vuelta-selector').addEventListener('change', updateAllCounters);
+
             document.getElementById('toggle-names-btn').addEventListener('click', () => {
+
                 document.body.classList.toggle('show-full-names');
+
                 const btn = document.getElementById('toggle-names-btn');
+
                 btn.textContent = document.body.classList.contains('show-full-names') ? 'Ocultar Nombres' : 'Mostrar Nombres';
+
             });
+
             document.getElementById('collapse-all-btn').addEventListener('click', () => toggleAll(true));
+
             document.getElementById('expand-all-btn').addEventListener('click', () => toggleAll(false));
+
             document.getElementById('calc-prob-btn').addEventListener('click', openCalculator);
+
             document.getElementById('notes-modal-cancel').addEventListener('click', hideNotesModal);
+
             document.getElementById('notes-modal-backdrop').addEventListener('click', (e) => {
+
                 if (e.target === document.getElementById('notes-modal-backdrop')) hideNotesModal();
+
             });
+
         }
+
         
+
         function setupVueltaSelector() {
+
             const selector = document.getElementById('vuelta-selector');
+
             selector.innerHTML = '';
+
             for (let i = 1; i <= 5; i++) {
+
                 const option = document.createElement('option');
+
                 option.value = i;
+
                 option.textContent = `Vuelta ${i}`;
+
                 selector.appendChild(option);
+
             }
+
         }
+
 
         function renderSyllabus() {
+
             const container = document.getElementById('syllabus-container');
+
             container.innerHTML = ''; 
+
             for (const topLevelTitle in syllabus) {
+
                 const topLevelBlock = document.createElement('div');
+
                 topLevelBlock.className = 'mt-8';
+
                 topLevelBlock.appendChild(createHeader(2, topLevelTitle));
+
                 const mainBlocks = syllabus[topLevelTitle];
+
                 for (const mainBlockTitle in mainBlocks) {
+
                     const mainBlockEl = document.createElement('div');
+
                     mainBlockEl.className = 'main-block mt-6 ml-4 collapsible collapsed';
+
                     mainBlockEl.appendChild(createHeader(3, mainBlockTitle, true));
+
                     const mainBlockContent = document.createElement('div');
+
                     mainBlockContent.className = 'collapsible-content';
+
                     const subBlocksOrTopics = mainBlocks[mainBlockTitle];
+
                     if (Array.isArray(subBlocksOrTopics)) {
+
                         subBlocksOrTopics.forEach(topic => mainBlockContent.appendChild(createTopicElement(topic, mainBlockTitle)));
+
                     } else {
+
                         const subBlocksContainer = document.createElement('div');
+
                         subBlocksContainer.className = 'sub-blocks-container';
+
                         for (const subBlockKey in subBlocksOrTopics) {
+
                             const subBlockEl = document.createElement('div');
+
                             subBlockEl.className = 'sub-block collapsible collapsed';
+
                             
+
                             const subBlockHeader = createHeader(4, subBlockKey, true);
+
                             const subBlockTopics = document.createElement('div');
+
                             subBlockTopics.className = 'collapsible-content';
 
+
                             subBlocksOrTopics[subBlockKey].forEach(topic => subBlockTopics.appendChild(createTopicElement(topic, subBlockKey)));
+
                             
+
                             subBlockEl.appendChild(subBlockHeader);
+
                             subBlockEl.appendChild(subBlockTopics);
+
                             subBlocksContainer.appendChild(subBlockEl);
+
                         }
+
                         mainBlockContent.appendChild(subBlocksContainer);
+
                     }
+
                     mainBlockEl.appendChild(mainBlockContent);
+
                     topLevelBlock.appendChild(mainBlockEl);
+
                 }
+
                 container.appendChild(topLevelBlock); 
+
             }
+
         }
+
 
         function createHeader(level, title, isCollapsible = false) {
+
             const headerWrapper = document.createElement('div');
+
             headerWrapper.className = 'header-container';
+
              if (isCollapsible) {
+
                 headerWrapper.classList.add('is-collapsible');
+
                 headerWrapper.addEventListener('click', (e) => {
+
                     if (e.target.closest('.header-counters')) return;
+
                     if (headerWrapper.closest('.sub-block') && !document.body.classList.contains('show-full-names')) {
+
                         return;
+
                     }
+
                     headerWrapper.parentElement.classList.toggle('collapsed');
+
                 });
+
             }
+
             const titleWrapper = document.createElement('div');
+
             titleWrapper.className = 'header-title-wrapper';
+
             if (isCollapsible) {
+
                 const icon = document.createElement('div');
+
                 icon.className = 'toggle-icon';
+
                 icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>`;
+
                 titleWrapper.appendChild(icon);
+
             }
+
             const titleEl = document.createElement(`h${level}`);
+
             const styles = {
+
                 2: 'text-2xl font-bold text-slate-800 border-b-2 border-slate-300 pb-2', 
+
                 3: 'text-xl font-semibold text-slate-700',
+
                 4: 'text-base font-semibold text-slate-600'
+
             };
+
             titleEl.className = styles[level];
+
             titleEl.textContent = title;
+
             const config = BLOCKS_CONFIG[title];
+
             if(config) titleEl.classList.add(config.color);
+
             titleWrapper.appendChild(titleEl);
+
             headerWrapper.appendChild(titleWrapper);
+
             return headerWrapper;
+
         }
+
 
         function createTopicElement(topic, subBlockName) {
+
             const topicId = `${subBlockName}-${topic.id}`;
+
             const topicDiv = document.createElement('div');
+
             topicDiv.className = 'topic-card p-2 rounded-lg shadow-sm mb-2 flex items-center justify-between gap-4 transition-colors duration-300';
+
             topicDiv.dataset.topicId = topicId;
+
             topicDiv.dataset.subBlockName = subBlockName;
 
+
             const notesIcon = document.createElement('i');
+
             notesIcon.className = 'fas fa-note-sticky notes-icon text-lg';
+
             notesIcon.title = 'Añadir/Ver notas';
+
             notesIcon.addEventListener('click', () => showNotesModal(topicId, `${subBlockName} - Tema ${topic.id}`));
 
+
             const topicP = document.createElement('p');
+
             topicP.className = 'topic-text-container';
+
             const config = BLOCKS_CONFIG[subBlockName];
+
             if(config) topicP.classList.add(config.color);
+
             topicP.innerHTML = `${topic.id}. <span class="topic-full-name">${topic.text}</span>`;
 
+
             const ticksContainer = document.createElement('div');
+
             ticksContainer.className = 'flex items-start space-x-2';
+
             for (let i = 1; i <= 5; i++) {
+
                 const tickContainer = document.createElement('div');
+
                 tickContainer.className = 'tick-container';
+
                 const tickBox = document.createElement('div');
+
                 tickBox.className = 'tick-box';
+
                 tickBox.dataset.vuelta = `vuelta-${i}`;
+
                 tickBox.addEventListener('click', (e) => showSecuritySelector(e, topicId, `vuelta-${i}`));
+
                 const tickMark = document.createElement('div');
+
                 tickMark.className = 'tick-mark';
+
                 tickBox.appendChild(tickMark);
+
                 const dateSpan = document.createElement('span');
+
                 dateSpan.className = 'tick-date';
+
                 tickContainer.appendChild(tickBox);
+
                 tickContainer.appendChild(dateSpan);
+
                 ticksContainer.appendChild(tickContainer);
+
             }
+
             topicDiv.appendChild(notesIcon);
+
             topicDiv.appendChild(topicP);
+
             topicDiv.appendChild(ticksContainer);
+
             return topicDiv;
+
         }
 
+
         function updateAllCounters() {
+
             const selector = document.getElementById('vuelta-selector');
+
             if (!selector || !selector.value) return;
+
             const selectedVuelta = parseInt(selector.value, 10);
+
             renderTopSummaryTable(selectedVuelta);
+
         }
+
         
+
         function renderTopSummaryTable(selectedVuelta) {
+
             if (isNaN(selectedVuelta)) return;
+
             const summaryTable = document.getElementById('top-summary-table');
+
             const tableHead = `
+
                 <thead class="bg-slate-200 text-xs text-slate-700 uppercase tracking-wider">
+
                     <tr>
+
                         <th class="px-6 py-3">Bloque</th>
+
                         <th class="px-6 py-3">Sub-bloque</th>
+
                         <th class="px-6 py-3 text-center">Asignados</th>
+
                         <th class="px-6 py-3 text-center">Estudiados</th>
+
                         <th class="px-6 py-3 text-center">Total Asignados</th>
+
                         <th class="px-6 py-3 text-center">Total Temas</th>
+
                     </tr>
+
                 </thead>`;
+
             let tableBody = '<tbody>';
+
             let grandTotal = { assigned: 0, studied: 0, totalAssigned: 0, total: 0 };
+
 
             const allBlocks = {...syllabus["Materias comunes"], ...syllabus["Materias específicas"]};
 
+
             for (const mainBlockTitle in allBlocks) {
+
                 const subBlocksOrTopics = allBlocks[mainBlockTitle];
+
                 if (Array.isArray(subBlocksOrTopics)) {
+
                     const blockName = mainBlockTitle;
+
                     const assignedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${blockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.assigned`).length;
+
                     const studiedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${blockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.studied`).length;
+
                     const totalAssigned = assignedCount + studiedCount;
+
                     const totalTopics = subBlocksOrTopics.length;
+
                     
+
                     grandTotal.assigned += assignedCount;
+
                     grandTotal.studied += studiedCount;
+
                     grandTotal.totalAssigned += totalAssigned;
+
                     grandTotal.total += totalTopics;
 
+
                     const config = BLOCKS_CONFIG[blockName];
+
                     tableBody += `<tr class="bg-slate-50 border-b-4 border-slate-300">
+
                         <td colspan="2" class="px-6 py-4 font-semibold ${config.color}"><i class="fas ${config.icon} fa-fw w-5 text-center"></i>${blockName}</td>
+
                         <td class="px-6 py-4 text-center font-mono text-gray-600">${assignedCount}</td>
+
                         <td class="px-6 py-4 text-center font-mono text-green-600">${studiedCount}</td>
+
                         <td class="px-6 py-4 text-center font-mono">${totalAssigned}</td>
+
                         <td class="px-6 py-4 text-center font-mono">${totalTopics}</td>
+
                     </tr>`;
+
                 } else {
+
                     let blockTotals = { assigned: 0, studied: 0, totalAssigned: 0, total: 0 };
+
                     let subRows = '';
+
                     const subBlockKeys = Object.keys(subBlocksOrTopics);
 
+
                     subBlockKeys.forEach((subBlockName, index) => {
+
                         const assignedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${subBlockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.assigned`).length;
+
                         const studiedCount = document.querySelectorAll(`.topic-card[data-sub-block-name="${subBlockName}"] .tick-container:nth-child(${selectedVuelta}) .tick-box.studied`).length;
+
                         const totalAssigned = assignedCount + studiedCount;
+
                         const totalTopics = subBlocksOrTopics[subBlockName].length;
+
                         
+
                         blockTotals.assigned += assignedCount;
+
                         blockTotals.studied += studiedCount;
+
                         blockTotals.totalAssigned += totalAssigned;
+
                         blockTotals.total += totalTopics;
 
+
                         const config = BLOCKS_CONFIG[subBlockName];
+
                         subRows += `<tr class="border-t border-slate-200">
+
                             ${index === 0 ? `<td class="px-6 py-4 font-bold align-top" rowspan="${subBlockKeys.length}">${mainBlockTitle}</td>` : ''}
+
                             <td class="px-6 py-4 flex items-center gap-3 ${config.color}"><i class="fas ${config.icon} fa-fw w-5 text-center"></i><span class="font-semibold">${subBlockName}</span></td>
+
                             <td class="px-6 py-4 text-center font-mono text-gray-600">${assignedCount}</td>
+
                             <td class="px-6 py-4 text-center font-mono text-green-600">${studiedCount}</td>
+
                             <td class="px-6 py-4 text-center font-mono">${totalAssigned}</td>
+
                             <td class="px-6 py-4 text-center font-mono">${totalTopics}</td>
+
                         </tr>`;
+
                     });
+
 
                     grandTotal.assigned += blockTotals.assigned;
+
                     grandTotal.studied += blockTotals.studied;
+
                     grandTotal.totalAssigned += blockTotals.totalAssigned;
+
                     grandTotal.total += blockTotals.total;
 
+
                     tableBody += subRows;
+
                     tableBody += `<tr class="bg-slate-100 font-semibold"><td class="px-6 py-2 text-right font-bold" colspan="2">Total Bloque:</td><td class="px-6 py-2 text-center font-mono text-gray-600">${blockTotals.assigned}</td><td class="px-6 py-2 text-center font-mono text-green-600">${blockTotals.studied}</td><td class="px-6 py-2 text-center font-mono">${blockTotals.totalAssigned}</td><td class="px-6 py-2 text-center font-mono">${blockTotals.total}</td></tr>`;
+
                 }
+
             }
+
             
+
             tableBody += '</tbody>';
+
             const tableFoot = `<tfoot class="bg-blue-100 font-bold text-blue-800 text-base">
+
                 <tr>
+
                     <td colspan="2" class="px-6 py-4 text-right">TOTAL GENERAL (Vuelta ${selectedVuelta}):</td>
+
                     <td class="px-6 py-4 text-center font-mono text-gray-600">${grandTotal.assigned}</td>
+
                     <td class="px-6 py-4 text-center font-mono text-green-600">${grandTotal.studied}</td>
+
                     <td class="px-6 py-4 text-center font-mono">${grandTotal.totalAssigned}</td>
+
                     <td class="px-6 py-4 text-center font-mono">${grandTotal.total}</td>
+
                 </tr>
+
             </tfoot>`;
+
             summaryTable.innerHTML = tableHead + tableBody + tableFoot;
+
         }
+
 
         async function loadProgress() {
+
             if (!db || !sessionId) { updateAllCounters(); return; }
+
             const docRef = doc(db, `artifacts/${appId}/public/data/${sessionId}/plannerState`);
+
             try {
+
                 const docSnap = await getDoc(docRef);
+
                 if (!docSnap.exists()) {
+
                     console.log("No progress data found for this user. Initializing with empty state.");
+
                     plannerState = { topicState: { studiedTopics: {}, notes: {} } };
+
                     updateUIFromProgress();
+
                     return;
+
                 }
+
                 plannerState = docSnap.data();
+
                 if (!plannerState || !plannerState.topicState) {
+
                     console.log("Planner data is empty or malformed.");
+
                     plannerState = { topicState: { studiedTopics: {}, notes: {} } };
+
                     updateUIFromProgress();
+
                     return;
+
                 }
+
                 processPlannerData();
+
                 updateUIFromProgress();
+
             } catch (error) {
+
                 console.error("Error loading progress from Firestore:", error);
+
                 updateAllCounters();
+
             }
+
         }
+
 
         function processPlannerData() {
+
             progressByTopic = {};
+
             const { topicState: loadedTopicState, endDate, roundDurations } = plannerState;
+
             if (!loadedTopicState) return;
 
+
             const roundDates = {};
+
             if (endDate && roundDurations) {
+
                 const deadline = new Date(endDate.split('/').reverse().join('-') + 'T00:00:00Z');
+
                 const durations = roundDurations.map(Number);
+
                 const totalDuration = durations.reduce((sum, d) => sum + d, 0);
+
                 let planStartDate = new Date(deadline.getTime());
+
                 planStartDate.setUTCDate(planStartDate.getUTCDate() - totalDuration + 1);
+
                 
+
                 let currentStartDate = new Date(planStartDate.getTime());
+
                 for (let i = 0; i < 5; i++) {
+
                     const roundEndDate = new Date(currentStartDate.getTime());
+
                     roundEndDate.setUTCDate(roundEndDate.getUTCDate() + durations[i] - 1);
+
                     state.rounds[i] = {
+
                         vueltaId: `vuelta-${i + 1}`,
+
                         startDate: new Date(currentStartDate.getTime()),
+
                         endDate: roundEndDate,
+
                         duration: durations[i]
+
                     };
+
                     roundDates[`vuelta-${i + 1}`] = new Date(currentStartDate.getTime());
+
                     currentStartDate.setUTCDate(currentStartDate.getUTCDate() + durations[i]);
+
                 }
+
             }
+
 
             if (loadedTopicState.studiedTopics) {
+
                 for (const dateStr in loadedTopicState.studiedTopics) {
+
                     loadedTopicState.studiedTopics[dateStr].forEach(topic => {
+
                         const displayDate = new Date(dateStr + 'T00:00:00Z');
+
                         progressByTopic[topic.id] = progressByTopic[topic.id] || {};
+
                         progressByTopic[topic.id][topic.originalVuelta] = { 
+
                             status: 'studied', 
+
                             date: `${String(displayDate.getUTCDate()).padStart(2,'0')}/${String(displayDate.getUTCMonth()+1).padStart(2,'0')}`,
+
                             securityLevel: topic.securityLevel || 100,
+
                             dateObj: dateStr
+
                         };
+
                     });
+
                 }
+
             }
+
 
             for (let i = 1; i <= 5; i++) {
+
                 const vueltaId = `vuelta-${i}`;
+
                 const roundState = loadedTopicState[vueltaId];
+
                 if (roundState && roundState.assigned && roundDates[vueltaId]) {
+
                     const vueltaStartDate = roundDates[vueltaId];
+
                     for (const dayIndex in roundState.assigned) {
+
                         roundState.assigned[dayIndex].forEach(topic => {
+
                             progressByTopic[topic.id] = progressByTopic[topic.id] || {};
+
                             if (!progressByTopic[topic.id][vueltaId]) {
+
                                 const assignedDate = new Date(vueltaStartDate.getTime());
+
                                 assignedDate.setUTCDate(assignedDate.getUTCDate() + parseInt(dayIndex));
+
                                 progressByTopic[topic.id][vueltaId] = {
+
                                     status: 'assigned',
+
                                     date: `${String(assignedDate.getUTCDate()).padStart(2,'0')}/${String(assignedDate.getUTCMonth()+1).padStart(2,'0')}`,
+
                                     dateObj: assignedDate.toISOString().slice(0, 10)
+
                                 };
+
                             }
+
                         });
+
                     }
+
                 }
+
             }
+
         }
+
 
         function updateUIFromProgress() {
+
             document.querySelectorAll('.topic-card').forEach(card => {
+
                 const topicId = card.dataset.topicId;
+
                 const tickContainers = card.querySelectorAll('.tick-container');
+
                 const notesIcon = card.querySelector('.notes-icon');
 
+
                 if (plannerState.topicState?.notes?.[topicId]) {
+
                     notesIcon.classList.add('has-notes');
+
                 } else {
+
                     notesIcon.classList.remove('has-notes');
+
                 }
+
 
                 let studiedVueltasCount = 0;
+
                 if (progressByTopic[topicId]) {
+
                     for (let i = 1; i <= 5; i++) {
+
                         if (progressByTopic[topicId][`vuelta-${i}`]?.status === 'studied') {
+
                             studiedVueltasCount++;
+
                         }
+
                     }
+
                 }
+
                 
+
                 card.className = 'topic-card p-2 rounded-lg shadow-sm mb-2 flex items-center justify-between gap-4 transition-colors duration-300';
+
                 if (studiedVueltasCount > 0) {
+
                     card.classList.add(`status-vuelta-${studiedVueltasCount}`);
+
                 } else {
+
                     card.classList.add('status-not-studied');
+
                 }
+
                 
+
                 tickContainers.forEach((container, index) => {
+
                     const tickBox = container.querySelector('.tick-box');
+
                     const dateSpan = container.querySelector('.tick-date');
+
                     const vueltaId = `vuelta-${index + 1}`;
+
                     
+
                     tickBox.className = 'tick-box';
+
                     dateSpan.textContent = '';
 
+
                     const progress = progressByTopic[topicId]?.[vueltaId];
+
                     if (progress) {
+
                         if (progress.status === 'studied') {
+
                             tickBox.classList.add('studied', `security-${progress.securityLevel}`);
+
                         } else if (progress.status === 'assigned') {
+
                             tickBox.classList.add('assigned');
+
                         }
+
                         dateSpan.textContent = progress.date;
+
                     }
+
                 });
+
             });
+
             updateAllCounters();
+
         }
+
 
         async function savePlannerState() {
+
             const statusEl = document.getElementById('connection-status');
+
             statusEl.textContent = 'Guardando...';
+
             statusEl.className = 'mt-2 text-sm font-semibold text-blue-600';
+
             try {
+
                 const docRef = doc(db, `artifacts/${appId}/public/data/${sessionId}/plannerState`);
+
                 await setDoc(docRef, plannerState);
+
                 statusEl.textContent = '¡Guardado!';
+
                 statusEl.className = 'mt-2 text-sm font-semibold text-green-600';
+
             } catch (error) {
+
                 console.error("Error saving state:", error);
+
                 statusEl.textContent = 'Error al guardar';
+
                 statusEl.className = 'mt-2 text-sm font-semibold text-red-600';
+
             } finally {
+
                 setTimeout(() => statusEl.textContent = '', 3000);
+
             }
+
         }
+
         
+
         function showSecuritySelector(event, topicId, vueltaId) {
+
             event.stopPropagation();
+
             const tickBox = event.currentTarget;
 
+
             if (!tickBox.classList.contains('studied') && !tickBox.classList.contains('assigned')) {
+
                 return;
+
             }
+
 
             const isStudied = tickBox.classList.contains('studied');
+
             document.querySelector('.security-selector')?.remove();
 
+
             const selector = document.createElement('div');
+
             selector.className = 'security-selector';
+
             
+
             [20, 40, 60, 80, 100].forEach(level => {
+
                 const option = document.createElement('div');
+
                 option.className = 'security-option';
+
                 option.textContent = `${level}%`;
+
                 option.addEventListener('click', (e) => {
+
                     e.stopPropagation();
+
                     updateSecurityLevel(topicId, vueltaId, level);
+
                     selector.remove();
+
                 });
+
                 selector.appendChild(option);
+
             });
+
             
+
             if (isStudied) {
+
                 const unstudyOption = document.createElement('div');
+
                 unstudyOption.className = 'security-option text-red-600';
+
                 unstudyOption.textContent = 'No estudiado';
+
                 unstudyOption.addEventListener('click', (e) => {
+
                     e.stopPropagation();
+
                     unstudyTopic(topicId, vueltaId);
+
                     selector.remove();
+
                 });
+
                 selector.appendChild(unstudyOption);
+
             }
+
 
             tickBox.appendChild(selector);
 
+
             const closeListener = (e) => {
+
                 if (!selector.contains(e.target)) {
+
                     selector.remove();
+
                     document.removeEventListener('click', closeListener);
+
                 }
+
             };
+
             setTimeout(() => document.addEventListener('click', closeListener), 0);
+
         }
+
         
+
         function unstudyTopic(topicId, vueltaId) {
+
             const topicProgress = progressByTopic[topicId]?.[vueltaId];
+
             if (!topicProgress || topicProgress.status !== 'studied') return;
 
+
             const studiedDateStr = topicProgress.dateObj;
+
             const studiedDay = plannerState.topicState.studiedTopics[studiedDateStr];
+
             
+
             if (studiedDay) {
+
                 let unstudiedTopicData;
+
                 const newStudiedDay = studiedDay.filter(t => {
+
                     if (t.id === topicId && t.originalVuelta === vueltaId) {
+
                         unstudiedTopicData = t;
+
                         return false;
+
                     }
+
                     return true;
+
                 });
+
 
                 if (!unstudiedTopicData) return;
 
+
                 if (newStudiedDay.length === 0) {
+
                     delete plannerState.topicState.studiedTopics[studiedDateStr];
+
                 } else {
+
                     plannerState.topicState.studiedTopics[studiedDateStr] = newStudiedDay;
+
                 }
 
+
                 const roundState = plannerState.topicState[vueltaId];
+
                 if(roundState && roundState.unassigned && !roundState.unassigned.includes(topicId)) {
+
                     roundState.unassigned.push(topicId);
+
                 }
+
                 
+
                 savePlannerState();
+
                 processPlannerData();
+
                 updateUIFromProgress();
+
             }
+
         }
+
 
         function updateSecurityLevel(topicId, vueltaId, newLevel) {
+
             const topicProgress = progressByTopic[topicId]?.[vueltaId];
+
             
+
             if (topicProgress && topicProgress.status === 'studied') {
+
                 const studiedDate = topicProgress.dateObj;
+
                 const studiedDay = plannerState.topicState.studiedTopics[studiedDate];
+
                 const topicData = studiedDay?.find(t => t.id === topicId && t.originalVuelta === vueltaId);
+
                 if (topicData) {
+
                     topicData.securityLevel = newLevel;
+
                 }
+
             } else if (topicProgress && topicProgress.status === 'assigned') {
+
                 const roundState = plannerState.topicState[vueltaId];
+
                 if (roundState && roundState.assigned) {
+
                     for (const dayIndex in roundState.assigned) {
+
                         const topicIndex = roundState.assigned[dayIndex].findIndex(t => t.id === topicId);
+
                         if (topicIndex !== -1) {
+
                             roundState.assigned[dayIndex].splice(topicIndex, 1);
+
                             if (roundState.assigned[dayIndex].length === 0) delete roundState.assigned[dayIndex];
+
                             break; 
+
                         }
+
                     }
+
                 }
+
 
                 const todayDateStr = new Date().toISOString().slice(0, 10);
+
                 if (!plannerState.topicState.studiedTopics) {
+
                     plannerState.topicState.studiedTopics = {};
+
                 }
+
                 if (!plannerState.topicState.studiedTopics[todayDateStr]) {
+
                     plannerState.topicState.studiedTopics[todayDateStr] = [];
+
                 }
+
                 
+
                 plannerState.topicState.studiedTopics[todayDateStr].push({
+
                     id: topicId,
+
                     originalVuelta: vueltaId,
+
                     securityLevel: newLevel,
+
                     studied: true
+
                 });
+
             }
 
+
             savePlannerState();
+
             processPlannerData();
+
             updateUIFromProgress();
+
         }
+
 
         function showNotesModal(topicId, topicTitle) {
+
             const modalBackdrop = document.getElementById('notes-modal-backdrop');
+
             const modalTitle = document.getElementById('notes-modal-title');
+
             const modalTextarea = document.getElementById('notes-modal-textarea');
+
             const saveButton = document.getElementById('notes-modal-save');
 
+
             modalTitle.textContent = `Notas para: ${topicTitle}`;
+
             modalTextarea.value = plannerState.topicState?.notes?.[topicId] || '';
+
             
+
             const newSaveButton = saveButton.cloneNode(true);
+
             saveButton.parentNode.replaceChild(newSaveButton, saveButton);
+
             
+
             newSaveButton.onclick = () => saveNote(topicId, modalTextarea.value);
 
+
             modalBackdrop.classList.remove('hidden');
+
         }
+
 
         function hideNotesModal() {
+
             document.getElementById('notes-modal-backdrop').classList.add('hidden');
+
         }
+
 
         function saveNote(topicId, noteText) {
+
             if (!plannerState.topicState) plannerState.topicState = {};
+
             if (!plannerState.topicState.notes) plannerState.topicState.notes = {};
+
             
+
             plannerState.topicState.notes[topicId] = noteText;
+
             savePlannerState();
+
             hideNotesModal();
+
             
+
             const card = document.querySelector(`.topic-card[data-topic-id="${topicId}"]`);
+
             if (card) {
+
                 const icon = card.querySelector('.notes-icon');
+
                 if (noteText) {
+
                     icon.classList.add('has-notes');
+
                 } else {
+
                     icon.classList.remove('has-notes');
+
                 }
+
             }
+
         }
+
 
         function openCalculator() {
+
             const selectedVuelta = document.getElementById('vuelta-selector').value;
+
             const vueltaIndex = parseInt(selectedVuelta, 10);
+
             if(isNaN(vueltaIndex)) {
+
                 console.error("Por favor, selecciona una vuelta válida.");
+
                 return;
+
             }
+
             const calculatorUrl = 'https://cheradra312.github.io/CAL_PROB/';
+
             const params = new URLSearchParams();
+
             const calcData = { admin: 0, aguas: 0, carreteras: 0, transportes: 0 };
+
             
+
             document.querySelectorAll('.topic-card').forEach(card => {
+
                 const tickBox = card.querySelector(`.tick-container:nth-child(${vueltaIndex}) .tick-box`);
+
                 if (tickBox && tickBox.classList.contains('studied')) {
+
                     const subBlockName = card.dataset.subBlockName;
+
                     const config = BLOCKS_CONFIG[subBlockName];
+
                     if (config && calcData.hasOwnProperty(config.calcId)) {
+
                         calcData[config.calcId]++;
+
                     }
+
                 }
+
             });
 
-            // Si el número de temas de 'admin' es 0, se envía 16
-            if (calcData.admin === 0) {
-                calcData.admin = 16;
-            }
 
             for (const key in calcData) {
+
                 params.append(key, calcData[key]);
+
             }
+
             window.open(`${calculatorUrl}?${params.toString()}`, '_blank');
+
         }
 
-            for (const key in calcData) {
-                params.append(key, calcData[key]);
-            }
-            window.open(`${calculatorUrl}?${params.toString()}`, '_blank');
-        }
 
         function toggleAll(collapse) {
+
             document.querySelectorAll('.main-block.collapsible, .sub-block.collapsible').forEach(el => {
+
                 el.classList.toggle('collapsed', collapse);
+
             });
+
         }
+
     </script>
+
 </body>
-</html>
+
+</html> 
