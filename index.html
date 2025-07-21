@@ -988,58 +988,76 @@
             return false;
         }
 
+        /**
+         * [FIXED] This function is now scoped to only remove a topic from the specified round,
+         * preventing data loss in other rounds.
+         * @param {string} topicId - The full ID of the topic to unassign.
+         * @param {string} vueltaIdToReturnTo - The ID of the round to remove the topic from.
+         */
         function unassignTopic(topicId, vueltaIdToReturnTo) {
-            const status = findTopicGlobalAssignment(topicId);
+            const roundState = state.topicState[vueltaIdToReturnTo];
+            if (!roundState) {
+                console.error(`Cannot unassign topic: round state for ${vueltaIdToReturnTo} does not exist.`);
+                return;
+            }
+            
+            let originalDate = null;
 
-            if (status.status === 'unassigned') return;
-
-            // Remove from studied list
-            if (status.status === 'studied') {
-                const dayTopics = state.topicState.studiedTopics[status.date];
-                if (!dayTopics) {
-                    console.error(`Inconsistent state: Topic ${topicId} thought to be studied on ${status.date}, but no topics found for that date.`);
-                } else {
+            // 1. Check if it's 'assigned' (but not studied) in this round and remove it.
+            const roundInfo = state.rounds.find(r => r.vueltaId === vueltaIdToReturnTo);
+            if (roundState.assigned && roundInfo) {
+                for (const dayIndex in roundState.assigned) {
+                    const dayTopics = roundState.assigned[dayIndex];
                     const topicIndex = dayTopics.findIndex(t => t.id === topicId);
                     if (topicIndex > -1) {
+                        // Found it. Remove from assigned.
                         dayTopics.splice(topicIndex, 1);
-                        if (dayTopics.length === 0) delete state.topicState.studiedTopics[status.date];
-                    }
-                }
-            }
-            // Remove from assigned list
-            else if (status.status === 'assigned') {
-                const roundState = state.topicState[status.vueltaId];
-                const roundInfo = state.rounds.find(r => r.vueltaId === status.vueltaId);
+                        if (dayTopics.length === 0) delete roundState.assigned[dayIndex];
 
-                if (!roundInfo) {
-                    console.error(`Inconsistent state: Could not find round info for ${status.vueltaId} for topic ${topicId}.`);
-                } else {
-                    const dayIndex = Math.round((new Date(status.date + 'T00:00:00Z') - roundInfo.startDate) / (1000 * 60 * 60 * 24));
-                    const dayTopics = roundState.assigned[dayIndex];
-                    
-                    if (!dayTopics) {
-                        console.error(`Inconsistent state: Topic ${topicId} thought to be assigned on day ${dayIndex} of ${status.vueltaId}, but no topics found for that day.`);
-                    } else {
-                        const topicIndex = dayTopics.findIndex(t => t.id === topicId);
-                        if (topicIndex > -1) {
-                            dayTopics.splice(topicIndex, 1);
-                            if (dayTopics.length === 0) delete roundState.assigned[dayIndex];
-                        }
+                        // Save date for UI update
+                        const date = new Date(roundInfo.startDate);
+                        date.setUTCDate(date.getUTCDate() + parseInt(dayIndex, 10));
+                        originalDate = date.toISOString().split('T')[0];
+                        
+                        // Break the loop once found and removed
+                        break; 
                     }
                 }
             }
 
-            // Add back to the unassigned list of the specified vuelta
-            if (!state.topicState[vueltaIdToReturnTo].unassigned.includes(topicId)) {
-                state.topicState[vueltaIdToReturnTo].unassigned.push(topicId);
+            // 2. If not found in 'assigned', check if it was 'studied' *from this specific round*.
+            if (!originalDate) { // Only check 'studied' if not found in 'assigned'
+                for (const dateStr in state.topicState.studiedTopics) {
+                    const dayTopics = state.topicState.studiedTopics[dateStr];
+                    const topicIndex = dayTopics.findIndex(t => t.id === topicId && t.originalVuelta === vueltaIdToReturnTo);
+                    if (topicIndex > -1) {
+                        // Found it. Remove from studied.
+                        dayTopics.splice(topicIndex, 1);
+                        if (dayTopics.length === 0) delete state.topicState.studiedTopics[dateStr];
+                        
+                        // Save date for UI update
+                        originalDate = dateStr;
+                        
+                        // Break the loop once found and removed
+                        break;
+                    }
+                }
             }
-
-            // Re-render
-            renderTopicSourceList();
-            if (status.date) {
-                updateSingleDay(status.date);
+            
+            // 3. If the topic was found and removed from either list, add it back to unassigned.
+            if (originalDate) {
+                if (!roundState.unassigned.includes(topicId)) {
+                    roundState.unassigned.push(topicId);
+                    roundState.unassigned.sort(); // Keep it tidy
+                }
+                
+                // 4. Update UI
+                updateSingleDay(originalDate);
+                renderTopicSourceList();
+                renderSummaryTable();
+            } else {
+                console.warn(`Attempted to unassign topic ${topicId} from ${vueltaIdToReturnTo}, but it was not found as either assigned or studied in that specific round.`);
             }
-            renderSummaryTable();
         }
 
         function renderTopicSourceList() {
